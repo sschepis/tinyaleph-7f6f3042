@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Play, ArrowLeft, Brain, Zap, GitBranch, Grid3X3, TrendingDown, Layers } from 'lucide-react';
+import { Play, ArrowLeft, Brain, Zap, GitBranch, Grid3X3, TrendingDown, Layers, Network, Pause, RotateCcw } from 'lucide-react';
 import CodeBlock from '../components/CodeBlock';
 
 // Simple quaternion implementation for demo
@@ -736,58 +736,86 @@ console.log('Attention weights:', weights);`}
   );
 };
 
-// Gradient Descent Visualization
+// Animated Gradient Descent Visualization
 const GradientDescentExample = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationRef = useRef<number | null>(null);
   const [learningRate, setLearningRate] = useState(0.1);
-  const [steps, setSteps] = useState(50);
+  const [speed, setSpeed] = useState(50);
   const [path, setPath] = useState<{ x: number; y: number; loss: number }[]>([]);
   const [isRunning, setIsRunning] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
+  const positionRef = useRef({ x: -1.5, y: 2.0 });
 
-  // Rosenbrock function: f(x,y) = (a-x)² + b(y-x²)²
-  const rosenbrock = (x: number, y: number) => {
+  // Rosenbrock function
+  const rosenbrock = useCallback((x: number, y: number) => {
     const a = 1, b = 100;
     return Math.pow(a - x, 2) + b * Math.pow(y - x * x, 2);
-  };
+  }, []);
 
   // Gradient of Rosenbrock
-  const gradient = (x: number, y: number) => {
+  const gradient = useCallback((x: number, y: number) => {
     const a = 1, b = 100;
     const dx = -2 * (a - x) - 4 * b * x * (y - x * x);
     const dy = 2 * b * (y - x * x);
     return { dx, dy };
-  };
+  }, []);
 
-  const runGradientDescent = useCallback(() => {
-    setIsRunning(true);
-    const newPath: { x: number; y: number; loss: number }[] = [];
-    
-    // Start from random position
-    let x = -1.5 + Math.random();
-    let y = 2 + Math.random() * 0.5;
-    
-    for (let i = 0; i < steps; i++) {
-      const loss = rosenbrock(x, y);
-      newPath.push({ x, y, loss });
-      
-      const grad = gradient(x, y);
-      // Gradient clipping for stability
-      const gradNorm = Math.sqrt(grad.dx * grad.dx + grad.dy * grad.dy);
-      const clipNorm = 10;
-      const scale = gradNorm > clipNorm ? clipNorm / gradNorm : 1;
-      
-      x -= learningRate * grad.dx * scale;
-      y -= learningRate * grad.dy * scale;
-      
-      // Clamp to visualization bounds
-      x = Math.max(-2, Math.min(2, x));
-      y = Math.max(-1, Math.min(3, y));
+  const reset = useCallback(() => {
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
     }
-    
-    setPath(newPath);
     setIsRunning(false);
-  }, [learningRate, steps]);
+    setPath([]);
+    setCurrentStep(0);
+    positionRef.current = { x: -1.5 + Math.random() * 0.5, y: 2.0 + Math.random() * 0.5 };
+  }, []);
 
+  const step = useCallback(() => {
+    const { x, y } = positionRef.current;
+    const loss = rosenbrock(x, y);
+    
+    setPath(prev => [...prev, { x, y, loss }]);
+    setCurrentStep(prev => prev + 1);
+    
+    const grad = gradient(x, y);
+    const gradNorm = Math.sqrt(grad.dx * grad.dx + grad.dy * grad.dy);
+    const clipNorm = 10;
+    const scale = gradNorm > clipNorm ? clipNorm / gradNorm : 1;
+    
+    positionRef.current = {
+      x: Math.max(-2, Math.min(2, x - learningRate * grad.dx * scale)),
+      y: Math.max(-1, Math.min(3, y - learningRate * grad.dy * scale))
+    };
+  }, [rosenbrock, gradient, learningRate]);
+
+  const animate = useCallback(() => {
+    if (!isRunning) return;
+    
+    step();
+    
+    if (currentStep < 200) {
+      animationRef.current = setTimeout(() => {
+        requestAnimationFrame(animate);
+      }, 200 - speed * 1.8) as unknown as number;
+    } else {
+      setIsRunning(false);
+    }
+  }, [isRunning, step, currentStep, speed]);
+
+  useEffect(() => {
+    if (isRunning) {
+      animate();
+    }
+    return () => {
+      if (animationRef.current) {
+        clearTimeout(animationRef.current as unknown as number);
+      }
+    };
+  }, [isRunning, animate]);
+
+  // Draw the canvas
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -817,69 +845,77 @@ const GradientDescentExample = () => {
     }
     ctx.putImageData(imageData, 0, 0);
     
-    // Draw contour lines
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-    ctx.lineWidth = 1;
-    const contourLevels = [0.1, 1, 10, 100, 1000];
-    
     // Draw global minimum marker
     const minPx = ((1 + 2) / 4) * w;
     const minPy = ((1 + 1) / 4) * h;
     ctx.beginPath();
-    ctx.arc(minPx, minPy, 6, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0, 255, 0, 0.8)';
+    ctx.arc(minPx, minPy, 8, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(34, 197, 94, 0.9)';
     ctx.fill();
     ctx.strokeStyle = 'white';
     ctx.lineWidth = 2;
     ctx.stroke();
     
-    // Draw optimization path
+    // Draw optimization path with animation trail effect
     if (path.length > 0) {
-      ctx.beginPath();
-      ctx.strokeStyle = 'rgba(255, 255, 0, 0.9)';
-      ctx.lineWidth = 2;
-      
-      for (let i = 0; i < path.length; i++) {
-        const px = ((path[i].x + 2) / 4) * w;
-        const py = ((path[i].y + 1) / 4) * h;
-        
-        if (i === 0) {
-          ctx.moveTo(px, py);
-        } else {
-          ctx.lineTo(px, py);
-        }
-      }
-      ctx.stroke();
-      
-      // Draw points along path
-      for (let i = 0; i < path.length; i += Math.max(1, Math.floor(path.length / 20))) {
-        const px = ((path[i].x + 2) / 4) * w;
-        const py = ((path[i].y + 1) / 4) * h;
-        
+      // Draw trail with gradient
+      for (let i = 1; i < path.length; i++) {
+        const alpha = 0.3 + (i / path.length) * 0.7;
         ctx.beginPath();
-        ctx.arc(px, py, 3, 0, Math.PI * 2);
-        ctx.fillStyle = `hsl(${60 - (i / path.length) * 60}, 100%, 50%)`;
-        ctx.fill();
+        ctx.strokeStyle = `rgba(250, 204, 21, ${alpha})`;
+        ctx.lineWidth = 2;
+        
+        const prevPx = ((path[i-1].x + 2) / 4) * w;
+        const prevPy = ((path[i-1].y + 1) / 4) * h;
+        const currPx = ((path[i].x + 2) / 4) * w;
+        const currPy = ((path[i].y + 1) / 4) * h;
+        
+        ctx.moveTo(prevPx, prevPy);
+        ctx.lineTo(currPx, currPy);
+        ctx.stroke();
       }
       
-      // Start point
-      const startPx = ((path[0].x + 2) / 4) * w;
-      const startPy = ((path[0].y + 1) / 4) * h;
-      ctx.beginPath();
-      ctx.arc(startPx, startPy, 6, 0, Math.PI * 2);
-      ctx.fillStyle = 'red';
-      ctx.fill();
-      ctx.strokeStyle = 'white';
-      ctx.stroke();
+      // Draw points with pulsing effect on current point
+      path.forEach((p, i) => {
+        const px = ((p.x + 2) / 4) * w;
+        const py = ((p.y + 1) / 4) * h;
+        const isLast = i === path.length - 1;
+        const isFirst = i === 0;
+        
+        if (isFirst || isLast || i % 5 === 0) {
+          ctx.beginPath();
+          const radius = isLast ? 6 : isFirst ? 5 : 3;
+          ctx.arc(px, py, radius, 0, Math.PI * 2);
+          
+          if (isFirst) {
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.9)';
+          } else if (isLast) {
+            ctx.fillStyle = 'rgba(250, 204, 21, 1)';
+            // Glow effect for current position
+            ctx.shadowColor = 'rgba(250, 204, 21, 0.8)';
+            ctx.shadowBlur = 15;
+          } else {
+            ctx.fillStyle = `rgba(250, 204, 21, ${0.4 + (i / path.length) * 0.6})`;
+          }
+          ctx.fill();
+          ctx.shadowBlur = 0;
+          
+          if (isFirst || isLast) {
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+        }
+      });
     }
-  }, [path]);
+  }, [path, rosenbrock]);
 
   return (
     <div className="space-y-6">
       <div className="p-6 rounded-xl border border-border bg-card">
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <TrendingDown className="w-5 h-5 text-primary" />
-          Gradient Descent on Rosenbrock Function
+          Animated Gradient Descent on Rosenbrock Function
         </h3>
 
         <div className="grid md:grid-cols-2 gap-6">
@@ -895,57 +931,82 @@ const GradientDescentExample = () => {
                 step={0.001}
                 value={learningRate}
                 onChange={(e) => setLearningRate(Number(e.target.value))}
-                className="w-full"
+                className="w-full accent-primary"
+                disabled={isRunning}
               />
             </div>
 
             <div>
               <label className="text-sm text-muted-foreground mb-2 block">
-                Steps: {steps}
+                Animation Speed: {speed}%
               </label>
               <input
                 type="range"
                 min={10}
-                max={200}
+                max={100}
                 step={10}
-                value={steps}
-                onChange={(e) => setSteps(Number(e.target.value))}
-                className="w-full"
+                value={speed}
+                onChange={(e) => setSpeed(Number(e.target.value))}
+                className="w-full accent-primary"
               />
             </div>
 
-            <button
-              onClick={runGradientDescent}
-              disabled={isRunning}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-            >
-              <Play className="w-4 h-4" /> {isRunning ? 'Running...' : 'Run Optimization'}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  if (!isRunning && path.length === 0) {
+                    positionRef.current = { x: -1.5 + Math.random() * 0.5, y: 2.0 + Math.random() * 0.5 };
+                  }
+                  setIsRunning(!isRunning);
+                }}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                {isRunning ? 'Pause' : path.length > 0 ? 'Resume' : 'Start'}
+              </button>
+              <button
+                onClick={reset}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+              >
+                <RotateCcw className="w-4 h-4" /> Reset
+              </button>
+            </div>
 
-            {path.length > 0 && (
-              <div className="space-y-2">
-                <div className="p-4 rounded-lg bg-muted/50">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Initial Loss</p>
-                      <p className="font-mono text-lg">{path[0].loss.toFixed(4)}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Final Loss</p>
-                      <p className="font-mono text-lg text-primary">{path[path.length - 1].loss.toFixed(4)}</p>
-                    </div>
-                  </div>
+            <div className="p-4 rounded-lg bg-muted/50">
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Step</p>
+                  <p className="font-mono text-lg">{currentStep}</p>
                 </div>
-                <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
-                  <p className="text-sm">
-                    <span className="text-green-500">●</span> Global minimum at (1, 1)
+                <div>
+                  <p className="text-muted-foreground">Current Loss</p>
+                  <p className="font-mono text-lg text-primary">
+                    {path.length > 0 ? path[path.length - 1].loss.toFixed(4) : '—'}
                   </p>
-                  <p className="text-sm">
-                    <span className="text-red-500">●</span> Start → <span className="text-yellow-500">●</span> End
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Position</p>
+                  <p className="font-mono text-xs">
+                    {path.length > 0 
+                      ? `(${path[path.length - 1].x.toFixed(2)}, ${path[path.length - 1].y.toFixed(2)})`
+                      : '—'}
                   </p>
                 </div>
               </div>
-            )}
+            </div>
+
+            <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+              <p className="text-sm">
+                <span className="inline-block w-3 h-3 rounded-full bg-green-500 mr-2"></span>
+                Global minimum at (1, 1) with loss = 0
+              </p>
+              <p className="text-sm mt-1">
+                <span className="inline-block w-3 h-3 rounded-full bg-red-500 mr-2"></span>
+                Start point
+                <span className="inline-block w-3 h-3 rounded-full bg-yellow-400 ml-4 mr-2"></span>
+                Current position
+              </p>
+            </div>
           </div>
 
           <div>
@@ -962,34 +1023,344 @@ const GradientDescentExample = () => {
       <CodeBlock
         code={`import { gradientDescent, rosenbrock, adam } from '@aleph-ai/tinyaleph';
 
-// Define loss function and gradient
-const loss = (params) => rosenbrock(params.x, params.y);
-const grad = (params) => rosenbrockGradient(params.x, params.y);
-
-// Vanilla gradient descent
-const result = gradientDescent({
+// Animated gradient descent with callback
+const optimizer = gradientDescent({
   initial: { x: -1.5, y: 2.0 },
   learningRate: 0.001,
-  maxSteps: 10000,
-  convergenceThreshold: 1e-8,
-  loss,
-  grad
+  onStep: (step, params, loss) => {
+    // Update visualization on each step
+    updateCanvas(params, loss);
+  }
 });
 
-// Or use Adam optimizer for faster convergence
-const adamResult = adam({
-  initial: { x: -1.5, y: 2.0 },
-  learningRate: 0.1,
-  beta1: 0.9,
-  beta2: 0.999,
-  loss,
-  grad
-});
-
-console.log('Optimized:', adamResult.params);
-console.log('Final loss:', adamResult.loss);`}
+// Run step by step for animation
+const interval = setInterval(() => {
+  const { done, params, loss } = optimizer.step();
+  if (done || loss < 1e-8) clearInterval(interval);
+}, 50);`}
         language="javascript"
-        title="gradient-descent.js"
+        title="animated-gradient-descent.js"
+      />
+    </div>
+  );
+};
+
+// Neural Network Visualization
+const NeuralNetworkExample = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [inputValues, setInputValues] = useState([0.5, 0.8, 0.3]);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [activeConnections, setActiveConnections] = useState<Set<string>>(new Set());
+  const [layerActivations, setLayerActivations] = useState<number[][]>([]);
+  const animationRef = useRef<number | null>(null);
+
+  const layers = useMemo(() => [3, 4, 4, 2], []); // Input, hidden1, hidden2, output
+  
+  // Initialize random weights
+  const weights = useMemo(() => {
+    const w: number[][][] = [];
+    for (let l = 0; l < layers.length - 1; l++) {
+      w[l] = [];
+      for (let i = 0; i < layers[l]; i++) {
+        w[l][i] = [];
+        for (let j = 0; j < layers[l + 1]; j++) {
+          w[l][i][j] = (Math.random() - 0.5) * 2;
+        }
+      }
+    }
+    return w;
+  }, [layers]);
+
+  const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
+
+  const forwardPass = useCallback(() => {
+    const activations: number[][] = [inputValues];
+    let current = inputValues;
+    
+    for (let l = 0; l < weights.length; l++) {
+      const next: number[] = [];
+      for (let j = 0; j < layers[l + 1]; j++) {
+        let sum = 0;
+        for (let i = 0; i < current.length; i++) {
+          sum += current[i] * weights[l][i][j];
+        }
+        next.push(sigmoid(sum));
+      }
+      activations.push(next);
+      current = next;
+    }
+    
+    return activations;
+  }, [inputValues, weights, layers]);
+
+  const runAnimation = useCallback(() => {
+    setIsAnimating(true);
+    setActiveConnections(new Set());
+    setLayerActivations([inputValues]);
+    
+    let currentLayer = 0;
+    const allActivations = forwardPass();
+    
+    const animateLayer = () => {
+      if (currentLayer >= layers.length - 1) {
+        setIsAnimating(false);
+        return;
+      }
+      
+      // Animate connections for current layer
+      const connections: string[] = [];
+      for (let i = 0; i < layers[currentLayer]; i++) {
+        for (let j = 0; j < layers[currentLayer + 1]; j++) {
+          connections.push(`${currentLayer}-${i}-${j}`);
+        }
+      }
+      
+      // Stagger connection animations
+      connections.forEach((conn, idx) => {
+        setTimeout(() => {
+          setActiveConnections(prev => new Set([...prev, conn]));
+        }, idx * 30);
+      });
+      
+      // After connections animate, show next layer activations
+      setTimeout(() => {
+        setLayerActivations(allActivations.slice(0, currentLayer + 2));
+        currentLayer++;
+        animationRef.current = requestAnimationFrame(() => {
+          setTimeout(animateLayer, 300);
+        });
+      }, connections.length * 30 + 200);
+    };
+    
+    animateLayer();
+  }, [inputValues, forwardPass, layers]);
+
+  useEffect(() => {
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, []);
+
+  // Draw the network
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    const w = canvas.width;
+    const h = canvas.height;
+    const padding = 60;
+    const layerSpacing = (w - 2 * padding) / (layers.length - 1);
+    
+    ctx.fillStyle = 'hsl(var(--background))';
+    ctx.fillRect(0, 0, w, h);
+    
+    // Calculate node positions
+    const nodePositions: { x: number; y: number }[][] = [];
+    layers.forEach((nodeCount, layerIdx) => {
+      nodePositions[layerIdx] = [];
+      const x = padding + layerIdx * layerSpacing;
+      const nodeSpacing = (h - 2 * padding) / (nodeCount + 1);
+      
+      for (let i = 0; i < nodeCount; i++) {
+        const y = padding + (i + 1) * nodeSpacing;
+        nodePositions[layerIdx].push({ x, y });
+      }
+    });
+    
+    // Draw connections
+    for (let l = 0; l < layers.length - 1; l++) {
+      for (let i = 0; i < layers[l]; i++) {
+        for (let j = 0; j < layers[l + 1]; j++) {
+          const from = nodePositions[l][i];
+          const to = nodePositions[l + 1][j];
+          const connKey = `${l}-${i}-${j}`;
+          const isActive = activeConnections.has(connKey);
+          const weight = weights[l][i][j];
+          
+          ctx.beginPath();
+          ctx.moveTo(from.x, from.y);
+          ctx.lineTo(to.x, to.y);
+          
+          if (isActive) {
+            const gradient = ctx.createLinearGradient(from.x, from.y, to.x, to.y);
+            const color = weight > 0 ? '139, 92, 246' : '239, 68, 68';
+            gradient.addColorStop(0, `rgba(${color}, 0.9)`);
+            gradient.addColorStop(1, `rgba(${color}, 0.9)`);
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = Math.abs(weight) * 2 + 1;
+            ctx.shadowColor = `rgba(${color}, 0.5)`;
+            ctx.shadowBlur = 10;
+          } else {
+            ctx.strokeStyle = `rgba(100, 100, 100, ${0.1 + Math.abs(weight) * 0.2})`;
+            ctx.lineWidth = Math.abs(weight) * 1.5 + 0.5;
+            ctx.shadowBlur = 0;
+          }
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+        }
+      }
+    }
+    
+    // Draw nodes
+    nodePositions.forEach((layer, layerIdx) => {
+      layer.forEach((pos, nodeIdx) => {
+        const activation = layerActivations[layerIdx]?.[nodeIdx] ?? 0;
+        const hasActivation = layerActivations.length > layerIdx;
+        
+        // Outer glow for active nodes
+        if (hasActivation && activation > 0.5) {
+          ctx.beginPath();
+          ctx.arc(pos.x, pos.y, 25, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(139, 92, 246, ${activation * 0.3})`;
+          ctx.fill();
+        }
+        
+        // Node circle
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 18, 0, Math.PI * 2);
+        
+        if (hasActivation) {
+          const intensity = Math.floor(activation * 255);
+          ctx.fillStyle = `rgb(${139}, ${92 + intensity * 0.3}, ${246})`;
+        } else {
+          ctx.fillStyle = 'hsl(var(--muted))';
+        }
+        ctx.fill();
+        ctx.strokeStyle = 'hsl(var(--border))';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Activation value
+        if (hasActivation) {
+          ctx.fillStyle = 'white';
+          ctx.font = 'bold 10px monospace';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(activation.toFixed(2), pos.x, pos.y);
+        }
+      });
+    });
+    
+    // Layer labels
+    ctx.fillStyle = 'hsl(var(--muted-foreground))';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    const labels = ['Input', 'Hidden 1', 'Hidden 2', 'Output'];
+    nodePositions.forEach((layer, idx) => {
+      ctx.fillText(labels[idx], layer[0].x, h - 20);
+    });
+  }, [layers, weights, activeConnections, layerActivations]);
+
+  return (
+    <div className="space-y-6">
+      <div className="p-6 rounded-xl border border-border bg-card">
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Network className="w-5 h-5 text-primary" />
+          Neural Network Forward Pass
+        </h3>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div className="p-4 rounded-lg bg-muted/50">
+              <p className="text-sm font-medium mb-3">Input Values</p>
+              <div className="space-y-2">
+                {inputValues.map((val, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <span className="text-sm text-muted-foreground w-16">Input {i + 1}</span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.1}
+                      value={val}
+                      onChange={(e) => {
+                        const newVals = [...inputValues];
+                        newVals[i] = Number(e.target.value);
+                        setInputValues(newVals);
+                      }}
+                      className="flex-1 accent-primary"
+                      disabled={isAnimating}
+                    />
+                    <span className="font-mono text-sm w-10">{val.toFixed(1)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={runAnimation}
+              disabled={isAnimating}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              <Play className="w-4 h-4" /> 
+              {isAnimating ? 'Propagating...' : 'Run Forward Pass'}
+            </button>
+
+            {layerActivations.length === layers.length && (
+              <div className="p-4 rounded-lg bg-primary/10 border border-primary/30">
+                <p className="font-semibold mb-2">Output Activations</p>
+                <div className="flex gap-4">
+                  {layerActivations[layerActivations.length - 1].map((val, i) => (
+                    <div key={i} className="text-center">
+                      <p className="text-xs text-muted-foreground">Out {i + 1}</p>
+                      <p className="font-mono text-xl text-primary">{val.toFixed(3)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
+              <p><strong>Architecture:</strong> 3 → 4 → 4 → 2</p>
+              <p className="mt-1"><strong>Activation:</strong> Sigmoid σ(x) = 1/(1+e⁻ˣ)</p>
+              <p className="mt-1">
+                <span className="inline-block w-3 h-1 bg-primary mr-1"></span> Positive weights
+                <span className="inline-block w-3 h-1 bg-red-500 ml-3 mr-1"></span> Negative weights
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <canvas
+              ref={canvasRef}
+              width={400}
+              height={400}
+              className="w-full aspect-square rounded-lg border border-border bg-background"
+            />
+          </div>
+        </div>
+      </div>
+
+      <CodeBlock
+        code={`import { NeuralNetwork, Dense, sigmoid } from '@aleph-ai/tinyaleph';
+
+// Define network architecture
+const network = new NeuralNetwork([
+  new Dense(3, 4, sigmoid),   // Input → Hidden1
+  new Dense(4, 4, sigmoid),   // Hidden1 → Hidden2
+  new Dense(4, 2, sigmoid)    // Hidden2 → Output
+]);
+
+// Forward pass with activation tracking
+const input = [0.5, 0.8, 0.3];
+const { output, activations } = network.forward(input, { 
+  trackActivations: true 
+});
+
+console.log('Layer activations:', activations);
+console.log('Output:', output);
+
+// Visualize weight matrix
+network.layers.forEach((layer, i) => {
+  console.log(\`Layer \${i} weights:\`, layer.weights);
+});`}
+        language="javascript"
+        title="neural-network.js"
       />
     </div>
   );
@@ -1045,7 +1416,7 @@ const MLExamplesPage = () => {
           <section>
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
               <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">5</span>
-              Gradient Descent Optimization
+              Animated Gradient Descent
             </h2>
             <GradientDescentExample />
           </section>
@@ -1053,6 +1424,14 @@ const MLExamplesPage = () => {
           <section>
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
               <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">6</span>
+              Neural Network Forward Pass
+            </h2>
+            <NeuralNetworkExample />
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">7</span>
               ResoFormer Architecture
             </h2>
             <ResonantAttentionExample />
