@@ -206,19 +206,42 @@ const PrimeExample = () => {
 
   const runPrimeAnalysis = useCallback(() => {
     const n = Math.min(Math.max(2, input), 10000);
-    const factorResult = factorize(n) as any;
-    // Handle both array and Map return types
-    let factors: number[];
-    if (Array.isArray(factorResult)) {
+    const factorResult = factorize(n);
+    
+    // Handle Map return type from factorize (prime -> exponent)
+    let factors: number[] = [];
+    if (factorResult instanceof Map) {
+      factorResult.forEach((exp, prime) => {
+        for (let i = 0; i < exp; i++) {
+          factors.push(prime);
+        }
+      });
+    } else if (factorResult && typeof (factorResult as any)[Symbol.iterator] === 'function') {
+      // Handle iterable (Map-like)
+      for (const [prime, exp] of factorResult as any) {
+        for (let i = 0; i < exp; i++) {
+          factors.push(prime);
+        }
+      }
+    } else if (Array.isArray(factorResult)) {
       factors = factorResult;
-    } else if (factorResult && typeof factorResult.entries === 'function') {
-      factors = Array.from(factorResult.entries()).flatMap(([prime, exp]: [number, number]) => Array(exp).fill(prime));
-    } else {
-      factors = [n];
     }
+    
+    // Fallback: compute factorization manually if library fails
+    if (factors.length === 0 && n > 1) {
+      let remaining = n;
+      for (let p = 2; p * p <= remaining; p++) {
+        while (remaining % p === 0) {
+          factors.push(p);
+          remaining /= p;
+        }
+      }
+      if (remaining > 1) factors.push(remaining);
+    }
+    
     setPrimeResult({
       isPrime: isPrime(n),
-      factors,
+      factors: factors.length > 0 ? factors : [n],
       primesBelow: primesUpTo(Math.min(n, 200)),
       nthPrime: nthPrime(Math.min(n, 100)),
     });
