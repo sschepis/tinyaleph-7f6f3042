@@ -3,7 +3,7 @@ import Navigation from '../components/Navigation';
 import Hero from '../components/Hero';
 import Footer from '../components/Footer';
 import ModuleCard from '../components/ModuleCard';
-import { Layers, Waves, Database, Cpu, ArrowRight, Play, Server, Atom, Network } from 'lucide-react';
+import { Layers, Waves, Database, Cpu, ArrowRight, Play, Server, Atom, Network, MessageSquare } from 'lucide-react';
 
 const exampleCategories = [
   {
@@ -101,6 +101,14 @@ const exampleCategories = [
     title: 'Backend API',
     description: 'Server-side edge functions',
     examples: ['API calls', 'Heavy computations', 'Prime endpoints', 'Engine execution']
+  },
+  {
+    id: 'chat',
+    path: '/chat',
+    icon: MessageSquare,
+    title: 'Aleph Chat',
+    description: 'Semantic AI chat with prime algebra',
+    examples: ['LLM integration', 'Semantic encoding', 'Cross-coherence', 'Real-time visualization']
   },
 ];
 
