@@ -7,6 +7,7 @@ const navItems = [
   { id: 'physics', label: 'Physics', path: '/physics' },
   { id: 'backends', label: 'Backends', path: '/backends' },
   { id: 'engine', label: 'Engine', path: '/engine' },
+  { id: 'chat', label: 'Chat', path: '/chat' },
 ];
 
 const Navigation = () => {

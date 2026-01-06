@@ -18,6 +18,7 @@ import MathExamples from "./pages/MathExamples";
 import MLExamples from "./pages/MLExamples";
 import ScientificExamples from "./pages/ScientificExamples";
 import TypeSystemExamples from "./pages/TypeSystemExamples";
+import ChatExamples from "./pages/ChatExamples";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => (
           <Route path="/ml" element={<MLExamples />} />
           <Route path="/scientific" element={<ScientificExamples />} />
           <Route path="/typesystem" element={<TypeSystemExamples />} />
+          <Route path="/chat" element={<ChatExamples />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
