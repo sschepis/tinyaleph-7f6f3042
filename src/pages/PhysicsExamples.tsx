@@ -34,11 +34,7 @@ const KuramotoExample = () => {
     const frequencies = Array.from({ length: oscillatorCount }, (_, i) => 1 + (i - oscillatorCount / 2) * 0.1);
     bankRef.current = new OscillatorBank(frequencies as any);
     
-    // Excite all oscillators
-    const indices = Array.from({ length: oscillatorCount }, (_, i) => i);
-    bankRef.current.excite(indices as any);
-    
-    // Randomize initial phases
+    // Randomize initial phases and set amplitudes directly
     bankRef.current.oscillators.forEach(osc => {
       osc.phase = Math.random() * 2 * Math.PI;
       osc.amplitude = 0.8;
