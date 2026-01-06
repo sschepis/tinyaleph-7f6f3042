@@ -30,11 +30,13 @@ const KuramotoExample = () => {
 
   // Initialize bank
   useEffect(() => {
-    bankRef.current = new OscillatorBank(oscillatorCount);
+    // OscillatorBank expects an array of frequencies
+    const frequencies = Array.from({ length: oscillatorCount }, (_, i) => 1 + (i - oscillatorCount / 2) * 0.1);
+    bankRef.current = new OscillatorBank(frequencies as any);
     
-    // Excite all oscillators and randomize phases
-    const primes = Array.from({ length: oscillatorCount }, (_, i) => i);
-    bankRef.current.excite(primes);
+    // Excite all oscillators
+    const indices = Array.from({ length: oscillatorCount }, (_, i) => i);
+    bankRef.current.excite(indices as any);
     
     // Randomize initial phases
     bankRef.current.oscillators.forEach(osc => {
