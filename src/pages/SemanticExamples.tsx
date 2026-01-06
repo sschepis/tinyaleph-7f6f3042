@@ -21,16 +21,27 @@ const VocabularyExample = () => {
     entropy: number;
   } | null>(null);
 
+  // Helper to safely extract and validate state components
+  const safeComponents = (state: any): number[] => {
+    const c = state?.c || state?.components || [];
+    if (!Array.isArray(c)) return Array(16).fill(0);
+    return c.slice(0, 16).map((val: number) => {
+      const n = Number(val);
+      return Number.isFinite(n) ? Math.abs(n) : 0;
+    });
+  };
+
   const lookup = useCallback(() => {
     const exists = backend.hasWord?.(word) ?? true;
     const primes = backend.encode(word);
     const state = backend.primesToState(primes);
+    const entropy = state.entropy();
     
     setWordInfo({
       exists,
       primes,
-      state: (state as any).c?.slice(0, 16) || state.components?.slice(0, 16) || [],
-      entropy: state.entropy(),
+      state: safeComponents(state),
+      entropy: Number.isFinite(entropy) ? entropy : 0,
     });
   }, [word, backend]);
 
@@ -98,7 +109,7 @@ const VocabularyExample = () => {
             </div>
             <div className="flex items-center justify-center p-4 rounded-lg bg-muted/30">
               <SedenionVisualizer 
-                components={wordInfo.state.map(c => Math.abs(c))}
+                components={wordInfo.state}
                 size="md"
               />
             </div>
@@ -141,6 +152,16 @@ const SimilarityExample = () => {
   const [similarity, setSimilarity] = useState<number | null>(null);
   const [states, setStates] = useState<{ s1: number[]; s2: number[] } | null>(null);
 
+  // Helper to safely extract and validate state components
+  const safeComponents = (state: any): number[] => {
+    const c = state?.c || state?.components || [];
+    if (!Array.isArray(c)) return Array(16).fill(0);
+    return c.slice(0, 16).map((val: number) => {
+      const n = Number(val);
+      return Number.isFinite(n) ? Math.abs(n) : 0;
+    });
+  };
+
   const compare = useCallback(() => {
     const primes1 = backend.encode(text1);
     const primes2 = backend.encode(text2);
@@ -151,10 +172,10 @@ const SimilarityExample = () => {
       Math.abs(state1.components?.reduce((sum: number, c: number, i: number) => 
         sum + c * (state2.components?.[i] || 0), 0) || 0);
     
-    setSimilarity(coherence);
+    setSimilarity(Number.isFinite(coherence) ? coherence : 0);
     setStates({
-      s1: ((state1 as any).c || state1.components || []).slice(0, 16),
-      s2: ((state2 as any).c || state2.components || []).slice(0, 16),
+      s1: safeComponents(state1),
+      s2: safeComponents(state2),
     });
   }, [text1, text2, backend]);
 
@@ -228,11 +249,11 @@ const SimilarityExample = () => {
             
             <div className="grid md:grid-cols-2 gap-4">
               <div className="p-4 rounded-lg bg-muted/30 flex flex-col items-center">
-                <SedenionVisualizer components={states.s1.map(c => Math.abs(c))} size="sm" />
+                <SedenionVisualizer components={states.s1} size="sm" />
                 <p className="text-xs text-muted-foreground mt-2">"{text1}"</p>
               </div>
               <div className="p-4 rounded-lg bg-muted/30 flex flex-col items-center">
-                <SedenionVisualizer components={states.s2.map(c => Math.abs(c))} size="sm" />
+                <SedenionVisualizer components={states.s2} size="sm" />
                 <p className="text-xs text-muted-foreground mt-2">"{text2}"</p>
               </div>
             </div>
@@ -274,6 +295,16 @@ const WordOrderExample = () => {
     entropy2: number;
   } | null>(null);
 
+  // Helper to safely extract and validate state components
+  const safeComponents = (state: any): number[] => {
+    const c = state?.c || state?.components || [];
+    if (!Array.isArray(c)) return Array(16).fill(0);
+    return c.slice(0, 16).map((val: number) => {
+      const n = Number(val);
+      return Number.isFinite(n) ? Math.abs(n) : 0;
+    });
+  };
+
   const compare = useCallback(() => {
     // Use ordered encoding to preserve word order
     const tokens1 = backend.encodeOrdered?.(phrase1) || backend.tokenize(phrase1, true);
@@ -282,12 +313,16 @@ const WordOrderExample = () => {
     const state1 = backend.orderedPrimesToState?.(tokens1) || backend.primesToState(backend.encode(phrase1));
     const state2 = backend.orderedPrimesToState?.(tokens2) || backend.primesToState(backend.encode(phrase2));
     
+    const coherence = state1.coherence?.(state2) ?? 0.5;
+    const entropy1 = state1.entropy();
+    const entropy2 = state2.entropy();
+    
     setResult({
-      ordered1: ((state1 as any).c || state1.components || []).slice(0, 16),
-      ordered2: ((state2 as any).c || state2.components || []).slice(0, 16),
-      coherence: state1.coherence?.(state2) ?? 0.5,
-      entropy1: state1.entropy(),
-      entropy2: state2.entropy(),
+      ordered1: safeComponents(state1),
+      ordered2: safeComponents(state2),
+      coherence: Number.isFinite(coherence) ? coherence : 0.5,
+      entropy1: Number.isFinite(entropy1) ? entropy1 : 0,
+      entropy2: Number.isFinite(entropy2) ? entropy2 : 0,
     });
   }, [phrase1, phrase2, backend]);
 
@@ -341,14 +376,14 @@ const WordOrderExample = () => {
                 <p className="text-xs text-muted-foreground mb-2">"{phrase1}"</p>
                 <p className="font-mono text-sm">Entropy: {result.entropy1.toFixed(4)}</p>
                 <div className="mt-2">
-                  <SedenionVisualizer components={result.ordered1.map(c => Math.abs(c))} size="sm" />
+                  <SedenionVisualizer components={result.ordered1} size="sm" />
                 </div>
               </div>
               <div className="p-4 rounded-lg bg-muted/50">
                 <p className="text-xs text-muted-foreground mb-2">"{phrase2}"</p>
                 <p className="font-mono text-sm">Entropy: {result.entropy2.toFixed(4)}</p>
                 <div className="mt-2">
-                  <SedenionVisualizer components={result.ordered2.map(c => Math.abs(c))} size="sm" />
+                  <SedenionVisualizer components={result.ordered2} size="sm" />
                 </div>
               </div>
             </div>
