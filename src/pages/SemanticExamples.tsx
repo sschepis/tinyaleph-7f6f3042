@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Play, ArrowRight, GitCompare, Layers, Tag, Brain } from 'lucide-react';
+import { Play, ArrowRight, GitCompare, Layers, Tag, Combine, Box } from 'lucide-react';
 import CodeBlock from '../components/CodeBlock';
 import Navigation from '../components/Navigation';
 import Footer from '../components/Footer';
@@ -729,6 +729,380 @@ console.log('Unique primes:', [...new Set(allPrimes)]);`}
   );
 };
 
+// Example 6: Hypercomplex Operations
+const HypercomplexExample = () => {
+  const [dimension, setDimension] = useState<4 | 8 | 16>(8);
+  const [result, setResult] = useState<{
+    a: number[];
+    b: number[];
+    product: number[];
+    normA: number;
+    normB: number;
+    normProduct: number;
+    conjugateA: number[];
+    entropyA: number;
+    entropyProduct: number;
+  } | null>(null);
+
+  const dimensionNames: Record<number, string> = {
+    4: 'Quaternion',
+    8: 'Octonion', 
+    16: 'Sedenion'
+  };
+
+  const compute = useCallback(() => {
+    // Create two random hypercomplex numbers
+    const aComponents = Array.from({ length: dimension }, () => 
+      Math.round((Math.random() * 2 - 1) * 100) / 100
+    );
+    const bComponents = Array.from({ length: dimension }, () => 
+      Math.round((Math.random() * 2 - 1) * 100) / 100
+    );
+
+    const a = new Hypercomplex(...aComponents);
+    const b = new Hypercomplex(...bComponents);
+    
+    // Perform operations
+    const product = a.multiply(b);
+    const conjugateA = a.conjugate();
+    
+    // Safely extract components
+    const getComponents = (h: any): number[] => {
+      if (Array.isArray(h?.c)) return h.c;
+      if (Array.isArray(h?.components)) return h.components;
+      if (typeof h?.toArray === 'function') return h.toArray();
+      return [];
+    };
+    
+    setResult({
+      a: aComponents,
+      b: bComponents,
+      product: getComponents(product),
+      normA: a.norm(),
+      normB: b.norm(),
+      normProduct: product.norm(),
+      conjugateA: getComponents(conjugateA),
+      entropyA: a.entropy?.() ?? 0,
+      entropyProduct: product.entropy?.() ?? 0,
+    });
+  }, [dimension]);
+
+  const formatComponents = (arr: number[], max = 4) => {
+    const display = arr.slice(0, max).map(n => n.toFixed(2));
+    if (arr.length > max) display.push('...');
+    return `[${display.join(', ')}]`;
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="p-6 rounded-xl border border-border bg-card">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+            <Box className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold">Hypercomplex Operations</h3>
+            <p className="text-sm text-muted-foreground">Quaternion, Octonion, and Sedenion arithmetic</p>
+          </div>
+        </div>
+        
+        <div className="flex gap-2 mb-4">
+          {([4, 8, 16] as const).map(dim => (
+            <button
+              key={dim}
+              onClick={() => setDimension(dim)}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                dimension === dim 
+                  ? 'bg-primary text-primary-foreground' 
+                  : 'bg-secondary hover:bg-primary/20'
+              }`}
+            >
+              {dimensionNames[dim]} ({dim}D)
+            </button>
+          ))}
+          <button
+            onClick={compute}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors ml-auto"
+          >
+            <Play className="w-4 h-4" /> Generate & Multiply
+          </button>
+        </div>
+
+        {result && (
+          <div className="space-y-4">
+            <div className="grid gap-3">
+              <div className="p-3 rounded-lg bg-secondary/50">
+                <p className="text-xs text-muted-foreground mb-1">A</p>
+                <p className="font-mono text-sm">{formatComponents(result.a, 6)}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  ||A|| = {result.normA.toFixed(4)} · H(A) = {result.entropyA.toFixed(4)}
+                </p>
+              </div>
+              <div className="p-3 rounded-lg bg-secondary/50">
+                <p className="text-xs text-muted-foreground mb-1">B</p>
+                <p className="font-mono text-sm">{formatComponents(result.b, 6)}</p>
+                <p className="text-xs text-muted-foreground mt-1">||B|| = {result.normB.toFixed(4)}</p>
+              </div>
+              <div className="flex items-center justify-center py-2">
+                <span className="text-primary font-bold">A × B =</span>
+              </div>
+              <div className="p-3 rounded-lg bg-primary/10 border border-primary/30">
+                <p className="text-xs text-muted-foreground mb-1">Product</p>
+                <p className="font-mono text-sm">{formatComponents(result.product, 6)}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  ||A×B|| = {result.normProduct.toFixed(4)} · H(A×B) = {result.entropyProduct.toFixed(4)}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-lg bg-muted/50">
+              <p className="text-xs text-muted-foreground mb-1">Conjugate of A</p>
+              <p className="font-mono text-sm">{formatComponents(result.conjugateA, 6)}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                First component unchanged, rest negated
+              </p>
+            </div>
+
+            <div className="text-xs text-muted-foreground p-3 bg-secondary/30 rounded-lg">
+              <strong>Note:</strong> For quaternions (4D), ||A|| · ||B|| = ||A×B|| exactly. 
+              For octonions and sedenions, this property weakens due to non-associativity.
+            </div>
+          </div>
+        )}
+      </div>
+
+      <CodeBlock
+        code={`import { Hypercomplex } from '@aleph-ai/tinyaleph';
+
+// Create an octonion (8-dimensional hypercomplex number)
+const a = new Hypercomplex([1, 0.5, -0.3, 0.2, 0, 0.1, -0.4, 0.8]);
+const b = new Hypercomplex([0.5, -0.2, 0.6, 0, 0.3, -0.1, 0.2, 0.4]);
+
+// Multiplication (uses Cayley-Dickson construction)
+const product = a.multiply(b);
+
+// Properties
+console.log('Norm of A:', a.norm());
+console.log('Conjugate:', a.conjugate().c);
+console.log('Entropy:', a.entropy());
+console.log('Product:', product.c);`}
+        language="javascript"
+        title="hypercomplex/01-operations.js"
+      />
+    </div>
+  );
+};
+
+// Example 7: State Composition
+const StateCompositionExample = () => {
+  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [word1, setWord1] = useState('love');
+  const [word2, setWord2] = useState('wisdom');
+  const [scaleFactor, setScaleFactor] = useState(0.5);
+  const [composition, setComposition] = useState<{
+    state1: { components: number[]; entropy: number; norm: number };
+    state2: { components: number[]; entropy: number; norm: number };
+    added: { components: number[]; entropy: number; norm: number };
+    scaled: { components: number[]; entropy: number; norm: number };
+    multiplied: { components: number[]; entropy: number; norm: number };
+    coherence12: number;
+    coherenceAdded: number;
+  } | null>(null);
+
+  const safeComponents = (state: any): number[] => {
+    const c = state?.c || state?.components || [];
+    if (!Array.isArray(c)) return Array(16).fill(0);
+    return c.map((val: number) => {
+      const n = Number(val);
+      return Number.isFinite(n) ? n : 0;
+    });
+  };
+
+  const compose = useCallback(() => {
+    const primes1 = backend.encode(word1);
+    const primes2 = backend.encode(word2);
+    
+    const state1 = backend.primesToState(primes1);
+    const state2 = backend.primesToState(primes2);
+    
+    // Compose states
+    const comp1 = safeComponents(state1);
+    const comp2 = safeComponents(state2);
+    
+    const added = state1.add?.(state2) || new Hypercomplex(
+      ...comp1.map((v, i) => v + (comp2[i] || 0))
+    );
+    const scaled = state1.scale?.(scaleFactor) || new Hypercomplex(
+      ...comp1.map(v => v * scaleFactor)
+    );
+    const multiplied = state1.multiply?.(state2) || new Hypercomplex(...comp1);
+
+    const getProps = (s: any) => ({
+      components: safeComponents(s).slice(0, 16),
+      entropy: Number.isFinite(s.entropy?.()) ? s.entropy() : 0,
+      norm: Number.isFinite(s.norm?.()) ? s.norm() : 0,
+    });
+
+    setComposition({
+      state1: getProps(state1),
+      state2: getProps(state2),
+      added: getProps(added),
+      scaled: getProps(scaled),
+      multiplied: getProps(multiplied),
+      coherence12: state1.coherence?.(state2) ?? 0,
+      coherenceAdded: state1.coherence?.(added) ?? 0,
+    });
+  }, [word1, word2, scaleFactor, backend]);
+
+  const StateBar = ({ components, label, color }: { components: number[]; label: string; color: string }) => (
+    <div className="space-y-1">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <div className="flex gap-0.5 h-8">
+        {components.slice(0, 16).map((v, i) => {
+          const normalized = Math.min(1, Math.abs(v));
+          return (
+            <div 
+              key={i} 
+              className="flex-1 rounded-sm flex items-end"
+              style={{ backgroundColor: `hsl(var(--muted))` }}
+            >
+              <div 
+                className="w-full rounded-sm transition-all"
+                style={{ 
+                  height: `${normalized * 100}%`,
+                  backgroundColor: v >= 0 ? color : `hsl(var(--destructive))`,
+                  opacity: 0.8
+                }}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="p-6 rounded-xl border border-border bg-card">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+            <Combine className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold">State Composition</h3>
+            <p className="text-sm text-muted-foreground">Add, scale, and multiply semantic states</p>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Word 1</label>
+            <input
+              type="text"
+              value={word1}
+              onChange={(e) => setWord1(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-foreground"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Word 2</label>
+            <input
+              type="text"
+              value={word2}
+              onChange={(e) => setWord2(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-foreground"
+            />
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <label className="text-xs text-muted-foreground mb-1 block">
+            Scale Factor: {scaleFactor.toFixed(2)}
+          </label>
+          <input
+            type="range"
+            min="0"
+            max="2"
+            step="0.1"
+            value={scaleFactor}
+            onChange={(e) => setScaleFactor(parseFloat(e.target.value))}
+            className="w-full"
+          />
+        </div>
+
+        <button
+          onClick={compose}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors mb-4"
+        >
+          <Play className="w-4 h-4" /> Compose States
+        </button>
+
+        {composition && (
+          <div className="space-y-4">
+            <div className="grid gap-3">
+              <StateBar components={composition.state1.components} label={`"${word1}" state`} color="hsl(var(--primary))" />
+              <StateBar components={composition.state2.components} label={`"${word2}" state`} color="hsl(210, 80%, 60%)" />
+              <div className="border-t border-border my-2" />
+              <StateBar components={composition.added.components} label="Added (S₁ + S₂)" color="hsl(150, 70%, 50%)" />
+              <StateBar components={composition.scaled.components} label={`Scaled (S₁ × ${scaleFactor})`} color="hsl(45, 80%, 55%)" />
+              <StateBar components={composition.multiplied.components} label="Multiplied (S₁ ⊗ S₂)" color="hsl(280, 70%, 60%)" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div className="p-3 rounded-lg bg-muted/50">
+                <p className="text-xs text-muted-foreground">Coherence (S₁, S₂)</p>
+                <p className="text-lg font-mono">{composition.coherence12.toFixed(4)}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/50">
+                <p className="text-xs text-muted-foreground">Entropy Change</p>
+                <p className="text-lg font-mono">
+                  {composition.state1.entropy.toFixed(3)} → {composition.added.entropy.toFixed(3)}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="p-2 rounded bg-secondary/50">
+                <p className="text-xs text-muted-foreground">||S₁||</p>
+                <p className="font-mono text-sm">{composition.state1.norm.toFixed(3)}</p>
+              </div>
+              <div className="p-2 rounded bg-secondary/50">
+                <p className="text-xs text-muted-foreground">||S₂||</p>
+                <p className="font-mono text-sm">{composition.state2.norm.toFixed(3)}</p>
+              </div>
+              <div className="p-2 rounded bg-secondary/50">
+                <p className="text-xs text-muted-foreground">||S₁+S₂||</p>
+                <p className="font-mono text-sm">{composition.added.norm.toFixed(3)}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <CodeBlock
+        code={`import { SemanticBackend } from '@aleph-ai/tinyaleph';
+
+const backend = new SemanticBackend(config);
+
+// Create two semantic states
+const love = backend.primesToState(backend.encode('love'));
+const wisdom = backend.primesToState(backend.encode('wisdom'));
+
+// Compose states
+const combined = love.add(wisdom);        // Vector addition
+const scaled = love.scale(0.5);           // Scalar multiplication  
+const product = love.multiply(wisdom);    // Hypercomplex multiplication
+
+// Analyze
+console.log('Combined entropy:', combined.entropy());
+console.log('Coherence:', love.coherence(wisdom));`}
+        language="javascript"
+        title="semantic/06-composition.js"
+      />
+    </div>
+  );
+};
+
 const SemanticExamplesPage = () => {
   return (
     <div className="min-h-screen bg-background">
@@ -748,6 +1122,8 @@ const SemanticExamplesPage = () => {
           <WordOrderExample />
           <ClusteringExample />
           <PrimeSignatureExample />
+          <HypercomplexExample />
+          <StateCompositionExample />
         </div>
       </div>
       <Footer />
