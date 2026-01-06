@@ -5,8 +5,7 @@ import {
   SemanticBackend,
   hash,
 } from '@aleph-ai/tinyaleph';
-// @ts-ignore
-import config from '@aleph-ai/tinyaleph/data.json';
+import { minimalConfig } from '@/lib/tinyaleph-config';
 
 const SemanticExample = () => {
   const [input, setInput] = useState('love and wisdom');
@@ -16,7 +15,7 @@ const SemanticExample = () => {
     entropy: number;
     stateComponents: number[];
   } | null>(null);
-  const [backend] = useState(() => new SemanticBackend(config));
+  const [backend] = useState(() => new SemanticBackend(minimalConfig));
 
   const runEncode = useCallback(() => {
     try {
