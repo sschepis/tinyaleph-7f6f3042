@@ -1,4 +1,4 @@
-// Minimal configuration for tinyaleph examples
+// Comprehensive configuration for tinyaleph examples
 // This avoids importing data.json directly which causes build issues
 
 export const minimalConfig = {
@@ -33,6 +33,7 @@ export const minimalConfig = {
     239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293, 307, 311, 313, 317
   ],
   vocabulary: {
+    // Core philosophical concepts
     "love": [2, 3, 5],
     "wisdom": [7, 11, 13],
     "truth": [17, 19, 23],
@@ -55,6 +56,8 @@ export const minimalConfig = {
     "spirit": [271, 277, 281],
     "mind": [283, 293, 307],
     "body": [311, 313, 317],
+    
+    // Spiritual/metaphysical
     "soul": [2, 7, 17],
     "heart": [3, 11, 19],
     "light": [5, 13, 23],
@@ -64,9 +67,25 @@ export const minimalConfig = {
     "order": [67, 79, 97],
     "chaos": [71, 83, 101],
     "unity": [73, 89, 103],
+    "divine": [2, 5, 11],
+    "sacred": [3, 7, 13],
+    "holy": [17, 23, 29],
+    "heaven": [31, 37, 41],
+    "earth": [43, 47, 53],
+    "water": [59, 61, 67],
+    "fire": [71, 73, 79],
+    "air": [83, 89, 97],
+    
+    // Quantities and relations
     "many": [107, 127, 139],
     "one": [109, 131, 149],
     "all": [113, 137, 151],
+    "none": [157, 167, 173],
+    "some": [179, 181, 191],
+    "every": [193, 197, 199],
+    "other": [211, 223, 227],
+    
+    // Ontological
     "being": [2, 11, 23],
     "becoming": [3, 13, 29],
     "essence": [5, 17, 31],
@@ -75,25 +94,103 @@ export const minimalConfig = {
     "energy": [43, 61, 79],
     "force": [47, 67, 83],
     "volition": [53, 71, 89],
+    "existence": [97, 107, 127],
+    "reality": [101, 109, 131],
+    "illusion": [103, 113, 137],
+    "void": [139, 157, 179],
+    
+    // Cognitive
     "reason": [97, 109, 127],
     "emotion": [101, 113, 131],
     "intuition": [103, 107, 137],
     "perception": [139, 151, 167],
     "thought": [149, 157, 173],
+    "memory": [163, 179, 193],
+    "imagination": [181, 191, 211],
+    "attention": [197, 199, 223],
+    "awareness": [227, 233, 239],
+    "understanding": [241, 251, 257],
+    "insight": [263, 269, 277],
+    "clarity": [271, 281, 283],
+    
+    // Action and movement
     "action": [163, 179, 191],
+    "reaction": [181, 193, 199],
+    "motion": [211, 223, 233],
+    "rest": [229, 239, 241],
+    "flow": [251, 257, 269],
+    "stillness": [263, 271, 283],
+    
+    // Language and meaning
     "word": [181, 193, 211],
     "symbol": [197, 199, 223],
     "meaning": [227, 233, 251],
     "purpose": [229, 239, 257],
     "goal": [241, 263, 277],
+    "intention": [269, 281, 293],
+    "desire": [271, 283, 307],
+    "will": [277, 293, 311],
+    
+    // Journey metaphors
     "path": [269, 271, 283],
     "journey": [281, 293, 311],
     "destination": [307, 313, 317],
     "origin": [2, 17, 37],
+    "source": [3, 19, 41],
+    "return": [5, 23, 43],
+    
+    // Temporal
     "end": [3, 19, 41],
     "beginning": [5, 23, 43],
     "cycle": [7, 29, 47],
     "eternal": [11, 31, 53],
+    "moment": [13, 37, 59],
+    "now": [17, 41, 61],
+    "past": [19, 43, 67],
+    "future": [23, 47, 71],
+    "present": [29, 53, 73],
+    
+    // Relationships
+    "connection": [79, 97, 127],
+    "separation": [83, 101, 131],
+    "union": [89, 103, 137],
+    "division": [107, 109, 139],
+    "synthesis": [113, 127, 149],
+    "analysis": [131, 137, 151],
+    
+    // Qualities
+    "simple": [2, 3, 7],
+    "complex": [5, 11, 13],
+    "whole": [17, 19, 29],
+    "part": [23, 31, 37],
+    "infinite": [41, 47, 59],
+    "finite": [43, 53, 61],
+    "absolute": [67, 73, 83],
+    "relative": [71, 79, 89],
+    "perfect": [97, 103, 109],
+    "imperfect": [101, 107, 113],
+    
+    // Emotions
+    "joy": [127, 139, 157],
+    "sorrow": [131, 149, 163],
+    "peace": [137, 151, 167],
+    "anger": [139, 157, 173],
+    "fear": [149, 163, 179],
+    "hope": [151, 167, 181],
+    "faith": [157, 173, 191],
+    "doubt": [163, 179, 193],
+    
+    // Abstract principles
+    "freedom": [179, 199, 229],
+    "necessity": [181, 211, 233],
+    "possibility": [191, 223, 239],
+    "actuality": [193, 227, 241],
+    "potentiality": [197, 229, 251],
+    "causation": [199, 233, 257],
+    "chance": [211, 239, 263],
+    "fate": [223, 241, 269],
+    
+    // Common words (single prime for quick encoding)
     "and": [2],
     "the": [3],
     "of": [5],
@@ -128,10 +225,36 @@ export const minimalConfig = {
     "if": [131],
     "more": [137],
     "when": [139],
-    "will": [149],
     "would": [151],
     "who": [157],
     "so": [163],
-    "no": [167]
+    "no": [167],
+    "yes": [173],
+    "how": [179],
+    "why": [181],
+    "where": [191],
+    "then": [193],
+    "just": [197],
+    "only": [199],
+    "new": [211],
+    "like": [223],
+    "way": [227],
+    "about": [229],
+    "into": [233],
+    "could": [239],
+    "also": [241],
+    "than": [251],
+    "any": [257],
+    "very": [263],
+    "most": [269],
+    "these": [271],
+    "after": [277],
+    "first": [281],
+    "well": [283],
+    "may": [293],
+    "such": [307],
+    "each": [311],
+    "own": [313],
+    "out": [317]
   }
 };
