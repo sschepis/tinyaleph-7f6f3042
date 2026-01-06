@@ -45,16 +45,24 @@ const KuramotoExample = () => {
 
   const updateState = () => {
     if (!bankRef.current) return;
-    setPhases(bankRef.current.getPhases());
-    setAmplitudes(bankRef.current.getAmplitudes());
-    setOrderParameter(bankRef.current.orderParameter());
     
-    // Compute mean phase
+    // Extract phases and amplitudes manually from oscillators
+    const oscillators = bankRef.current.oscillators;
+    const phaseArr = oscillators.map((osc: any) => osc.phase);
+    const ampArr = oscillators.map((osc: any) => osc.amplitude);
+    
+    setPhases(phaseArr);
+    setAmplitudes(ampArr);
+    
+    // Compute order parameter manually: r = |1/N * Σ e^(i*θ)|
     let sx = 0, sy = 0;
-    bankRef.current.oscillators.forEach(osc => {
+    oscillators.forEach((osc: any) => {
       sx += Math.cos(osc.phase);
       sy += Math.sin(osc.phase);
     });
+    const N = oscillators.length;
+    const r = Math.sqrt(sx * sx + sy * sy) / N;
+    setOrderParameter(r);
     setMeanPhase(Math.atan2(sy, sx));
   };
 
