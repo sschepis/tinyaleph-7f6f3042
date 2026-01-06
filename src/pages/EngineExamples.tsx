@@ -5,8 +5,7 @@ import SedenionVisualizer from '../components/SedenionVisualizer';
 import {
   createEngine,
 } from '@aleph-ai/tinyaleph';
-// @ts-ignore
-import config from '@aleph-ai/tinyaleph/data.json';
+import { minimalConfig } from '@/lib/tinyaleph-config';
 
 const EngineExample = () => {
   const [input, setInput] = useState('What is the nature of wisdom?');
@@ -26,7 +25,7 @@ const EngineExample = () => {
 
     try {
       const engine = createEngine('semantic', {
-        ...config,
+        ...minimalConfig,
         engineOptions: {
           oscillatorCount: 16,
           coupling: 0.2,
