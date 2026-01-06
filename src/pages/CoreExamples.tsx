@@ -206,9 +206,19 @@ const PrimeExample = () => {
 
   const runPrimeAnalysis = useCallback(() => {
     const n = Math.min(Math.max(2, input), 10000);
+    const factorResult = factorize(n) as any;
+    // Handle both array and Map return types
+    let factors: number[];
+    if (Array.isArray(factorResult)) {
+      factors = factorResult;
+    } else if (factorResult && typeof factorResult.entries === 'function') {
+      factors = Array.from(factorResult.entries()).flatMap(([prime, exp]: [number, number]) => Array(exp).fill(prime));
+    } else {
+      factors = [n];
+    }
     setPrimeResult({
       isPrime: isPrime(n),
-      factors: factorize(n),
+      factors,
       primesBelow: primesUpTo(Math.min(n, 200)),
       nthPrime: nthPrime(Math.min(n, 100)),
     });
@@ -288,8 +298,8 @@ const n = ${input};
 // Check if prime
 console.log(isPrime(n));  // ${isPrime(Math.min(input, 10000))}
 
-// Get prime factorization
-console.log(factorize(n));  // [${factorize(Math.min(input, 10000)).join(', ')}]
+// Get prime factorization (returns Map of prime -> exponent)
+console.log(factorize(n));  // Map { prime -> exponent }
 
 // Get all primes up to n
 console.log(primesUpTo(n));  // [2, 3, 5, 7, ...]
