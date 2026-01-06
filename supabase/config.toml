@@ -1,1 +1,4 @@
 project_id = "dqpchmrwpzshiyxtkcje"
+
+[functions.tinyaleph-compute]
+verify_jwt = false
