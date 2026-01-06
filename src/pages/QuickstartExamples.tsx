@@ -318,7 +318,16 @@ const QuantumCoinExample = () => {
           <div className="flex items-center justify-center">
             {state && (
               <SedenionVisualizer 
-                components={(state as any).c.slice(0, 16).map((c: number) => Math.abs(c))}
+                components={(() => {
+                  const c = (state as any).c;
+                  if (!c || !Array.isArray(c)) {
+                    return Array(16).fill(0);
+                  }
+                  return c.slice(0, 16).map((val: number) => {
+                    const n = Math.abs(val);
+                    return Number.isFinite(n) ? n : 0;
+                  });
+                })()}
                 animated={!collapsed}
                 size="lg"
               />
