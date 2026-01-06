@@ -548,6 +548,187 @@ const ClusteringExample = () => {
   );
 };
 
+// Example 5: Prime Signature Analysis
+const PrimeSignatureExample = () => {
+  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [phrase, setPhrase] = useState('love and wisdom');
+  const [analysis, setAnalysis] = useState<{
+    words: string[];
+    primesByWord: { word: string; primes: number[] }[];
+    allPrimes: number[];
+    uniquePrimes: number[];
+    primeFrequency: { prime: number; count: number }[];
+    totalEntropy: number;
+  } | null>(null);
+
+  const analyze = useCallback(() => {
+    const words = phrase.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+    
+    const primesByWord = words.map(word => ({
+      word,
+      primes: backend.encode(word)
+    }));
+    
+    const allPrimes = primesByWord.flatMap(p => p.primes);
+    const uniquePrimes = [...new Set(allPrimes)].sort((a, b) => a - b);
+    
+    // Count frequency of each prime
+    const freqMap = new Map<number, number>();
+    allPrimes.forEach(p => freqMap.set(p, (freqMap.get(p) || 0) + 1));
+    const primeFrequency = Array.from(freqMap.entries())
+      .map(([prime, count]) => ({ prime, count }))
+      .sort((a, b) => b.count - a.count);
+    
+    // Calculate entropy of the combined state
+    const state = backend.primesToState(allPrimes);
+    const totalEntropy = state.entropy?.() ?? 0;
+    
+    setAnalysis({
+      words,
+      primesByWord,
+      allPrimes,
+      uniquePrimes,
+      primeFrequency,
+      totalEntropy: Number.isFinite(totalEntropy) ? totalEntropy : 0,
+    });
+  }, [phrase, backend]);
+
+  const examplePhrases = [
+    'love and wisdom',
+    'truth beauty justice',
+    'chaos order harmony',
+    'mind body soul spirit'
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="p-6 rounded-xl border border-border bg-card">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+            <Tag className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold">Prime Signature Analysis</h3>
+            <p className="text-sm text-muted-foreground">Decompose phrases into their prime number signatures</p>
+          </div>
+        </div>
+        
+        <div className="flex gap-2 mb-4">
+          <input
+            type="text"
+            value={phrase}
+            onChange={(e) => setPhrase(e.target.value)}
+            className="flex-1 px-4 py-2 rounded-lg bg-secondary border border-border text-foreground"
+            placeholder="Enter a phrase..."
+          />
+          <button
+            onClick={analyze}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            <Play className="w-4 h-4" /> Analyze
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-4">
+          {examplePhrases.map(p => (
+            <button
+              key={p}
+              onClick={() => setPhrase(p)}
+              className="px-3 py-1 rounded-full text-xs bg-muted hover:bg-primary/20 transition-colors"
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+
+        {analysis && (
+          <div className="space-y-4">
+            {/* Word-by-word breakdown */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground">Prime Encoding by Word</p>
+              {analysis.primesByWord.map(({ word, primes }) => (
+                <div key={word} className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50">
+                  <span className="font-mono text-primary min-w-20">{word}</span>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                  <div className="flex flex-wrap gap-1">
+                    {primes.length > 0 ? primes.map((p, i) => (
+                      <span key={i} className="px-2 py-0.5 rounded bg-primary/20 text-xs font-mono">
+                        {p}
+                      </span>
+                    )) : (
+                      <span className="text-xs text-muted-foreground italic">no primes</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Statistics */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="p-4 rounded-lg bg-muted/50 text-center">
+                <p className="text-2xl font-bold text-primary">{analysis.allPrimes.length}</p>
+                <p className="text-xs text-muted-foreground">Total Primes</p>
+              </div>
+              <div className="p-4 rounded-lg bg-muted/50 text-center">
+                <p className="text-2xl font-bold text-primary">{analysis.uniquePrimes.length}</p>
+                <p className="text-xs text-muted-foreground">Unique Primes</p>
+              </div>
+              <div className="p-4 rounded-lg bg-muted/50 text-center">
+                <p className="text-2xl font-bold text-primary">{analysis.totalEntropy.toFixed(3)}</p>
+                <p className="text-xs text-muted-foreground">State Entropy</p>
+              </div>
+            </div>
+
+            {/* Prime frequency visualization */}
+            {analysis.primeFrequency.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground">Prime Frequency Distribution</p>
+                <div className="space-y-1">
+                  {analysis.primeFrequency.slice(0, 8).map(({ prime, count }) => (
+                    <div key={prime} className="flex items-center gap-3">
+                      <span className="font-mono text-xs w-12 text-right">{prime}</span>
+                      <div className="flex-1 h-4 bg-muted rounded overflow-hidden">
+                        <div 
+                          className="h-full bg-gradient-to-r from-primary to-primary/60 rounded"
+                          style={{ width: `${(count / analysis.primeFrequency[0].count) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-muted-foreground w-8">×{count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <CodeBlock
+        code={`import { SemanticBackend } from '@aleph-ai/tinyaleph';
+
+const backend = new SemanticBackend(config);
+const phrase = 'love and wisdom';
+
+// Encode each word to its prime signature
+const words = phrase.split(' ');
+const signatures = words.map(word => ({
+  word,
+  primes: backend.encode(word)
+}));
+
+// Combine all primes and build semantic state
+const allPrimes = signatures.flatMap(s => s.primes);
+const state = backend.primesToState(allPrimes);
+
+console.log('Entropy:', state.entropy());
+console.log('Unique primes:', [...new Set(allPrimes)]);`}
+        language="javascript"
+        title="semantic/05-prime-signature.js"
+      />
+    </div>
+  );
+};
+
 const SemanticExamplesPage = () => {
   return (
     <div className="min-h-screen bg-background">
@@ -566,6 +747,7 @@ const SemanticExamplesPage = () => {
           <SimilarityExample />
           <WordOrderExample />
           <ClusteringExample />
+          <PrimeSignatureExample />
         </div>
       </div>
       <Footer />
