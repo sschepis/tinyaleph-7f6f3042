@@ -1,4 +1,12 @@
+import { Link } from 'react-router-dom';
 import { Boxes, Github, ExternalLink, Heart } from 'lucide-react';
+
+const footerLinks = [
+  { label: 'Core', path: '/core' },
+  { label: 'Physics', path: '/physics' },
+  { label: 'Backends', path: '/backends' },
+  { label: 'Engine', path: '/engine' },
+];
 
 const Footer = () => {
   return (
@@ -25,14 +33,14 @@ const Footer = () => {
           <div>
             <h4 className="font-semibold mb-4">Modules</h4>
             <ul className="space-y-2">
-              {['Core', 'Physics', 'Backends', 'Engine'].map(item => (
-                <li key={item}>
-                  <a 
-                    href={`#${item.toLowerCase()}`}
+              {footerLinks.map(item => (
+                <li key={item.label}>
+                  <Link 
+                    to={item.path}
                     className="text-sm text-muted-foreground hover:text-primary transition-colors"
                   >
-                    {item}
-                  </a>
+                    {item.label}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -55,7 +63,7 @@ const Footer = () => {
               </li>
               <li>
                 <a 
-                  href="https://github.com"
+                  href="https://github.com/aleph-ai/tinyaleph"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-2"
