@@ -23,10 +23,32 @@ const measureNonCommutativity = (q1: Quaternion, q2: Quaternion) => {
 
 const computeCoherence = (weights: number[]) => {
   const sum = weights.reduce((a, b) => a + b, 0);
+  if (sum === 0) return 0;
   const normalized = weights.map(w => w / sum);
   const entropy = -normalized.reduce((s, p) => s + (p > 0 ? p * Math.log2(p) : 0), 0);
   return 1 - entropy / Math.log2(normalized.length);
 };
+
+// Simple SparsePrimeState class for demo
+class SparsePrimeState {
+  constructor(public primes: number[], public weights: number[]) {}
+}
+
+// Resonance score between two states
+const resonanceScore = (s1: SparsePrimeState, s2: SparsePrimeState) => {
+  const overlap = s1.primes.filter(p => s2.primes.includes(p));
+  if (overlap.length === 0) return 0;
+  let score = 0;
+  for (const p of overlap) {
+    const i1 = s1.primes.indexOf(p);
+    const i2 = s2.primes.indexOf(p);
+    score += s1.weights[i1] * s2.weights[i2];
+  }
+  return score;
+};
+
+// Halting decision based on coherence threshold
+const haltingDecision = (coherence: number, threshold: number) => coherence >= threshold;
 
 // Quaternion Operations
 const QuaternionExample = () => {
@@ -162,7 +184,7 @@ const SparsePrimeStateExample = () => {
     if (primeList.length === 0 || weightList.length === 0) return;
 
     const state = new SparsePrimeState(primeList, weightList);
-    const coh = computeCoherence(state);
+    const coh = computeCoherence(weightList);
     const res = resonanceScore(state, state);
     const halt = haltingDecision(coh, 0.8);
 
