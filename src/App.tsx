@@ -11,6 +11,9 @@ import EngineExamples from "./pages/EngineExamples";
 import ApiExamples from "./pages/ApiExamples";
 import QuantumExamples from "./pages/QuantumExamples";
 import KuramotoExamples from "./pages/KuramotoExamples";
+import QuickstartExamples from "./pages/QuickstartExamples";
+import SemanticExamples from "./pages/SemanticExamples";
+import CryptoExamples from "./pages/CryptoExamples";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +33,9 @@ const App = () => (
           <Route path="/api" element={<ApiExamples />} />
           <Route path="/quantum" element={<QuantumExamples />} />
           <Route path="/kuramoto" element={<KuramotoExamples />} />
+          <Route path="/quickstart" element={<QuickstartExamples />} />
+          <Route path="/semantic" element={<SemanticExamples />} />
+          <Route path="/crypto" element={<CryptoExamples />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
