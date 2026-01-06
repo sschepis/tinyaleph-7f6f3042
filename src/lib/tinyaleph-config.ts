@@ -180,6 +180,27 @@ export const minimalConfig = {
     "faith": [157, 173, 191],
     "doubt": [163, 179, 193],
     
+    // Positive sentiment (related to joy/love primes)
+    "happy": [2, 127, 139],
+    "wonderful": [3, 127, 151],
+    "great": [5, 139, 157],
+    "amazing": [2, 5, 127],
+    "excellent": [3, 5, 139],
+    
+    // Negative sentiment (related to sorrow/anger/fear primes)
+    "sad": [131, 149, 179],
+    "hate": [139, 173, 193],
+    "terrible": [149, 163, 173],
+    "awful": [131, 163, 179],
+    "bad": [37, 47, 61],
+    
+    // Neutral/cognitive (related to thought/reason primes)
+    "think": [97, 149, 157],
+    "maybe": [103, 163, 193],
+    "perhaps": [97, 163, 197],
+    "consider": [109, 149, 181],
+    "might": [103, 157, 179],
+    
     // Abstract principles
     "freedom": [179, 199, 229],
     "necessity": [181, 211, 233],

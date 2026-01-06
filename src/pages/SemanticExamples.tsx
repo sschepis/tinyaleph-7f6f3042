@@ -558,10 +558,10 @@ const ClassifierExample = () => {
     scores: { category: string; score: number }[];
   } | null>(null);
 
-  // Simple category prototypes
+  // Simple category prototypes - using words that are in the vocabulary
   const categories = {
-    positive: ['happy', 'joy', 'love', 'wonderful', 'great', 'amazing'],
-    negative: ['sad', 'angry', 'hate', 'terrible', 'awful', 'bad'],
+    positive: ['happy', 'joy', 'love', 'wonderful', 'great', 'amazing', 'good', 'hope'],
+    negative: ['sad', 'anger', 'hate', 'terrible', 'awful', 'bad', 'fear', 'sorrow'],
     neutral: ['think', 'maybe', 'could', 'perhaps', 'consider', 'might'],
   };
 
