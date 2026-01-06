@@ -7,96 +7,101 @@ import { Layers, Waves, Database, Cpu, ArrowRight, Play, Server, Atom, Network }
 
 const exampleCategories = [
   {
+    id: 'quickstart',
+    path: '/quickstart',
+    icon: Play,
+    title: 'Quickstart',
+    description: 'Hello World, hashing, and quantum coin flip',
+    examples: ['Basic engine setup', 'Prime hashing', 'Quantum randomness', 'First semantic query']
+  },
+  {
     id: 'core',
     path: '/core',
     icon: Layers,
     title: 'Core Module',
-    description: 'Hypercomplex algebra, prime utilities, and sedenion states',
-    examples: [
-      'Create and manipulate 16D sedenion states',
-      'Non-commutative hypercomplex multiplication',
-      'Prime factorization and analysis',
-      'Entropy and coherence calculations'
-    ]
+    description: 'Hypercomplex algebra and prime utilities',
+    examples: ['Sedenion states', 'Prime factorization', 'Entropy calculations', 'Non-commutative algebra']
+  },
+  {
+    id: 'math',
+    path: '/math',
+    icon: Layers,
+    title: 'Mathematics',
+    description: 'Fano plane, algebraic integers, prime geometry',
+    examples: ['Fano plane visualization', 'Gaussian integers', 'Eisenstein integers', 'Prime angles']
   },
   {
     id: 'physics',
     path: '/physics',
     icon: Waves,
     title: 'Physics Module',
-    description: 'Oscillator dynamics, Kuramoto synchronization, and entropy',
-    examples: [
-      'Live Kuramoto oscillator visualization',
-      'Order parameter and synchronization',
-      'Shannon entropy calculations',
-      'Phase dynamics simulation'
-    ]
+    description: 'Oscillator dynamics and Kuramoto synchronization',
+    examples: ['Kuramoto oscillators', 'Order parameter', 'Phase dynamics', 'Entropy tracking']
   },
   {
-    id: 'backends',
-    path: '/backends',
+    id: 'scientific',
+    path: '/scientific',
+    icon: Waves,
+    title: 'Scientific Computing',
+    description: 'Information theory, Lyapunov stability, state collapse',
+    examples: ['Shannon entropy', 'Lyapunov exponents', 'Born measurement', 'Decoherence']
+  },
+  {
+    id: 'semantic',
+    path: '/semantic',
     icon: Database,
-    title: 'Backends Module',
-    description: 'Semantic, cryptographic, and scientific processing engines',
-    examples: [
-      'Text to prime encoding',
-      'Semantic hashing',
-      'Vocabulary and tokenization',
-      'Concept coherence comparison'
-    ]
+    title: 'Semantic Processing',
+    description: 'Vocabulary, similarity, and clustering',
+    examples: ['Text encoding', 'Semantic similarity', 'Word clustering', 'Concept vectors']
   },
   {
-    id: 'engine',
-    path: '/engine',
+    id: 'crypto',
+    path: '/crypto',
+    icon: Database,
+    title: 'Cryptography',
+    description: 'Hashing, key derivation, commitments',
+    examples: ['Password hashing', 'HMAC', 'Key derivation', 'Commitment schemes']
+  },
+  {
+    id: 'ml',
+    path: '/ml',
     icon: Cpu,
-    title: 'Engine Module',
-    description: 'Unified computation orchestration and pipelines',
-    examples: [
-      'Full AlephEngine pipeline',
-      'Entropy minimization traces',
-      'Transform step visualization',
-      'Oscillator field states'
-    ]
+    title: 'AI / Machine Learning',
+    description: 'ResoFormer primitives and quaternion operations',
+    examples: ['Quaternion composition', 'Sparse prime states', 'Resonance scoring', 'Coherence gating']
   },
   {
-    id: 'api',
-    path: '/api',
-    icon: Server,
-    title: 'Backend API',
-    description: 'Server-side edge function for heavy computations',
-    examples: [
-      'Call tinyaleph operations via API',
-      'Offload hypercomplex math to server',
-      'Prime utilities endpoints',
-      'Engine execution via HTTP'
-    ]
+    id: 'typesystem',
+    path: '/typesystem',
+    icon: Cpu,
+    title: 'Type System',
+    description: 'Formal types, reduction semantics, lambda calculus',
+    examples: ['Type checking', 'Reduction traces', 'Normal forms', 'Lambda translation']
   },
   {
     id: 'quantum',
     path: '/quantum',
     icon: Atom,
     title: 'Quantum States',
-    description: 'PrimeState construction and ResonanceOperators',
-    examples: [
-      'Build quantum-like prime states',
-      'Born measurement simulation',
-      'Apply P̂, R̂, Ĥ operators',
-      'Entropy and coherence tracking'
-    ]
+    description: 'PrimeState and ResonanceOperators',
+    examples: ['Prime states', 'Born measurement', 'Operators P̂, R̂, Ĥ', 'Coherence tracking']
   },
   {
-    id: 'kuramoto',
-    path: '/kuramoto',
-    icon: Network,
-    title: 'Network Dynamics',
-    description: 'Watts-Strogatz small-world with Kuramoto oscillators',
-    examples: [
-      'Small-world network generation',
-      'Phase synchronization dynamics',
-      'Clustering and path length stats',
-      'Order parameter visualization'
-    ]
-  }
+    id: 'engine',
+    path: '/engine',
+    icon: Server,
+    title: 'Engine Module',
+    description: 'Unified computation pipelines',
+    examples: ['AlephEngine', 'Transform pipelines', 'Entropy minimization', 'Field states']
+  },
+  {
+    id: 'api',
+    path: '/api',
+    icon: Server,
+    title: 'Backend API',
+    description: 'Server-side edge functions',
+    examples: ['API calls', 'Heavy computations', 'Prime endpoints', 'Engine execution']
+  },
 ];
 
 const Index = () => {

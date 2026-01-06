@@ -14,6 +14,10 @@ import KuramotoExamples from "./pages/KuramotoExamples";
 import QuickstartExamples from "./pages/QuickstartExamples";
 import SemanticExamples from "./pages/SemanticExamples";
 import CryptoExamples from "./pages/CryptoExamples";
+import MathExamples from "./pages/MathExamples";
+import MLExamples from "./pages/MLExamples";
+import ScientificExamples from "./pages/ScientificExamples";
+import TypeSystemExamples from "./pages/TypeSystemExamples";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +40,10 @@ const App = () => (
           <Route path="/quickstart" element={<QuickstartExamples />} />
           <Route path="/semantic" element={<SemanticExamples />} />
           <Route path="/crypto" element={<CryptoExamples />} />
+          <Route path="/math" element={<MathExamples />} />
+          <Route path="/ml" element={<MLExamples />} />
+          <Route path="/scientific" element={<ScientificExamples />} />
+          <Route path="/typesystem" element={<TypeSystemExamples />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
