@@ -3,7 +3,7 @@ import Navigation from '../components/Navigation';
 import Hero from '../components/Hero';
 import Footer from '../components/Footer';
 import ModuleCard from '../components/ModuleCard';
-import { Layers, Waves, Database, Cpu, ArrowRight, Play } from 'lucide-react';
+import { Layers, Waves, Database, Cpu, ArrowRight, Play, Server, Atom, Network } from 'lucide-react';
 
 const exampleCategories = [
   {
@@ -56,6 +56,45 @@ const exampleCategories = [
       'Entropy minimization traces',
       'Transform step visualization',
       'Oscillator field states'
+    ]
+  },
+  {
+    id: 'api',
+    path: '/api',
+    icon: Server,
+    title: 'Backend API',
+    description: 'Server-side edge function for heavy computations',
+    examples: [
+      'Call tinyaleph operations via API',
+      'Offload hypercomplex math to server',
+      'Prime utilities endpoints',
+      'Engine execution via HTTP'
+    ]
+  },
+  {
+    id: 'quantum',
+    path: '/quantum',
+    icon: Atom,
+    title: 'Quantum States',
+    description: 'PrimeState construction and ResonanceOperators',
+    examples: [
+      'Build quantum-like prime states',
+      'Born measurement simulation',
+      'Apply P̂, R̂, Ĥ operators',
+      'Entropy and coherence tracking'
+    ]
+  },
+  {
+    id: 'kuramoto',
+    path: '/kuramoto',
+    icon: Network,
+    title: 'Network Dynamics',
+    description: 'Watts-Strogatz small-world with Kuramoto oscillators',
+    examples: [
+      'Small-world network generation',
+      'Phase synchronization dynamics',
+      'Clustering and path length stats',
+      'Order parameter visualization'
     ]
   }
 ];
