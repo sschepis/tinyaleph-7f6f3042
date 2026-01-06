@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { Play, ArrowRight, GitCompare, Layers, Tag, Combine, Box } from 'lucide-react';
+import { useState, useCallback, useMemo } from 'react';
+import { Play, ArrowRight, GitCompare, Layers, Tag, Combine, Box, BarChart3, Workflow, Plus, X, RotateCcw } from 'lucide-react';
 import CodeBlock from '../components/CodeBlock';
 import Navigation from '../components/Navigation';
 import Footer from '../components/Footer';
@@ -1103,6 +1103,529 @@ console.log('Coherence:', love.coherence(wisdom));`}
   );
 };
 
+// Example 8: Dimension Comparison
+const DimensionComparisonExample = () => {
+  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [word, setWord] = useState('wisdom');
+  const [comparison, setComparison] = useState<{
+    word: string;
+    primes: number[];
+    dimensions: {
+      dim: number;
+      name: string;
+      components: number[];
+      entropy: number;
+      norm: number;
+      dominantAxis: { index: number; value: number };
+    }[];
+  } | null>(null);
+
+  const compare = useCallback(() => {
+    const primes = backend.encode(word);
+    
+    const dimensions = [4, 8, 16].map(dim => {
+      // Create hypercomplex from primes mapped to dimension
+      const components = Array(dim).fill(0);
+      primes.forEach((p, i) => {
+        components[i % dim] += Math.log(p) / Math.log(2);
+      });
+      
+      const h = new Hypercomplex(...components);
+      const normalized = h.normalize?.() || h;
+      const normComponents = (normalized as any).c || (normalized as any).components || components;
+      
+      // Find dominant axis
+      let maxIdx = 0;
+      let maxVal = 0;
+      const comps = Array.isArray(normComponents) ? normComponents : components;
+      comps.forEach((v: number, i: number) => {
+        if (Math.abs(v) > Math.abs(maxVal)) {
+          maxVal = v;
+          maxIdx = i;
+        }
+      });
+      
+      return {
+        dim,
+        name: dim === 4 ? 'Quaternion' : dim === 8 ? 'Octonion' : 'Sedenion',
+        components: comps.map((v: number) => Number.isFinite(v) ? v : 0),
+        entropy: h.entropy?.() ?? 0,
+        norm: h.norm() ?? 0,
+        dominantAxis: { index: maxIdx, value: maxVal },
+      };
+    });
+    
+    setComparison({ word, primes, dimensions });
+  }, [word, backend]);
+
+  const axisLabels: Record<number, string[]> = {
+    4: ['1', 'i', 'j', 'k'],
+    8: ['1', 'i', 'j', 'k', 'l', 'il', 'jl', 'kl'],
+    16: ['e₀', 'e₁', 'e₂', 'e₃', 'e₄', 'e₅', 'e₆', 'e₇', 'e₈', 'e₉', 'e₁₀', 'e₁₁', 'e₁₂', 'e₁₃', 'e₁₄', 'e₁₅'],
+  };
+
+  const sampleWords = ['wisdom', 'love', 'truth', 'chaos', 'harmony', 'light'];
+
+  return (
+    <div className="space-y-6">
+      <div className="p-6 rounded-xl border border-border bg-card">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+            <BarChart3 className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold">Dimension Comparison</h3>
+            <p className="text-sm text-muted-foreground">See how words encode across 4D, 8D, and 16D spaces</p>
+          </div>
+        </div>
+        
+        <div className="flex gap-2 mb-4">
+          <input
+            type="text"
+            value={word}
+            onChange={(e) => setWord(e.target.value)}
+            className="flex-1 px-4 py-2 rounded-lg bg-secondary border border-border text-foreground"
+            placeholder="Enter a word..."
+          />
+          <button
+            onClick={compare}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            <Play className="w-4 h-4" /> Compare
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-4">
+          {sampleWords.map(w => (
+            <button
+              key={w}
+              onClick={() => setWord(w)}
+              className="px-3 py-1 rounded-full text-xs bg-muted hover:bg-primary/20 transition-colors"
+            >
+              {w}
+            </button>
+          ))}
+        </div>
+
+        {comparison && (
+          <div className="space-y-6">
+            <div className="p-3 rounded-lg bg-secondary/50">
+              <p className="text-xs text-muted-foreground mb-1">Prime Signature</p>
+              <p className="font-mono text-sm">
+                "{comparison.word}" → [{comparison.primes.join(', ')}]
+              </p>
+            </div>
+
+            {comparison.dimensions.map(d => (
+              <div key={d.dim} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{d.name} ({d.dim}D)</span>
+                  <span className="text-xs text-muted-foreground">
+                    H = {d.entropy.toFixed(3)} · ||v|| = {d.norm.toFixed(3)}
+                  </span>
+                </div>
+                
+                {/* Visual bar chart */}
+                <div className="flex gap-1 h-24 items-end">
+                  {d.components.map((v, i) => {
+                    const height = Math.min(100, Math.abs(v) * 50);
+                    const isPositive = v >= 0;
+                    const isDominant = i === d.dominantAxis.index;
+                    return (
+                      <div key={i} className="flex-1 flex flex-col items-center">
+                        <div 
+                          className="w-full rounded-t transition-all relative"
+                          style={{ 
+                            height: `${height}%`,
+                            backgroundColor: isDominant 
+                              ? 'hsl(var(--primary))' 
+                              : isPositive 
+                                ? 'hsl(var(--primary) / 0.4)' 
+                                : 'hsl(var(--destructive) / 0.4)',
+                          }}
+                        />
+                        <span className="text-[10px] text-muted-foreground mt-1">
+                          {axisLabels[d.dim]?.[i] || i}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                <div className="text-xs text-muted-foreground">
+                  Dominant: <span className="text-primary font-mono">{axisLabels[d.dim]?.[d.dominantAxis.index]}</span> = {d.dominantAxis.value.toFixed(3)}
+                </div>
+              </div>
+            ))}
+
+            <div className="p-3 rounded-lg bg-muted/30 text-xs text-muted-foreground">
+              <strong>Observation:</strong> Higher dimensions distribute semantic information across more axes, 
+              reducing entropy concentration but enabling richer representational capacity.
+            </div>
+          </div>
+        )}
+      </div>
+
+      <CodeBlock
+        code={`import { SemanticBackend, Hypercomplex } from '@aleph-ai/tinyaleph';
+
+const backend = new SemanticBackend(config);
+const primes = backend.encode('wisdom');
+
+// Compare across dimensions
+[4, 8, 16].forEach(dim => {
+  const components = Array(dim).fill(0);
+  primes.forEach((p, i) => {
+    components[i % dim] += Math.log(p) / Math.log(2);
+  });
+  
+  const h = new Hypercomplex(...components);
+  console.log(\`\${dim}D: entropy=\${h.entropy()}, norm=\${h.norm()}\`);
+});`}
+        language="javascript"
+        title="semantic/07-dimension-compare.js"
+      />
+    </div>
+  );
+};
+
+// Example 9: Expression Builder
+type Operation = { type: 'word'; value: string } | { type: 'add' } | { type: 'multiply' } | { type: 'scale'; value: number };
+
+const ExpressionBuilderExample = () => {
+  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [expression, setExpression] = useState<Operation[]>([
+    { type: 'word', value: 'love' },
+    { type: 'add' },
+    { type: 'word', value: 'wisdom' },
+  ]);
+  const [newWord, setNewWord] = useState('');
+  const [scaleValue, setScaleValue] = useState(0.5);
+  const [result, setResult] = useState<{
+    components: number[];
+    entropy: number;
+    norm: number;
+    steps: { description: string; entropy: number }[];
+  } | null>(null);
+
+  const safeComponents = (state: any): number[] => {
+    const c = state?.c || state?.components || [];
+    if (!Array.isArray(c)) return Array(16).fill(0);
+    return c.map((val: number) => Number.isFinite(Number(val)) ? Number(val) : 0);
+  };
+
+  const addWord = (word: string) => {
+    if (!word.trim()) return;
+    setExpression(prev => [...prev, { type: 'word', value: word.trim().toLowerCase() }]);
+    setNewWord('');
+  };
+
+  const addOperation = (op: 'add' | 'multiply') => {
+    setExpression(prev => [...prev, { type: op }]);
+  };
+
+  const addScale = () => {
+    setExpression(prev => [...prev, { type: 'scale', value: scaleValue }]);
+  };
+
+  const removeAt = (index: number) => {
+    setExpression(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const reset = () => {
+    setExpression([]);
+    setResult(null);
+  };
+
+  const evaluate = useCallback(() => {
+    if (expression.length === 0) return;
+
+    const steps: { description: string; entropy: number }[] = [];
+    let currentState: any = null;
+
+    for (const op of expression) {
+      if (op.type === 'word') {
+        const primes = backend.encode(op.value);
+        const wordState = backend.primesToState(primes);
+        
+        if (!currentState) {
+          currentState = wordState;
+          steps.push({ 
+            description: `Encode "${op.value}"`, 
+            entropy: currentState.entropy?.() ?? 0 
+          });
+        } else {
+          // If we have a pending operation, this shouldn't happen
+          // Words should follow operators
+        }
+      } else if (op.type === 'add' && currentState) {
+        // Find next word
+        const nextIdx = expression.indexOf(op) + 1;
+        const nextOp = expression[nextIdx];
+        if (nextOp?.type === 'word') {
+          const primes = backend.encode(nextOp.value);
+          const wordState = backend.primesToState(primes);
+          currentState = currentState.add?.(wordState) || currentState;
+          steps.push({ 
+            description: `+ "${nextOp.value}"`, 
+            entropy: currentState.entropy?.() ?? 0 
+          });
+        }
+      } else if (op.type === 'multiply' && currentState) {
+        const nextIdx = expression.indexOf(op) + 1;
+        const nextOp = expression[nextIdx];
+        if (nextOp?.type === 'word') {
+          const primes = backend.encode(nextOp.value);
+          const wordState = backend.primesToState(primes);
+          currentState = currentState.multiply?.(wordState) || currentState;
+          steps.push({ 
+            description: `⊗ "${nextOp.value}"`, 
+            entropy: currentState.entropy?.() ?? 0 
+          });
+        }
+      } else if (op.type === 'scale' && currentState) {
+        currentState = currentState.scale?.(op.value) || currentState;
+        steps.push({ 
+          description: `× ${op.value}`, 
+          entropy: currentState.entropy?.() ?? 0 
+        });
+      }
+    }
+
+    if (currentState) {
+      setResult({
+        components: safeComponents(currentState).slice(0, 16),
+        entropy: currentState.entropy?.() ?? 0,
+        norm: currentState.norm?.() ?? 0,
+        steps,
+      });
+    }
+  }, [expression, backend]);
+
+  const renderOperation = (op: Operation, index: number) => {
+    const baseClass = "px-3 py-1.5 rounded-lg text-sm flex items-center gap-2";
+    
+    if (op.type === 'word') {
+      return (
+        <div key={index} className={`${baseClass} bg-primary/20 text-primary`}>
+          <span className="font-mono">"{op.value}"</span>
+          <button onClick={() => removeAt(index)} className="hover:text-destructive">
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      );
+    }
+    if (op.type === 'add') {
+      return (
+        <div key={index} className={`${baseClass} bg-green-500/20 text-green-400`}>
+          <span className="font-bold">+</span>
+          <button onClick={() => removeAt(index)} className="hover:text-destructive">
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      );
+    }
+    if (op.type === 'multiply') {
+      return (
+        <div key={index} className={`${baseClass} bg-purple-500/20 text-purple-400`}>
+          <span className="font-bold">⊗</span>
+          <button onClick={() => removeAt(index)} className="hover:text-destructive">
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      );
+    }
+    if (op.type === 'scale') {
+      return (
+        <div key={index} className={`${baseClass} bg-yellow-500/20 text-yellow-400`}>
+          <span className="font-mono">×{op.value}</span>
+          <button onClick={() => removeAt(index)} className="hover:text-destructive">
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="p-6 rounded-xl border border-border bg-card">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+            <Workflow className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold">Expression Builder</h3>
+            <p className="text-sm text-muted-foreground">Chain operations to build complex semantic states</p>
+          </div>
+        </div>
+
+        {/* Expression display */}
+        <div className="min-h-16 p-4 rounded-lg bg-secondary/50 border border-border mb-4">
+          {expression.length === 0 ? (
+            <p className="text-muted-foreground text-sm">Add words and operations to build an expression...</p>
+          ) : (
+            <div className="flex flex-wrap gap-2 items-center">
+              {expression.map((op, i) => renderOperation(op, i))}
+            </div>
+          )}
+        </div>
+
+        {/* Controls */}
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Add Word</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newWord}
+                onChange={(e) => setNewWord(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addWord(newWord)}
+                className="flex-1 px-3 py-2 rounded-lg bg-secondary border border-border text-foreground text-sm"
+                placeholder="Type a word..."
+              />
+              <button
+                onClick={() => addWord(newWord)}
+                className="px-3 py-2 rounded-lg bg-primary/20 hover:bg-primary/30 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Scale Factor</label>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                value={scaleValue}
+                onChange={(e) => setScaleValue(parseFloat(e.target.value) || 0)}
+                className="flex-1 px-3 py-2 rounded-lg bg-secondary border border-border text-foreground text-sm"
+                step="0.1"
+              />
+              <button
+                onClick={addScale}
+                className="px-3 py-2 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 transition-colors text-yellow-400 text-sm"
+              >
+                ×k
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => addOperation('add')}
+            className="flex-1 px-3 py-2 rounded-lg bg-green-500/20 hover:bg-green-500/30 text-green-400 transition-colors text-sm"
+          >
+            + Add
+          </button>
+          <button
+            onClick={() => addOperation('multiply')}
+            className="flex-1 px-3 py-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 transition-colors text-sm"
+          >
+            ⊗ Multiply
+          </button>
+          <button
+            onClick={reset}
+            className="px-3 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Quick add words */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {['love', 'wisdom', 'truth', 'power', 'peace', 'chaos'].map(w => (
+            <button
+              key={w}
+              onClick={() => addWord(w)}
+              className="px-2 py-1 rounded text-xs bg-muted hover:bg-primary/20 transition-colors"
+            >
+              + {w}
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={evaluate}
+          disabled={expression.length === 0}
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+        >
+          <Play className="w-4 h-4" /> Evaluate Expression
+        </button>
+
+        {result && (
+          <div className="mt-4 space-y-4">
+            {/* Evaluation steps */}
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground font-medium">Evaluation Steps</p>
+              {result.steps.map((step, i) => (
+                <div key={i} className="flex items-center gap-3 text-sm">
+                  <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs">
+                    {i + 1}
+                  </span>
+                  <span className="flex-1">{step.description}</span>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    H = {step.entropy.toFixed(3)}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Result visualization */}
+            <div className="p-4 rounded-lg bg-primary/10 border border-primary/30">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-sm font-medium">Result State</span>
+                <span className="text-xs text-muted-foreground">
+                  H = {result.entropy.toFixed(4)} · ||v|| = {result.norm.toFixed(4)}
+                </span>
+              </div>
+              <div className="flex gap-0.5 h-12">
+                {result.components.map((v, i) => {
+                  const normalized = Math.min(1, Math.abs(v));
+                  return (
+                    <div 
+                      key={i} 
+                      className="flex-1 rounded-sm flex items-end bg-muted/30"
+                    >
+                      <div 
+                        className="w-full rounded-sm transition-all"
+                        style={{ 
+                          height: `${normalized * 100}%`,
+                          backgroundColor: v >= 0 ? 'hsl(var(--primary))' : 'hsl(var(--destructive))',
+                          opacity: 0.8
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <CodeBlock
+        code={`import { SemanticBackend } from '@aleph-ai/tinyaleph';
+
+const backend = new SemanticBackend(config);
+
+// Build expression: (love + wisdom) ⊗ truth × 0.5
+let state = backend.primesToState(backend.encode('love'));
+state = state.add(backend.primesToState(backend.encode('wisdom')));
+state = state.multiply(backend.primesToState(backend.encode('truth')));
+state = state.scale(0.5);
+
+console.log('Final entropy:', state.entropy());
+console.log('Final norm:', state.norm());`}
+        language="javascript"
+        title="semantic/08-expression.js"
+      />
+    </div>
+  );
+};
+
 const SemanticExamplesPage = () => {
   return (
     <div className="min-h-screen bg-background">
@@ -1124,6 +1647,8 @@ const SemanticExamplesPage = () => {
           <PrimeSignatureExample />
           <HypercomplexExample />
           <StateCompositionExample />
+          <DimensionComparisonExample />
+          <ExpressionBuilderExample />
         </div>
       </div>
       <Footer />
