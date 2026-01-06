@@ -568,13 +568,28 @@ const ClassifierExample = () => {
   const classify = useCallback(() => {
     const textState = backend.primesToState(backend.encode(text));
     
-    const scores = Object.entries(categories).map(([category, words]) => {
+    const rawScores = Object.entries(categories).map(([category, words]) => {
       const categoryState = backend.primesToState(
         words.flatMap(w => backend.encode(w))
       );
-      const score = textState.coherence?.(categoryState) ?? 0;
+      // Get raw coherence score
+      let score = textState.coherence?.(categoryState) ?? 0;
+      if (!Number.isFinite(score)) score = 0;
       return { category, score };
     });
+    
+    // Apply softmax normalization to make scores more discriminative
+    const maxScore = Math.max(...rawScores.map(s => s.score));
+    const expScores = rawScores.map(s => ({
+      category: s.category,
+      expScore: Math.exp((s.score - maxScore) * 10) // Temperature scaling
+    }));
+    const sumExp = expScores.reduce((sum, s) => sum + s.expScore, 0);
+    
+    const scores = expScores.map(s => ({
+      category: s.category,
+      score: sumExp > 0 ? s.expScore / sumExp : 1 / expScores.length
+    }));
     
     scores.sort((a, b) => b.score - a.score);
     
