@@ -33,6 +33,7 @@ const navGroups = [
     items: [
       { id: 'math', label: 'Math', path: '/math' },
       { id: 'ml', label: 'ML', path: '/ml' },
+      { id: 'resoformer', label: 'ResoFormer', path: '/resoformer' },
       { id: 'scientific', label: 'Scientific', path: '/scientific' },
       { id: 'typesystem', label: 'Type System', path: '/typesystem' },
     ],
