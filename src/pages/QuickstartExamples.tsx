@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { Play, Hash, Shuffle, ChevronLeft, ChevronRight, Circle } from 'lucide-react';
-import CodeBlock from '../components/CodeBlock';
 import SedenionVisualizer from '../components/SedenionVisualizer';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -111,27 +110,6 @@ const HelloWorldExample = () => {
           </div>
         </div>
       )}
-
-      <CodeBlock
-        code={`import { SemanticBackend } from '@aleph-ai/tinyaleph';
-import config from '@aleph-ai/tinyaleph/data.json';
-
-const backend = new SemanticBackend(config);
-
-// Tokenize and filter stop words
-const tokens = backend.tokenize('${input}', true);
-
-// Encode to prime signature
-const primes = backend.encode('${input}');
-
-// Convert to hypercomplex state
-const state = backend.primesToState(primes);
-
-console.log('Entropy:', state.entropy());
-console.log('Decoded:', backend.decode(primes));`}
-        language="javascript"
-        title="01-hello-world.js"
-      />
     </div>
   );
 };
@@ -185,22 +163,6 @@ const BasicHashExample = () => {
           <code className="text-sm font-mono text-primary break-all block">{hashResult}</code>
         </div>
       )}
-
-      <CodeBlock
-        code={`import { hash } from '@aleph-ai/tinyaleph';
-
-// Hash any string to a semantic hash
-const h = hash('${input}', ${dimension});
-console.log(h);
-
-// Hashes are deterministic:
-// hash('hello') === hash('hello')  // true
-
-// Similar meanings → similar hashes:
-// hash('love') is close to hash('affection')`}
-        language="javascript"
-        title="02-basic-hash.js"
-      />
     </div>
   );
 };
@@ -313,28 +275,6 @@ const QuantumCoinExample = () => {
           )}
         </div>
       </div>
-
-      <CodeBlock
-        code={`import { Hypercomplex } from '@aleph-ai/tinyaleph';
-
-// Create superposition: |+⟩ = (|0⟩ + |1⟩)/√2
-const psi = new Hypercomplex(16);
-psi.c[0] = 1 / Math.sqrt(2);  // |0⟩ amplitude
-psi.c[1] = 1 / Math.sqrt(2);  // |1⟩ amplitude
-
-// Born rule measurement
-const probHeads = psi.c[0] ** 2;
-const probTails = psi.c[1] ** 2;
-
-// Measure (collapse wavefunction)
-const result = Math.random() < probHeads ? 'heads' : 'tails';
-
-// State collapses to |0⟩ or |1⟩
-psi.c[0] = result === 'heads' ? 1 : 0;
-psi.c[1] = result === 'tails' ? 1 : 0;`}
-        language="javascript"
-        title="03-quantum-coin.js"
-      />
     </div>
   );
 };
