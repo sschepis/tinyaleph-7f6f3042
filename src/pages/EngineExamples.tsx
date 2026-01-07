@@ -696,8 +696,8 @@ const InferenceDemo = () => {
   );
 };
 
-// Syllogistic Reasoning Demo with Modus Ponens/Tollens
-type LogicForm = 'syllogism' | 'modus_ponens' | 'modus_tollens';
+// Formal Logic Validation Demo
+type LogicForm = 'syllogism' | 'modus_ponens' | 'modus_tollens' | 'hypothetical' | 'disjunctive';
 
 const SyllogismDemo = () => {
   const [logicForm, setLogicForm] = useState<LogicForm>('syllogism');
@@ -715,6 +715,16 @@ const SyllogismDemo = () => {
     conditional: { antecedent: 'fire', consequent: 'smoke' },
     negation: 'smoke',
     conclusion: 'fire'
+  });
+  const [hypothetical, setHypothetical] = useState({
+    first: { antecedent: 'study', consequent: 'knowledge' },
+    second: { antecedent: 'knowledge', consequent: 'wisdom' },
+    conclusion: { antecedent: 'study', consequent: 'wisdom' }
+  });
+  const [disjunctive, setDisjunctive] = useState({
+    disjunction: { left: 'rain', right: 'sun' },
+    negation: 'rain',
+    conclusion: 'sun'
   });
   const [result, setResult] = useState<{
     valid: boolean;
@@ -760,20 +770,14 @@ const SyllogismDemo = () => {
       const assertionState = safeComponents(backend.primesToState(backend.encode(modusPonens.assertion)));
       const conclusionState = safeComponents(backend.primesToState(backend.encode(modusPonens.conclusion)));
 
-      // Check if assertion matches antecedent
       const assertionMatch = computeCoherence(assertionState, antecedentState);
-      reasoning.push(`Assertion matches antecedent: "${modusPonens.assertion}" ↔ "${modusPonens.conditional.antecedent}" = ${(assertionMatch * 100).toFixed(0)}%`);
+      reasoning.push(`Assertion ↔ Antecedent: ${(assertionMatch * 100).toFixed(0)}%`);
 
-      // Check if conclusion matches consequent
       const conclusionMatch = computeCoherence(conclusionState, consequentState);
-      reasoning.push(`Conclusion matches consequent: "${modusPonens.conclusion}" ↔ "${modusPonens.conditional.consequent}" = ${(conclusionMatch * 100).toFixed(0)}%`);
-
-      // Check implication strength
-      const implicationStrength = computeCoherence(antecedentState, consequentState);
-      reasoning.push(`Implication strength: "${modusPonens.conditional.antecedent}" → "${modusPonens.conditional.consequent}" = ${(implicationStrength * 100).toFixed(0)}%`);
+      reasoning.push(`Conclusion ↔ Consequent: ${(conclusionMatch * 100).toFixed(0)}%`);
 
       keyStrength = assertionMatch;
-      confidence = (assertionMatch * 0.4 + conclusionMatch * 0.4 + implicationStrength * 0.2);
+      confidence = (assertionMatch * 0.5 + conclusionMatch * 0.5);
       valid = assertionMatch > 0.5 && conclusionMatch > 0.5;
 
     } else if (logicForm === 'modus_tollens') {
@@ -783,48 +787,114 @@ const SyllogismDemo = () => {
       const negationState = safeComponents(backend.primesToState(backend.encode(modusTollens.negation)));
       const conclusionState = safeComponents(backend.primesToState(backend.encode(modusTollens.conclusion)));
 
-      // Check if negation relates to consequent (semantic opposition or negation)
       const negationMatch = computeCoherence(negationState, consequentState);
-      reasoning.push(`Negation targets consequent: "¬${modusTollens.negation}" relates to "${modusTollens.conditional.consequent}" = ${(negationMatch * 100).toFixed(0)}%`);
+      reasoning.push(`Negation targets consequent: ${(negationMatch * 100).toFixed(0)}%`);
 
-      // Check if conclusion relates to antecedent
       const conclusionMatch = computeCoherence(conclusionState, antecedentState);
-      reasoning.push(`Conclusion targets antecedent: "¬${modusTollens.conclusion}" relates to "${modusTollens.conditional.antecedent}" = ${(conclusionMatch * 100).toFixed(0)}%`);
+      reasoning.push(`Conclusion targets antecedent: ${(conclusionMatch * 100).toFixed(0)}%`);
 
-      // For valid modus tollens, negation should match consequent and conclusion should match antecedent
       keyStrength = negationMatch;
       confidence = (negationMatch * 0.5 + conclusionMatch * 0.5);
       valid = negationMatch > 0.4 && conclusionMatch > 0.4;
 
-      reasoning.push(`If ${modusTollens.conditional.antecedent} → ${modusTollens.conditional.consequent}, and ¬${modusTollens.negation}, then ¬${modusTollens.conclusion}`);
+    } else if (logicForm === 'hypothetical') {
+      formName = 'Hypothetical Syllogism (P → Q, Q → R ⊢ P → R)';
+      const p1State = safeComponents(backend.primesToState(backend.encode(hypothetical.first.antecedent)));
+      const q1State = safeComponents(backend.primesToState(backend.encode(hypothetical.first.consequent)));
+      const q2State = safeComponents(backend.primesToState(backend.encode(hypothetical.second.antecedent)));
+      const rState = safeComponents(backend.primesToState(backend.encode(hypothetical.second.consequent)));
+      const concPState = safeComponents(backend.primesToState(backend.encode(hypothetical.conclusion.antecedent)));
+      const concRState = safeComponents(backend.primesToState(backend.encode(hypothetical.conclusion.consequent)));
+
+      // Check middle term connection (Q1 ↔ Q2)
+      const middleMatch = computeCoherence(q1State, q2State);
+      reasoning.push(`Middle term: "${hypothetical.first.consequent}" ↔ "${hypothetical.second.antecedent}" = ${(middleMatch * 100).toFixed(0)}%`);
+
+      // Check conclusion antecedent matches first antecedent
+      const antecedentMatch = computeCoherence(concPState, p1State);
+      reasoning.push(`Conclusion antecedent: "${hypothetical.conclusion.antecedent}" ↔ "${hypothetical.first.antecedent}" = ${(antecedentMatch * 100).toFixed(0)}%`);
+
+      // Check conclusion consequent matches second consequent
+      const consequentMatch = computeCoherence(concRState, rState);
+      reasoning.push(`Conclusion consequent: "${hypothetical.conclusion.consequent}" ↔ "${hypothetical.second.consequent}" = ${(consequentMatch * 100).toFixed(0)}%`);
+
+      keyStrength = middleMatch;
+      confidence = (middleMatch * 0.4 + antecedentMatch * 0.3 + consequentMatch * 0.3);
+      valid = middleMatch > 0.4 && antecedentMatch > 0.5 && consequentMatch > 0.5;
+
+      reasoning.push(`Chain: ${hypothetical.first.antecedent} → ${hypothetical.first.consequent} → ${hypothetical.second.consequent}`);
+
+    } else if (logicForm === 'disjunctive') {
+      formName = 'Disjunctive Syllogism (P ∨ Q, ¬P ⊢ Q)';
+      const leftState = safeComponents(backend.primesToState(backend.encode(disjunctive.disjunction.left)));
+      const rightState = safeComponents(backend.primesToState(backend.encode(disjunctive.disjunction.right)));
+      const negationState = safeComponents(backend.primesToState(backend.encode(disjunctive.negation)));
+      const conclusionState = safeComponents(backend.primesToState(backend.encode(disjunctive.conclusion)));
+
+      // Check negation matches one disjunct
+      const negatesLeft = computeCoherence(negationState, leftState);
+      const negatesRight = computeCoherence(negationState, rightState);
+      reasoning.push(`Negation ↔ Left: ${(negatesLeft * 100).toFixed(0)}% | Negation ↔ Right: ${(negatesRight * 100).toFixed(0)}%`);
+
+      // Determine which is negated
+      const negatesLeftDisjunct = negatesLeft > negatesRight;
+      const targetDisjunct = negatesLeftDisjunct ? rightState : leftState;
+      const targetName = negatesLeftDisjunct ? disjunctive.disjunction.right : disjunctive.disjunction.left;
+
+      // Check conclusion matches the remaining disjunct
+      const conclusionMatch = computeCoherence(conclusionState, targetDisjunct);
+      reasoning.push(`Conclusion ↔ Remaining ("${targetName}"): ${(conclusionMatch * 100).toFixed(0)}%`);
+
+      // Check disjuncts are distinct (low coherence between them)
+      const disjunctDistinction = 1 - computeCoherence(leftState, rightState);
+      reasoning.push(`Disjunct distinctness: ${(disjunctDistinction * 100).toFixed(0)}%`);
+
+      keyStrength = Math.max(negatesLeft, negatesRight);
+      confidence = (keyStrength * 0.4 + conclusionMatch * 0.4 + disjunctDistinction * 0.2);
+      valid = keyStrength > 0.4 && conclusionMatch > 0.4 && disjunctDistinction > 0.3;
     }
 
     if (valid) {
-      reasoning.push(`✓ Valid ${formName}: logical structure preserved`);
+      reasoning.push(`✓ Valid ${formName}`);
     } else {
-      reasoning.push(`✗ Invalid: semantic connections too weak for valid inference`);
+      reasoning.push(`✗ Invalid: semantic connections too weak`);
     }
 
     setResult({ valid, confidence, reasoning, keyStrength, formName });
-  }, [logicForm, syllogism, modusPonens, modusTollens, backend]);
+  }, [logicForm, syllogism, modusPonens, modusTollens, hypothetical, disjunctive, backend]);
 
   const presets: Record<LogicForm, { name: string; data: any }[]> = {
     syllogism: [
       { name: 'Mortality', data: { majorPremise: { quantifier: 'All', subject: 'humans', predicate: 'mortal' }, minorPremise: { quantifier: '', subject: 'Socrates', predicate: 'human' }, conclusion: { quantifier: '', subject: 'Socrates', predicate: 'mortal' } } },
       { name: 'Knowledge', data: { majorPremise: { quantifier: 'All', subject: 'wisdom', predicate: 'knowledge' }, minorPremise: { quantifier: '', subject: 'philosophy', predicate: 'wisdom' }, conclusion: { quantifier: '', subject: 'philosophy', predicate: 'knowledge' } } },
-      { name: 'Invalid', data: { majorPremise: { quantifier: 'All', subject: 'cats', predicate: 'animals' }, minorPremise: { quantifier: '', subject: 'dogs', predicate: 'animals' }, conclusion: { quantifier: '', subject: 'dogs', predicate: 'cats' } } }
     ],
     modus_ponens: [
       { name: 'Rain→Wet', data: { conditional: { antecedent: 'rain', consequent: 'wet' }, assertion: 'rain', conclusion: 'wet' } },
-      { name: 'Study→Pass', data: { conditional: { antecedent: 'study', consequent: 'success' }, assertion: 'study', conclusion: 'success' } },
-      { name: 'Fire→Heat', data: { conditional: { antecedent: 'fire', consequent: 'heat' }, assertion: 'fire', conclusion: 'heat' } }
+      { name: 'Fire→Heat', data: { conditional: { antecedent: 'fire', consequent: 'heat' }, assertion: 'fire', conclusion: 'heat' } },
     ],
     modus_tollens: [
       { name: '¬Smoke→¬Fire', data: { conditional: { antecedent: 'fire', consequent: 'smoke' }, negation: 'smoke', conclusion: 'fire' } },
       { name: '¬Wet→¬Rain', data: { conditional: { antecedent: 'rain', consequent: 'wet' }, negation: 'wet', conclusion: 'rain' } },
-      { name: '¬Knowledge→¬Study', data: { conditional: { antecedent: 'learning', consequent: 'knowledge' }, negation: 'knowledge', conclusion: 'learning' } }
+    ],
+    hypothetical: [
+      { name: 'Study→Wisdom', data: { first: { antecedent: 'study', consequent: 'knowledge' }, second: { antecedent: 'knowledge', consequent: 'wisdom' }, conclusion: { antecedent: 'study', consequent: 'wisdom' } } },
+      { name: 'Cause→Effect', data: { first: { antecedent: 'fire', consequent: 'heat' }, second: { antecedent: 'heat', consequent: 'expansion' }, conclusion: { antecedent: 'fire', consequent: 'expansion' } } },
+      { name: 'Invalid Chain', data: { first: { antecedent: 'rain', consequent: 'wet' }, second: { antecedent: 'fire', consequent: 'smoke' }, conclusion: { antecedent: 'rain', consequent: 'smoke' } } },
+    ],
+    disjunctive: [
+      { name: 'Rain∨Sun, ¬Rain', data: { disjunction: { left: 'rain', right: 'sun' }, negation: 'rain', conclusion: 'sun' } },
+      { name: 'Truth∨Lie, ¬Lie', data: { disjunction: { left: 'truth', right: 'lie' }, negation: 'lie', conclusion: 'truth' } },
+      { name: 'Hot∨Cold, ¬Hot', data: { disjunction: { left: 'hot', right: 'cold' }, negation: 'hot', conclusion: 'cold' } },
     ]
   };
+
+  const logicForms = [
+    { id: 'syllogism', label: 'Syllogism', desc: 'All A→B, C∈A ⊢ C∈B' },
+    { id: 'modus_ponens', label: 'Modus Ponens', desc: 'P→Q, P ⊢ Q' },
+    { id: 'modus_tollens', label: 'Modus Tollens', desc: 'P→Q, ¬Q ⊢ ¬P' },
+    { id: 'hypothetical', label: 'Hypothetical', desc: 'P→Q, Q→R ⊢ P→R' },
+    { id: 'disjunctive', label: 'Disjunctive', desc: 'P∨Q, ¬P ⊢ Q' },
+  ];
 
   return (
     <div className="p-6 rounded-xl border border-border bg-card">
@@ -833,27 +903,23 @@ const SyllogismDemo = () => {
         <h3 className="text-lg font-semibold">Formal Logic Validation</h3>
       </div>
       <p className="text-sm text-muted-foreground mb-4">
-        Validate syllogisms, modus ponens, and modus tollens using semantic analysis.
+        Validate syllogisms, modus ponens/tollens, hypothetical and disjunctive syllogisms.
       </p>
 
       {/* Logic Form Selector */}
-      <div className="flex gap-2 mb-4">
-        {[
-          { id: 'syllogism', label: 'Syllogism', desc: 'All A are B, C is A ⊢ C is B' },
-          { id: 'modus_ponens', label: 'Modus Ponens', desc: 'P → Q, P ⊢ Q' },
-          { id: 'modus_tollens', label: 'Modus Tollens', desc: 'P → Q, ¬Q ⊢ ¬P' }
-        ].map(form => (
+      <div className="grid grid-cols-5 gap-1 mb-4">
+        {logicForms.map(form => (
           <button
             key={form.id}
             onClick={() => { setLogicForm(form.id as LogicForm); setResult(null); }}
-            className={`flex-1 p-3 rounded-lg border text-left transition-colors ${
+            className={`p-2 rounded-lg border text-center transition-colors ${
               logicForm === form.id 
                 ? 'bg-primary/10 border-primary text-primary' 
                 : 'bg-muted/50 border-border hover:bg-muted'
             }`}
           >
-            <p className="font-medium text-sm">{form.label}</p>
-            <p className="text-xs text-muted-foreground font-mono">{form.desc}</p>
+            <p className="font-medium text-xs">{form.label}</p>
+            <p className="text-[10px] text-muted-foreground font-mono">{form.desc}</p>
           </button>
         ))}
       </div>
@@ -866,7 +932,9 @@ const SyllogismDemo = () => {
             onClick={() => {
               if (logicForm === 'syllogism') setSyllogism(preset.data);
               else if (logicForm === 'modus_ponens') setModusPonens(preset.data);
-              else setModusTollens(preset.data);
+              else if (logicForm === 'modus_tollens') setModusTollens(preset.data);
+              else if (logicForm === 'hypothetical') setHypothetical(preset.data);
+              else setDisjunctive(preset.data);
             }}
             className="px-3 py-1 rounded-full text-xs bg-muted hover:bg-primary/20 transition-colors"
           >
@@ -881,11 +949,7 @@ const SyllogismDemo = () => {
           <div className="p-3 rounded-lg bg-muted/50">
             <p className="text-xs text-muted-foreground mb-2">Major Premise</p>
             <div className="flex items-center gap-2 flex-wrap">
-              <select
-                value={syllogism.majorPremise.quantifier}
-                onChange={(e) => setSyllogism({ ...syllogism, majorPremise: { ...syllogism.majorPremise, quantifier: e.target.value } })}
-                className="px-2 py-1 rounded bg-secondary border border-border text-sm"
-              >
+              <select value={syllogism.majorPremise.quantifier} onChange={(e) => setSyllogism({ ...syllogism, majorPremise: { ...syllogism.majorPremise, quantifier: e.target.value } })} className="px-2 py-1 rounded bg-secondary border border-border text-sm">
                 <option value="All">All</option>
                 <option value="Some">Some</option>
                 <option value="No">No</option>
@@ -962,6 +1026,64 @@ const SyllogismDemo = () => {
               <span className="text-primary">Not</span>
               <input value={modusTollens.conclusion} onChange={(e) => setModusTollens({ ...modusTollens, conclusion: e.target.value })} className="w-32 px-2 py-1 rounded bg-secondary border border-border text-sm" />
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hypothetical Syllogism Form */}
+      {logicForm === 'hypothetical' && (
+        <div className="space-y-3 mb-4">
+          <div className="p-3 rounded-lg bg-muted/50">
+            <p className="text-xs text-muted-foreground mb-2">First Conditional (P → Q)</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-muted-foreground">If</span>
+              <input value={hypothetical.first.antecedent} onChange={(e) => setHypothetical({ ...hypothetical, first: { ...hypothetical.first, antecedent: e.target.value } })} className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm" />
+              <span className="text-muted-foreground">then</span>
+              <input value={hypothetical.first.consequent} onChange={(e) => setHypothetical({ ...hypothetical, first: { ...hypothetical.first, consequent: e.target.value } })} className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm" />
+            </div>
+          </div>
+          <div className="p-3 rounded-lg bg-muted/50">
+            <p className="text-xs text-muted-foreground mb-2">Second Conditional (Q → R)</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-muted-foreground">If</span>
+              <input value={hypothetical.second.antecedent} onChange={(e) => setHypothetical({ ...hypothetical, second: { ...hypothetical.second, antecedent: e.target.value } })} className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm" />
+              <span className="text-muted-foreground">then</span>
+              <input value={hypothetical.second.consequent} onChange={(e) => setHypothetical({ ...hypothetical, second: { ...hypothetical.second, consequent: e.target.value } })} className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm" />
+            </div>
+          </div>
+          <div className="p-3 rounded-lg bg-primary/10 border border-primary/30">
+            <p className="text-xs text-primary mb-2">∴ Conclusion (P → R)</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-primary">If</span>
+              <input value={hypothetical.conclusion.antecedent} onChange={(e) => setHypothetical({ ...hypothetical, conclusion: { ...hypothetical.conclusion, antecedent: e.target.value } })} className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm" />
+              <span className="text-primary">then</span>
+              <input value={hypothetical.conclusion.consequent} onChange={(e) => setHypothetical({ ...hypothetical, conclusion: { ...hypothetical.conclusion, consequent: e.target.value } })} className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Disjunctive Syllogism Form */}
+      {logicForm === 'disjunctive' && (
+        <div className="space-y-3 mb-4">
+          <div className="p-3 rounded-lg bg-muted/50">
+            <p className="text-xs text-muted-foreground mb-2">Disjunction (P ∨ Q)</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <input value={disjunctive.disjunction.left} onChange={(e) => setDisjunctive({ ...disjunctive, disjunction: { ...disjunctive.disjunction, left: e.target.value } })} className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm" />
+              <span className="text-muted-foreground font-bold">OR</span>
+              <input value={disjunctive.disjunction.right} onChange={(e) => setDisjunctive({ ...disjunctive, disjunction: { ...disjunctive.disjunction, right: e.target.value } })} className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm" />
+            </div>
+          </div>
+          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+            <p className="text-xs text-amber-600 mb-2">Negation (¬P or ¬Q)</p>
+            <div className="flex items-center gap-2">
+              <span className="text-amber-600">Not</span>
+              <input value={disjunctive.negation} onChange={(e) => setDisjunctive({ ...disjunctive, negation: e.target.value })} className="w-32 px-2 py-1 rounded bg-secondary border border-border text-sm" />
+            </div>
+          </div>
+          <div className="p-3 rounded-lg bg-primary/10 border border-primary/30">
+            <p className="text-xs text-primary mb-2">∴ Conclusion (remaining disjunct)</p>
+            <input value={disjunctive.conclusion} onChange={(e) => setDisjunctive({ ...disjunctive, conclusion: e.target.value })} className="w-32 px-2 py-1 rounded bg-secondary border border-border text-sm" />
           </div>
         </div>
       )}
