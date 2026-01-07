@@ -23,6 +23,11 @@ import TypeSystemExamples from "./pages/TypeSystemExamples";
 import ChatExamples from "./pages/ChatExamples";
 import EnochianExamples from "./pages/EnochianExamples";
 import NotFound from "./pages/NotFound";
+// Docs pages
+import GettingStarted from "./pages/docs/GettingStarted";
+import UserGuide from "./pages/docs/UserGuide";
+import AppIdeas from "./pages/docs/AppIdeas";
+import ReferenceGuide from "./pages/docs/ReferenceGuide";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +40,11 @@ const App = () => (
         <Layout>
           <Routes>
             <Route path="/" element={<Index />} />
+            {/* Docs routes */}
+            <Route path="/docs/getting-started" element={<GettingStarted />} />
+            <Route path="/docs/user-guide" element={<UserGuide />} />
+            <Route path="/docs/app-ideas" element={<AppIdeas />} />
+            <Route path="/docs/reference" element={<ReferenceGuide />} />
             <Route path="/core" element={<CoreExamples />} />
             <Route path="/physics" element={<PhysicsExamples />} />
             <Route path="/backends" element={<BackendsExamples />} />
