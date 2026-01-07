@@ -279,74 +279,170 @@ console.log('Terminates:', proof.terminates);`}
   );
 };
 
-// Lambda Translation
+// Lambda Translation with Interactive β-Reduction
 const LambdaExample = () => {
+  const [expression, setExpression] = useState('(λx. x + 1)(5)');
+  const [reductionSteps, setReductionSteps] = useState<Array<{ expr: string; rule: string }>>([]);
+  const [showReduction, setShowReduction] = useState(false);
+
+  const runBetaReduction = useCallback(() => {
+    // Simulated β-reduction steps for demo expressions
+    const reductions: Record<string, Array<{ expr: string; rule: string }>> = {
+      '(λx. x + 1)(5)': [
+        { expr: '(λx. x + 1)(5)', rule: 'initial' },
+        { expr: '5 + 1', rule: 'β-reduce: substitute x → 5' },
+        { expr: '6', rule: 'δ-reduce: arithmetic' },
+      ],
+      '(λf. λx. f(f(x)))(λy. y * 2)(3)': [
+        { expr: '(λf. λx. f(f(x)))(λy. y * 2)(3)', rule: 'initial' },
+        { expr: '(λx. (λy. y * 2)((λy. y * 2)(x)))(3)', rule: 'β-reduce f → (λy. y * 2)' },
+        { expr: '(λy. y * 2)((λy. y * 2)(3))', rule: 'β-reduce x → 3' },
+        { expr: '(λy. y * 2)(3 * 2)', rule: 'β-reduce inner: y → 3' },
+        { expr: '(λy. y * 2)(6)', rule: 'δ-reduce: 3 * 2 = 6' },
+        { expr: '6 * 2', rule: 'β-reduce: y → 6' },
+        { expr: '12', rule: 'δ-reduce: arithmetic' },
+      ],
+      '(λn. λa. n(a))(wisdom)': [
+        { expr: '(λn. λa. n(a))(wisdom)', rule: 'initial' },
+        { expr: 'λa. wisdom(a)', rule: 'β-reduce: n → wisdom' },
+        { expr: 'λa. encode([2,3,5], a)', rule: 'τ-translate: unfold wisdom' },
+      ],
+      'τ(ChainTerm(ancient, wisdom))': [
+        { expr: 'τ(ChainTerm(ancient, wisdom))', rule: 'initial τ-translation' },
+        { expr: 'τ(ancient)(τ(wisdom))', rule: 'τ-chain: τ(A·N) = τ(A)(τ(N))' },
+        { expr: '(λn. λx. n(x) ⊗ [7,11])(λy. encode([2,3,5], y))', rule: 'expand τ(ancient), τ(wisdom)' },
+        { expr: 'λx. (λy. encode([2,3,5], y))(x) ⊗ [7,11]', rule: 'β-reduce: n → (λy...)' },
+        { expr: 'λx. encode([2,3,5], x) ⊗ [7,11]', rule: 'β-reduce: y → x' },
+      ],
+    };
+
+    const steps = reductions[expression] || [
+      { expr: expression, rule: 'initial' },
+      { expr: `[Cannot reduce: ${expression}]`, rule: 'unknown expression' },
+    ];
+    
+    setReductionSteps(steps);
+    setShowReduction(true);
+  }, [expression]);
+
+  const presetExpressions = [
+    '(λx. x + 1)(5)',
+    '(λf. λx. f(f(x)))(λy. y * 2)(3)',
+    '(λn. λa. n(a))(wisdom)',
+    'τ(ChainTerm(ancient, wisdom))',
+  ];
+
   return (
     <div className="space-y-6">
       <div className="p-6 rounded-xl border border-border bg-card">
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-primary" />
-          Lambda Calculus Translation
+          Lambda Calculus Translation & β-Reduction
         </h3>
 
-        <div className="space-y-4">
-          <p className="text-muted-foreground">
-            Type-directed translation from the term language to lambda calculus enables 
-            denotational semantics and compositional interpretation.
-          </p>
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              The τ translation maps prime terms to λ-expressions. 
+              β-reduction evaluates these expressions to normal form.
+            </p>
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="p-4 rounded-lg bg-muted/50">
-              <h4 className="font-semibold mb-2 text-primary">Source Terms</h4>
-              <pre className="font-mono text-xs">{`NounTerm("wisdom", [2,3,5])
-AdjTerm("ancient", [7,11])
-ChainTerm(ancient, wisdom)
-FusionTerm(truth, beauty)`}</pre>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Expression</label>
+              <input
+                type="text"
+                value={expression}
+                onChange={(e) => setExpression(e.target.value)}
+                className="w-full px-4 py-2 rounded-lg bg-muted border border-border focus:border-primary outline-none font-mono text-sm"
+              />
             </div>
 
-            <div className="p-4 rounded-lg bg-muted/50">
-              <h4 className="font-semibold mb-2 text-primary">Lambda Terms</h4>
-              <pre className="font-mono text-xs">{`⟦wisdom⟧ = λx. encode([2,3,5], x)
-⟦ancient⟧ = λn. λx. n(x) ⊗ [7,11]
-⟦chain⟧ = ⟦ancient⟧(⟦wisdom⟧)
-⟦fuse⟧ = ⟦truth⟧ ⊗ ⟦beauty⟧`}</pre>
+            <div className="flex flex-wrap gap-2">
+              {presetExpressions.map((expr, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setExpression(expr); setShowReduction(false); }}
+                  className={`px-2 py-1 rounded text-xs font-mono transition-colors ${
+                    expression === expr ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-primary/20'
+                  }`}
+                >
+                  {expr.length > 25 ? expr.slice(0, 25) + '...' : expr}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={runBetaReduction}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <Play className="w-4 h-4" /> Run β-Reduction
+            </button>
+
+            <div className="p-4 rounded-lg bg-primary/10 border border-primary/30">
+              <p className="font-mono text-xs mb-2 text-primary">τ Translation Rules:</p>
+              <pre className="text-xs text-muted-foreground overflow-x-auto">{`τ(N)     = λx. encode(primes, x)
+τ(A)     = λn. λx. n(x) ⊗ primes
+τ(A · N) = τ(A)(τ(N))
+τ(N ⊗ N) = λx. τ(N₁)(x) ⊗ τ(N₂)(x)`}</pre>
             </div>
           </div>
 
-          <div className="p-4 rounded-lg bg-primary/10 border border-primary/30">
-            <p className="font-mono text-sm mb-2">Denotational Semantics:</p>
-            <pre className="text-xs text-muted-foreground overflow-x-auto">{`⟦N⟧      : PrimeState → PrimeState
-⟦A⟧      : (PrimeState → PrimeState) → (PrimeState → PrimeState)
-⟦A · N⟧  = ⟦A⟧(⟦N⟧)
-⟦N₁ ⊗ N₂⟧ = λx. ⟦N₁⟧(x) ⊗ ⟦N₂⟧(x)`}</pre>
-          </div>
+          {showReduction && reductionSteps.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Reduction Trace</p>
+              {reductionSteps.map((step, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className={`w-6 h-6 rounded-full text-xs flex items-center justify-center flex-shrink-0 mt-1 ${
+                    i === reductionSteps.length - 1 
+                      ? 'bg-green-500/20 text-green-400' 
+                      : 'bg-primary/20 text-primary'
+                  }`}>
+                    {i === reductionSteps.length - 1 ? '✓' : i}
+                  </span>
+                  <div className="flex-1 p-3 rounded-lg bg-muted/50">
+                    <p className="font-mono text-xs break-all">{step.expr}</p>
+                    {step.rule !== 'initial' && (
+                      <p className="text-xs text-primary mt-1">→ {step.rule}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       <CodeBlock
         code={`import { 
-  Translator, 
-  TypeDirectedTranslator,
+  tauTranslate,
+  betaReduce,
   LambdaEvaluator,
-  ConceptInterpreter 
+  NounTerm, AdjTerm, ChainTerm 
 } from '@aleph-ai/tinyaleph';
 
-// Translate term to lambda expression
-const translator = new TypeDirectedTranslator();
-const lambdaTerm = translator.translate(chainTerm);
+// Create semantic terms
+const wisdom = new NounTerm('wisdom', [2, 3, 5]);
+const ancient = new AdjTerm('ancient', [7, 11]);
+const chain = new ChainTerm(ancient, wisdom);
 
-// Evaluate lambda term
+// τ-translate to lambda expression
+const lambdaExpr = tauTranslate(chain);
+console.log('τ(chain):', lambdaExpr.toString());
+// → (λn. λx. n(x) ⊗ [7,11])(λy. encode([2,3,5], y))
+
+// Perform β-reduction
 const evaluator = new LambdaEvaluator();
-const result = evaluator.eval(lambdaTerm, initialState);
+const { normalForm, steps } = evaluator.reduceWithTrace(lambdaExpr);
 
-// High-level concept interpretation
-const interpreter = new ConceptInterpreter(vocabulary);
-const meaning = interpreter.interpret("ancient wisdom");
+console.log('Steps:', steps.length);
+console.log('Normal form:', normalForm.toString());
+// → λx. encode([2,3,5], x) ⊗ [7,11]
 
-console.log(meaning.primeSignature);
-console.log(meaning.semanticField);`}
+// Apply to initial state
+const result = evaluator.apply(normalForm, initialState);
+console.log('Result entropy:', result.entropy);`}
         language="javascript"
-        title="lambda.js"
+        title="lambda-beta-reduction.js"
       />
     </div>
   );

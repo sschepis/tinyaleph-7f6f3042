@@ -368,6 +368,348 @@ const KuramotoDemo = () => {
   );
 };
 
+// Adaptive Kuramoto with Hebbian Plasticity
+interface AdaptiveKuramotoState extends KuramotoState {
+  couplings: number[][]; // Adaptive coupling matrix
+}
+
+function stepAdaptiveKuramoto(
+  state: AdaptiveKuramotoState,
+  edges: NetworkEdge[],
+  baseCoupling: number,
+  plasticityRate: number,
+  dt: number
+): AdaptiveKuramotoState {
+  const n = state.phases.length;
+  const dPhase = Array(n).fill(0);
+  const newCouplings = state.couplings.map(row => [...row]);
+  
+  // Build adjacency
+  const adj: number[][] = Array.from({ length: n }, () => []);
+  for (const { from, to } of edges) {
+    adj[from].push(to);
+    adj[to].push(from);
+  }
+
+  // Kuramoto dynamics with adaptive couplings
+  for (let i = 0; i < n; i++) {
+    dPhase[i] = state.naturalFreqs[i];
+    for (const j of adj[i]) {
+      const phaseDiff = state.phases[j] - state.phases[i];
+      dPhase[i] += (state.couplings[i][j] / adj[i].length) * Math.sin(phaseDiff);
+      
+      // Hebbian plasticity: strengthen when synchronized
+      const hebbianUpdate = plasticityRate * Math.cos(phaseDiff);
+      newCouplings[i][j] = Math.max(0, Math.min(baseCoupling * 3, 
+        state.couplings[i][j] + hebbianUpdate * dt
+      ));
+    }
+  }
+
+  const newPhases = state.phases.map((p, i) => (p + dPhase[i] * dt) % (2 * Math.PI));
+  return { ...state, phases: newPhases, couplings: newCouplings };
+}
+
+// Sakaguchi-Kuramoto with phase frustration
+interface SakaguchiKuramotoState extends KuramotoState {
+  frustration: number; // Phase lag parameter α
+}
+
+function stepSakaguchiKuramoto(
+  state: SakaguchiKuramotoState,
+  edges: NetworkEdge[],
+  coupling: number,
+  dt: number
+): SakaguchiKuramotoState {
+  const n = state.phases.length;
+  const dPhase = Array(n).fill(0);
+  
+  const adj: number[][] = Array.from({ length: n }, () => []);
+  for (const { from, to } of edges) {
+    adj[from].push(to);
+    adj[to].push(from);
+  }
+
+  // Sakaguchi dynamics: sin(θⱼ - θᵢ - α)
+  for (let i = 0; i < n; i++) {
+    dPhase[i] = state.naturalFreqs[i];
+    for (const j of adj[i]) {
+      dPhase[i] += (coupling / adj[i].length) * 
+        Math.sin(state.phases[j] - state.phases[i] - state.frustration);
+    }
+  }
+
+  const newPhases = state.phases.map((p, i) => (p + dPhase[i] * dt) % (2 * Math.PI));
+  return { ...state, phases: newPhases };
+}
+
+// Compute local order parameter for chimera detection
+function computeLocalOrder(phases: number[], edges: NetworkEdge[], nodeIndex: number): number {
+  const adj: Set<number> = new Set();
+  for (const { from, to } of edges) {
+    if (from === nodeIndex) adj.add(to);
+    if (to === nodeIndex) adj.add(from);
+  }
+  
+  let sumCos = Math.cos(phases[nodeIndex]);
+  let sumSin = Math.sin(phases[nodeIndex]);
+  for (const j of adj) {
+    sumCos += Math.cos(phases[j]);
+    sumSin += Math.sin(phases[j]);
+  }
+  const count = adj.size + 1;
+  return Math.sqrt(sumCos * sumCos + sumSin * sumSin) / count;
+}
+
+// Adaptive Kuramoto Demo Component
+const AdaptiveKuramotoDemo = () => {
+  const [n] = useState(30);
+  const [k] = useState(4);
+  const [p] = useState(0.1);
+  const [baseCoupling, setBaseCoupling] = useState(1.5);
+  const [plasticityRate, setPlasticityRate] = useState(0.5);
+  const [running, setRunning] = useState(false);
+  const [edges, setEdges] = useState<NetworkEdge[]>([]);
+  const [state, setState] = useState<AdaptiveKuramotoState | null>(null);
+  const [avgCoupling, setAvgCoupling] = useState(baseCoupling);
+  const animationRef = useRef<number>();
+
+  const initNetwork = useCallback(() => {
+    const newEdges = createWattsStrogatz(n, k, p);
+    setEdges(newEdges);
+    
+    const phases = Array.from({ length: n }, () => Math.random() * 2 * Math.PI);
+    const naturalFreqs = Array.from({ length: n }, () => (Math.random() - 0.5) * 0.5);
+    const couplings = Array.from({ length: n }, () => Array(n).fill(baseCoupling));
+    
+    setState({ phases, naturalFreqs, couplings });
+    setRunning(false);
+  }, [n, k, p, baseCoupling]);
+
+  useEffect(() => {
+    initNetwork();
+  }, []);
+
+  useEffect(() => {
+    if (!running || !state) return;
+    
+    const step = () => {
+      setState(prev => {
+        if (!prev) return null;
+        const newState = stepAdaptiveKuramoto(prev, edges, baseCoupling, plasticityRate, 0.05);
+        
+        // Calculate average coupling
+        let sum = 0, count = 0;
+        for (const { from, to } of edges) {
+          sum += newState.couplings[from][to];
+          count++;
+        }
+        setAvgCoupling(count > 0 ? sum / count : baseCoupling);
+        
+        return newState;
+      });
+      animationRef.current = requestAnimationFrame(step);
+    };
+    animationRef.current = requestAnimationFrame(step);
+    
+    return () => {
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    };
+  }, [running, edges, baseCoupling, plasticityRate]);
+
+  const orderParam = state ? computeOrderParameter(state.phases) : { r: 0, psi: 0 };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-2 mb-4">
+        <Activity className="w-5 h-5 text-green-400" />
+        <h3 className="font-display font-semibold text-lg">Adaptive Kuramoto (Hebbian Plasticity)</h3>
+      </div>
+
+      <p className="text-sm text-muted-foreground">
+        Coupling strengths evolve via Hebbian learning: connections strengthen when oscillators synchronize.
+      </p>
+
+      <div className="grid md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium mb-2 block">Base Coupling: {baseCoupling.toFixed(1)}</label>
+            <Slider value={[baseCoupling * 10]} onValueChange={([v]) => setBaseCoupling(v / 10)} min={5} max={30} step={1} />
+          </div>
+          
+          <div>
+            <label className="text-sm font-medium mb-2 block">Plasticity Rate: {plasticityRate.toFixed(2)}</label>
+            <Slider value={[plasticityRate * 100]} onValueChange={([v]) => setPlasticityRate(v / 100)} min={0} max={100} step={5} />
+          </div>
+
+          <div className="flex gap-2">
+            <Button onClick={initNetwork} variant="outline" className="flex-1">
+              <RotateCcw className="w-4 h-4 mr-2" /> Reset
+            </Button>
+            <Button onClick={() => setRunning(!running)} className="flex-1">
+              {running ? <><Pause className="w-4 h-4 mr-2" /> Pause</> : <><Play className="w-4 h-4 mr-2" /> Run</>}
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-3 rounded-lg bg-muted border border-border text-center">
+              <div className="text-2xl font-mono font-bold text-green-400">{orderParam.r.toFixed(3)}</div>
+              <div className="text-xs text-muted-foreground">Order (r)</div>
+            </div>
+            <div className="p-3 rounded-lg bg-muted border border-border text-center">
+              <div className="text-2xl font-mono font-bold text-yellow-400">{avgCoupling.toFixed(2)}</div>
+              <div className="text-xs text-muted-foreground">Avg Coupling</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-lg bg-card border border-border">
+          {state && <NetworkViz n={n} edges={edges} phases={state.phases} />}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Sakaguchi-Kuramoto Demo with Chimera States
+const SakaguchiKuramotoDemo = () => {
+  const [n] = useState(50);
+  const [k] = useState(6);
+  const [p] = useState(0.05);
+  const [coupling, setCoupling] = useState(2.0);
+  const [frustration, setFrustration] = useState(0.4);
+  const [running, setRunning] = useState(false);
+  const [edges, setEdges] = useState<NetworkEdge[]>([]);
+  const [state, setState] = useState<SakaguchiKuramotoState | null>(null);
+  const [localOrders, setLocalOrders] = useState<number[]>([]);
+  const animationRef = useRef<number>();
+
+  const initNetwork = useCallback(() => {
+    const newEdges = createWattsStrogatz(n, k, p);
+    setEdges(newEdges);
+    
+    // Initialize with slight phase gradient to encourage chimera formation
+    const phases = Array.from({ length: n }, (_, i) => (i / n) * 2 * Math.PI + (Math.random() - 0.5) * 0.3);
+    const naturalFreqs = Array.from({ length: n }, () => (Math.random() - 0.5) * 0.2);
+    
+    setState({ phases, naturalFreqs, frustration });
+    setRunning(false);
+  }, [n, k, p, frustration]);
+
+  useEffect(() => {
+    initNetwork();
+  }, []);
+
+  useEffect(() => {
+    if (!running || !state) return;
+    
+    const step = () => {
+      setState(prev => {
+        if (!prev) return null;
+        const newState = stepSakaguchiKuramoto({ ...prev, frustration }, edges, coupling, 0.05);
+        
+        // Compute local order parameters for chimera visualization
+        const locals = Array.from({ length: n }, (_, i) => computeLocalOrder(newState.phases, edges, i));
+        setLocalOrders(locals);
+        
+        return newState;
+      });
+      animationRef.current = requestAnimationFrame(step);
+    };
+    animationRef.current = requestAnimationFrame(step);
+    
+    return () => {
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    };
+  }, [running, edges, coupling, frustration]);
+
+  const orderParam = state ? computeOrderParameter(state.phases) : { r: 0, psi: 0 };
+  
+  // Detect chimera: high variance in local order parameters
+  const chimeraIndex = localOrders.length > 0 
+    ? Math.sqrt(localOrders.reduce((s, r) => s + (r - orderParam.r) ** 2, 0) / n)
+    : 0;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-2 mb-4">
+        <Network className="w-5 h-5 text-purple-400" />
+        <h3 className="font-display font-semibold text-lg">Sakaguchi-Kuramoto (Chimera States)</h3>
+      </div>
+
+      <p className="text-sm text-muted-foreground">
+        Phase frustration (α) creates asymmetric coupling, enabling chimera states where 
+        synchronized and desynchronized regions coexist.
+      </p>
+
+      <div className="grid md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium mb-2 block">Coupling (K): {coupling.toFixed(1)}</label>
+            <Slider value={[coupling * 10]} onValueChange={([v]) => setCoupling(v / 10)} min={5} max={40} step={1} />
+          </div>
+          
+          <div>
+            <label className="text-sm font-medium mb-2 block">Frustration (α): {frustration.toFixed(2)} rad</label>
+            <Slider value={[frustration * 100]} onValueChange={([v]) => { setFrustration(v / 100); if (state) setState({ ...state, frustration: v / 100 }); }} min={0} max={157} step={1} />
+          </div>
+
+          <div className="flex gap-2">
+            <Button onClick={initNetwork} variant="outline" className="flex-1">
+              <RotateCcw className="w-4 h-4 mr-2" /> Reset
+            </Button>
+            <Button onClick={() => setRunning(!running)} className="flex-1">
+              {running ? <><Pause className="w-4 h-4 mr-2" /> Pause</> : <><Play className="w-4 h-4 mr-2" /> Run</>}
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="p-3 rounded-lg bg-muted border border-border text-center">
+              <div className="text-xl font-mono font-bold text-purple-400">{orderParam.r.toFixed(3)}</div>
+              <div className="text-xs text-muted-foreground">Global r</div>
+            </div>
+            <div className="p-3 rounded-lg bg-muted border border-border text-center">
+              <div className="text-xl font-mono font-bold text-orange-400">{chimeraIndex.toFixed(3)}</div>
+              <div className="text-xs text-muted-foreground">Chimera σ</div>
+            </div>
+            <div className={`p-3 rounded-lg border text-center ${chimeraIndex > 0.15 ? 'bg-orange-500/20 border-orange-500/50' : 'bg-muted border-border'}`}>
+              <div className="text-xl font-mono font-bold">{chimeraIndex > 0.15 ? '🌓' : '⚪'}</div>
+              <div className="text-xs text-muted-foreground">{chimeraIndex > 0.15 ? 'Chimera!' : 'Coherent'}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="p-4 rounded-lg bg-card border border-border">
+            {state && <NetworkViz n={n} edges={edges} phases={state.phases} />}
+          </div>
+
+          {/* Local Order Heatmap */}
+          <div className="p-3 rounded-lg bg-muted border border-border">
+            <div className="text-sm font-medium mb-2">Local Order Parameters</div>
+            <div className="flex gap-0.5 h-4">
+              {localOrders.map((r, i) => (
+                <div
+                  key={i}
+                  className="flex-1 rounded-sm"
+                  style={{
+                    backgroundColor: r > 0.7 ? `hsla(270, 70%, 50%, ${r})` : `hsla(30, 80%, 50%, ${1 - r})`,
+                  }}
+                  title={`Node ${i}: r=${r.toFixed(3)}`}
+                />
+              ))}
+            </div>
+            <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+              <span>Desync (orange)</span>
+              <span>Sync (purple)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const KuramotoExamplesPage = () => {
   const networkCode = `// Create Watts-Strogatz small-world network
 const n = 30;  // number of nodes
@@ -393,6 +735,48 @@ const newState = stepKuramoto({ phases, naturalFreqs }, edges, coupling, dt);
 const { r, psi } = computeOrderParameter(newState.phases);
 console.log(\`Order parameter r = \${r}\`); // r → 1 means synchronized`;
 
+  const adaptiveCode = `import { AdaptiveKuramoto } from '@aleph-ai/tinyaleph';
+
+// Create adaptive Kuramoto model with Hebbian plasticity
+const model = new AdaptiveKuramoto({
+  n: 30,
+  baseCoupling: 1.5,
+  plasticityRate: 0.5,  // η in dKᵢⱼ/dt = η·cos(θⱼ - θᵢ)
+});
+
+// Run simulation
+for (let t = 0; t < 1000; t++) {
+  model.step(0.05);
+}
+
+console.log('Order parameter:', model.orderParameter);
+console.log('Average coupling:', model.averageCoupling);
+// Couplings strengthen between synchronized pairs`;
+
+  const sakaguchiCode = `import { SakaguchiKuramoto } from '@aleph-ai/tinyaleph';
+
+// Sakaguchi-Kuramoto with phase frustration
+const model = new SakaguchiKuramoto({
+  n: 50,
+  coupling: 2.0,
+  frustration: 0.4,  // α: phase lag in sin(θⱼ - θᵢ - α)
+});
+
+// Initialize with gradient to encourage chimera
+model.initGradient();
+
+// Run and detect chimera states
+for (let t = 0; t < 2000; t++) {
+  model.step(0.05);
+  
+  const localOrders = model.localOrderParameters;
+  const variance = std(localOrders);
+  
+  if (variance > 0.15) {
+    console.log(\`Chimera detected at t=\${t}!\`);
+  }
+}`;
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -408,45 +792,87 @@ console.log(\`Order parameter r = \${r}\`); // r → 1 means synchronized`;
           </Link>
 
           <div className="mb-12">
-            <h1 className="text-4xl font-display font-bold mb-4">Kuramoto Network Dynamics</h1>
+            <h1 className="text-4xl font-display font-bold mb-4">Advanced Kuramoto Models</h1>
             <p className="text-muted-foreground text-lg">
-              Explore Watts-Strogatz small-world networks with Kuramoto oscillator synchronization.
-              Adjust network topology and coupling strength to observe phase transitions.
+              Explore Watts-Strogatz networks with standard, adaptive (Hebbian), and 
+              Sakaguchi-Kuramoto dynamics for chimera state detection.
             </p>
           </div>
 
           <div className="space-y-12">
-            <div className="p-6 rounded-xl border border-border bg-card">
-              <KuramotoDemo />
-            </div>
+            {/* Standard Kuramoto */}
+            <section>
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">1</span>
+                Standard Kuramoto Network
+              </h2>
+              <div className="p-6 rounded-xl border border-border bg-card">
+                <KuramotoDemo />
+              </div>
+            </section>
 
-            <div>
-              <h3 className="font-display font-semibold text-lg mb-4">Network Generation</h3>
-              <CodeBlock code={networkCode} language="typescript" />
-            </div>
+            {/* Adaptive Kuramoto */}
+            <section>
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-lg bg-green-500/20 text-green-400 flex items-center justify-center font-mono text-sm">2</span>
+                Adaptive Kuramoto (Hebbian Plasticity)
+              </h2>
+              <div className="p-6 rounded-xl border border-border bg-card">
+                <AdaptiveKuramotoDemo />
+              </div>
+              <div className="mt-4">
+                <CodeBlock code={adaptiveCode} language="typescript" />
+              </div>
+            </section>
 
-            <div>
-              <h3 className="font-display font-semibold text-lg mb-4">Kuramoto Dynamics</h3>
-              <CodeBlock code={kuramotoCode} language="typescript" />
-            </div>
+            {/* Sakaguchi-Kuramoto */}
+            <section>
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center font-mono text-sm">3</span>
+                Sakaguchi-Kuramoto (Chimera States)
+              </h2>
+              <div className="p-6 rounded-xl border border-border bg-card">
+                <SakaguchiKuramotoDemo />
+              </div>
+              <div className="mt-4">
+                <CodeBlock code={sakaguchiCode} language="typescript" />
+              </div>
+            </section>
+
+            {/* Code Examples */}
+            <section>
+              <h2 className="text-xl font-semibold mb-4">Core Implementation</h2>
+              <div className="space-y-4">
+                <CodeBlock code={networkCode} language="typescript" title="network-generation.ts" />
+                <CodeBlock code={kuramotoCode} language="typescript" title="kuramoto-dynamics.ts" />
+              </div>
+            </section>
 
             <div className="p-6 rounded-xl border border-border bg-muted/30">
-              <h3 className="font-display font-semibold text-lg mb-4">Small-World Properties</h3>
-              <div className="grid md:grid-cols-2 gap-6 text-sm text-muted-foreground">
+              <h3 className="font-display font-semibold text-lg mb-4">Model Comparison</h3>
+              <div className="grid md:grid-cols-3 gap-6 text-sm text-muted-foreground">
                 <div>
-                  <h4 className="font-medium text-foreground mb-2">Rewiring Probability (p)</h4>
+                  <h4 className="font-medium text-foreground mb-2">Standard Kuramoto</h4>
                   <ul className="space-y-1">
-                    <li>• p = 0: Regular ring lattice (high clustering, long paths)</li>
-                    <li>• p ≈ 0.1: Small-world regime (high clustering, short paths)</li>
-                    <li>• p = 1: Random graph (low clustering, short paths)</li>
+                    <li>• Fixed coupling K</li>
+                    <li>• sin(θⱼ - θᵢ) interaction</li>
+                    <li>• Phase transition at Kc</li>
                   </ul>
                 </div>
                 <div>
-                  <h4 className="font-medium text-foreground mb-2">Order Parameter (r)</h4>
+                  <h4 className="font-medium text-green-400 mb-2">Adaptive (Hebbian)</h4>
                   <ul className="space-y-1">
-                    <li>• r → 0: Incoherent, phases uniformly distributed</li>
-                    <li>• r → 1: Synchronized, all oscillators in phase</li>
-                    <li>• Critical coupling Kc depends on network structure</li>
+                    <li>• Couplings evolve: dK/dt ∝ cos(Δθ)</li>
+                    <li>• Self-organizing synchronization</li>
+                    <li>• Memory of past interactions</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-medium text-purple-400 mb-2">Sakaguchi</h4>
+                  <ul className="space-y-1">
+                    <li>• Phase frustration α</li>
+                    <li>• sin(θⱼ - θᵢ - α) coupling</li>
+                    <li>• Chimera states possible</li>
                   </ul>
                 </div>
               </div>
