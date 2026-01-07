@@ -469,27 +469,36 @@ const MultiLayerDemo = () => {
             {/* Coherence Chart */}
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-sm font-medium mb-3">Coherence by Layer</p>
-              <div className="flex items-end gap-2 h-32">
-                {layers.map((layer, idx) => (
-                  <div key={idx} className="flex-1 flex flex-col items-center gap-1">
-                    <div 
-                      className={`
-                        w-full rounded-t transition-all duration-500
-                        ${layer.coherence >= coherenceThreshold 
-                          ? 'bg-green-500' 
-                          : 'bg-primary'
-                        }
-                      `}
-                      style={{ height: `${layer.coherence * 100}%` }}
-                    />
-                    <span className="text-xs text-muted-foreground">L{idx + 1}</span>
-                  </div>
-                ))}
+              <div className="relative h-40 flex items-end gap-2 bg-secondary/30 rounded p-2">
                 {/* Threshold line */}
                 <div 
-                  className="absolute left-0 right-0 border-t-2 border-dashed border-yellow-500"
+                  className="absolute left-0 right-0 border-t-2 border-dashed border-yellow-500 z-10 pointer-events-none"
                   style={{ bottom: `${coherenceThreshold * 100}%` }}
                 />
+                {layers.map((layer, idx) => {
+                  // Ensure coherence is visible (minimum 5% height for very small values)
+                  const displayHeight = Math.max(layer.coherence * 100, 5);
+                  return (
+                    <div key={idx} className="flex-1 flex flex-col items-center justify-end h-full">
+                      <div className="w-full flex flex-col items-center justify-end flex-1">
+                        <span className="text-[10px] font-mono text-muted-foreground mb-1">
+                          {layer.coherence.toFixed(2)}
+                        </span>
+                        <div 
+                          className={`
+                            w-full rounded-t transition-all duration-500 min-h-[4px]
+                            ${layer.coherence >= coherenceThreshold 
+                              ? 'bg-green-500' 
+                              : 'bg-primary'
+                            }
+                          `}
+                          style={{ height: `${displayHeight}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-muted-foreground mt-1">L{idx + 1}</span>
+                    </div>
+                  );
+                })}
               </div>
               <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
                 <span>Threshold: {coherenceThreshold.toFixed(2)}</span>
