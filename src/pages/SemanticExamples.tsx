@@ -1288,22 +1288,25 @@ const DimensionComparisonExample = () => {
                 </div>
                 
                 {/* Visual bar chart */}
-                <div className="flex gap-1 h-24 items-end">
+                <div className="flex gap-1 h-24 items-end bg-muted/30 rounded-lg p-2">
                   {d.components.map((v, i) => {
-                    const height = Math.min(100, Math.abs(v) * 50);
+                    // Normalize relative to max component value
+                    const maxVal = Math.max(...d.components.map(Math.abs), 0.001);
+                    const normalizedHeight = (Math.abs(v) / maxVal) * 100;
                     const isPositive = v >= 0;
                     const isDominant = i === d.dominantAxis.index;
                     return (
-                      <div key={i} className="flex-1 flex flex-col items-center">
+                      <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
                         <div 
-                          className="w-full rounded-t transition-all relative"
+                          className="w-full rounded-t transition-all"
                           style={{ 
-                            height: `${height}%`,
+                            height: `${Math.max(4, normalizedHeight)}%`,
                             backgroundColor: isDominant 
                               ? 'hsl(var(--primary))' 
                               : isPositive 
-                                ? 'hsl(var(--primary) / 0.4)' 
-                                : 'hsl(var(--destructive) / 0.4)',
+                                ? 'hsl(var(--primary) / 0.5)' 
+                                : 'hsl(var(--destructive) / 0.5)',
+                            minHeight: '4px',
                           }}
                         />
                         <span className="text-[10px] text-muted-foreground mt-1">
