@@ -965,15 +965,21 @@ const HypercomplexExample = () => {
     16: 'Sedenion'
   };
 
+  // Deterministic component generation based on dimension
+  const generateComponents = (seed: number, dim: number): number[] => {
+    return Array.from({ length: dim }, (_, i) => {
+      const h = Math.sin(seed * 9.8 + i * 7.3) * 43758.5453;
+      return Math.round((h - Math.floor(h)) * 200 - 100) / 100;
+    });
+  };
+
   const compute = useCallback(() => {
     try {
-      // Create two random hypercomplex numbers
-      const aComponents = Array.from({ length: dimension }, () => 
-        Math.round((Math.random() * 2 - 1) * 100) / 100
-      );
-      const bComponents = Array.from({ length: dimension }, () => 
-        Math.round((Math.random() * 2 - 1) * 100) / 100
-      );
+      // Create two deterministic hypercomplex numbers based on dimension
+      const seedA = dimension * 17 + 31;
+      const seedB = dimension * 23 + 47;
+      const aComponents = generateComponents(seedA, dimension);
+      const bComponents = generateComponents(seedB, dimension);
 
       // Try spread first (original API), fallback to manual operations
       let a: any, b: any;
@@ -1017,12 +1023,8 @@ const HypercomplexExample = () => {
     } catch (err) {
       console.error('Hypercomplex error:', err);
       // Provide fallback demo data
-      const aComponents = Array.from({ length: dimension }, () => 
-        Math.round((Math.random() * 2 - 1) * 100) / 100
-      );
-      const bComponents = Array.from({ length: dimension }, () => 
-        Math.round((Math.random() * 2 - 1) * 100) / 100
-      );
+      const aComponents = generateComponents(dimension * 17, dimension);
+      const bComponents = generateComponents(dimension * 23, dimension);
       const productComps = aComponents.map((c, i) => c * bComponents[i] - (bComponents[(i+1)%dimension] || 0) * aComponents[(i+1)%dimension]);
       
       setResult({

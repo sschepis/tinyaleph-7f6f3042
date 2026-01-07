@@ -42,30 +42,76 @@ const EngineExample = () => {
   );
 };
 
+// Deterministic hash for word similarity
+const wordHash = (word: string): number[] => {
+  const result: number[] = [];
+  for (let i = 0; i < 8; i++) {
+    let h = 0;
+    for (let j = 0; j < word.length; j++) {
+      h = ((h << 5) - h + word.charCodeAt(j) * (i + 1)) & 0xffffffff;
+    }
+    result.push((h % 1000) / 500 - 1);
+  }
+  return result;
+};
+
+const cosineSimilarity = (a: number[], b: number[]): number => {
+  const dot = a.reduce((sum, v, i) => sum + v * b[i], 0);
+  const magA = Math.sqrt(a.reduce((sum, v) => sum + v * v, 0));
+  const magB = Math.sqrt(b.reduce((sum, v) => sum + v * v, 0));
+  return dot / (magA * magB + 0.0001);
+};
+
 const AnalogyExample = () => {
   const [baseA, setBaseA] = useState('king');
   const [baseB, setBaseB] = useState('queen');
   const [targetA, setTargetA] = useState('man');
   const [result, setResult] = useState<string | null>(null);
+  const [scores, setScores] = useState<{word: string; score: number}[]>([]);
 
   const runAnalogy = useCallback(() => {
-    const candidates = ['woman', 'boy', 'girl', 'prince', 'princess'];
-    setResult(candidates[Math.floor(Math.random() * candidates.length)]);
-  }, []);
+    // Compute: baseB - baseA + targetA = ?
+    const vecA = wordHash(baseA);
+    const vecB = wordHash(baseB);
+    const vecTarget = wordHash(targetA);
+    
+    // Analogy vector: B - A + targetA
+    const analogyVec = vecA.map((v, i) => vecB[i] - v + vecTarget[i]);
+    
+    // Find best match from candidates
+    const candidates = ['woman', 'boy', 'girl', 'prince', 'princess', 'lady', 'lord', 'duke', 'duchess'];
+    const candidateScores = candidates.map(word => ({
+      word,
+      score: cosineSimilarity(analogyVec, wordHash(word))
+    })).sort((a, b) => b.score - a.score);
+    
+    setResult(candidateScores[0].word);
+    setScores(candidateScores.slice(0, 4));
+  }, [baseA, baseB, targetA]);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-4"><Brain className="w-5 h-5 text-primary" /><h3 className="font-semibold">Analogical Reasoning</h3></div>
       <div className="flex flex-wrap items-center gap-2">
-        <input value={baseA} onChange={(e) => setBaseA(e.target.value)} className="w-24 px-3 py-2 rounded-lg bg-secondary border border-border text-sm" />
+        <input value={baseA} onChange={(e) => { setBaseA(e.target.value); setResult(null); }} className="w-24 px-3 py-2 rounded-lg bg-secondary border border-border text-sm" />
         <span>:</span>
-        <input value={baseB} onChange={(e) => setBaseB(e.target.value)} className="w-24 px-3 py-2 rounded-lg bg-secondary border border-border text-sm" />
+        <input value={baseB} onChange={(e) => { setBaseB(e.target.value); setResult(null); }} className="w-24 px-3 py-2 rounded-lg bg-secondary border border-border text-sm" />
         <span>::</span>
-        <input value={targetA} onChange={(e) => setTargetA(e.target.value)} className="w-24 px-3 py-2 rounded-lg bg-secondary border border-border text-sm" />
+        <input value={targetA} onChange={(e) => { setTargetA(e.target.value); setResult(null); }} className="w-24 px-3 py-2 rounded-lg bg-secondary border border-border text-sm" />
         <span>:</span>
         <span className="px-3 py-2 rounded-lg bg-primary/20 text-primary font-semibold">{result || '?'}</span>
         <button onClick={runAnalogy} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground"><Play className="w-4 h-4" /></button>
       </div>
+      {scores.length > 0 && (
+        <div className="flex gap-2 flex-wrap">
+          <span className="text-xs text-muted-foreground">Top matches:</span>
+          {scores.map(({ word, score }) => (
+            <span key={word} className="text-xs px-2 py-1 rounded bg-muted/50">
+              {word} <span className="text-muted-foreground">({(score * 100).toFixed(0)}%)</span>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
