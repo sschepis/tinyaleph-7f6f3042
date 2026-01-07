@@ -1,12 +1,229 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Play, ArrowRight, GitCompare, Layers, Tag, Combine, Box, BarChart3, Workflow, Plus, X, RotateCcw } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Play, ArrowRight, GitCompare, Layers, Tag, Combine, Box, BarChart3, Workflow, Plus, X, RotateCcw, ChevronLeft, ChevronRight, Circle, ArrowLeft } from 'lucide-react';
 import CodeBlock from '../components/CodeBlock';
 import SedenionVisualizer from '../components/SedenionVisualizer';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   SemanticBackend,
   Hypercomplex,
 } from '@aleph-ai/tinyaleph';
 import { minimalConfig } from '@/lib/tinyaleph-config';
+
+// Example metadata with descriptions
+const examplesMeta = [
+  {
+    id: 'vocabulary',
+    number: '01',
+    title: 'Vocabulary Building',
+    subtitle: 'Define Words with Prime Signatures',
+    description: 'Explore how words are encoded as prime number signatures. Each word in the vocabulary is represented by a unique combination of prime numbers, creating a mathematical foundation for semantic computation.',
+    concepts: ['Prime Encoding', 'Vocabulary', 'Ontology', 'State Entropy'],
+    code: `import { SemanticBackend } from '@aleph-ai/tinyaleph';
+import config from '@aleph-ai/tinyaleph/data.json';
+
+const backend = new SemanticBackend(config);
+
+// Check vocabulary
+console.log('Has "love":', backend.hasWord('love'));
+console.log('Love primes:', backend.getWordPrimes('love'));
+
+// Encode to primes
+const primes = backend.encode('wisdom');
+console.log('Primes:', primes);
+
+// Convert to state vector
+const state = backend.primesToState(primes);
+console.log('Entropy:', state.entropy());
+
+// Learn new words
+backend.learn('serendipity', [2, 29, 53]);`,
+  },
+  {
+    id: 'similarity',
+    number: '02',
+    title: 'Semantic Similarity',
+    subtitle: 'Compare Concepts for Meaning',
+    description: 'Measure how semantically related two concepts are using hypercomplex coherence. Similar meanings produce high coherence scores, while unrelated concepts score low.',
+    concepts: ['Coherence', 'Similarity', 'State Comparison'],
+    code: `import { SemanticBackend } from '@aleph-ai/tinyaleph';
+
+const backend = new SemanticBackend(config);
+
+function similarity(text1, text2) {
+  const state1 = backend.primesToState(backend.encode(text1));
+  const state2 = backend.primesToState(backend.encode(text2));
+  return state1.coherence(state2);
+}
+
+console.log('love vs affection:', similarity('love', 'affection'));
+console.log('love vs hatred:', similarity('love', 'hatred'));
+console.log('wisdom vs knowledge:', similarity('wisdom', 'knowledge'));`,
+  },
+  {
+    id: 'word-order',
+    number: '03',
+    title: 'Non-Commutativity',
+    subtitle: 'Word Order Matters',
+    description: 'Demonstrate that "dog bites man" ≠ "man bites dog" through non-commutative hypercomplex multiplication. The order of words affects the final semantic state.',
+    concepts: ['Non-Commutativity', 'Word Order', 'Multiplication'],
+    code: `import { SemanticBackend } from '@aleph-ai/tinyaleph';
+
+const backend = new SemanticBackend(config);
+
+// Ordered encoding preserves word order through
+// non-commutative hypercomplex multiplication
+
+const tokens1 = backend.encodeOrdered('dog bites man');
+const tokens2 = backend.encodeOrdered('man bites dog');
+
+const state1 = backend.orderedPrimesToState(tokens1);
+const state2 = backend.orderedPrimesToState(tokens2);
+
+// Different order → different state!
+console.log('Coherence:', state1.coherence(state2));
+// Should be < 1.0 because order matters`,
+  },
+  {
+    id: 'clustering',
+    number: '04',
+    title: 'Concept Clustering',
+    subtitle: 'Group Related Concepts',
+    description: 'Automatically group words by semantic similarity. Related concepts like "love" and "affection" cluster together while unrelated concepts form separate groups.',
+    concepts: ['Clustering', 'Similarity Threshold', 'Semantic Groups'],
+    code: `import { SemanticBackend } from '@aleph-ai/tinyaleph';
+
+const backend = new SemanticBackend(config);
+
+const words = ['love', 'affection', 'truth', 'honesty', 'cat', 'dog'];
+
+// Get states for all words
+const states = words.map(w => ({
+  word: w,
+  state: backend.primesToState(backend.encode(w))
+}));
+
+// Cluster by coherence threshold
+const clusters = clusterBySimilarity(states, 0.5);
+console.log(clusters);`,
+  },
+  {
+    id: 'prime-signature',
+    number: '05',
+    title: 'Prime Signature Analysis',
+    subtitle: 'Decompose Text to Primes',
+    description: 'Analyze how phrases decompose into their constituent prime signatures. See the frequency distribution of primes and calculate unique vs total prime counts.',
+    concepts: ['Prime Decomposition', 'Frequency Analysis', 'Unique Primes'],
+    code: `import { SemanticBackend } from '@aleph-ai/tinyaleph';
+
+const backend = new SemanticBackend(config);
+const phrase = 'the quick brown fox jumps over the lazy dog';
+
+const primes = backend.encode(phrase);
+console.log('Total primes:', primes.length);
+console.log('Unique primes:', new Set(primes).size);
+
+// Frequency analysis
+const freq = {};
+primes.forEach(p => freq[p] = (freq[p] || 0) + 1);
+console.log('Prime frequencies:', freq);`,
+  },
+  {
+    id: 'hypercomplex',
+    number: '06',
+    title: 'Hypercomplex Operations',
+    subtitle: 'Quaternion, Octonion, Sedenion',
+    description: 'Explore the algebra of higher-dimensional hypercomplex numbers. See how dimensions 4, 8, and 16 create increasingly rich spaces for semantic representation.',
+    concepts: ['Quaternion', 'Octonion', 'Sedenion', 'Dimensionality'],
+    code: `import { Hypercomplex } from '@aleph-ai/tinyaleph';
+
+// Create states in different dimensions
+const q = new Hypercomplex(4);   // Quaternion
+const o = new Hypercomplex(8);   // Octonion  
+const s = new Hypercomplex(16);  // Sedenion
+
+// Non-commutative multiplication
+const a = new Hypercomplex(8);
+a.c[1] = 1;
+const b = new Hypercomplex(8);
+b.c[2] = 1;
+
+const ab = a.multiply(b);
+const ba = b.multiply(a);
+// ab ≠ ba in octonion algebra!`,
+  },
+  {
+    id: 'composition',
+    number: '07',
+    title: 'State Composition',
+    subtitle: 'Add, Scale, Multiply States',
+    description: 'Combine semantic states through addition, scaling, and multiplication. Track how entropy and coherence evolve as you chain operations together.',
+    concepts: ['Addition', 'Scaling', 'Multiplication', 'Entropy'],
+    code: `import { SemanticBackend } from '@aleph-ai/tinyaleph';
+
+const backend = new SemanticBackend(config);
+
+let state = backend.primesToState(backend.encode('love'));
+
+// Add another concept
+state = state.add(backend.primesToState(backend.encode('wisdom')));
+console.log('After add:', state.entropy());
+
+// Scale by factor
+state = state.scale(0.5);
+console.log('After scale:', state.entropy());
+
+// Multiply with another state
+state = state.multiply(backend.primesToState(backend.encode('truth')));
+console.log('Final entropy:', state.entropy());`,
+  },
+  {
+    id: 'dimension-comparison',
+    number: '08',
+    title: 'Dimension Comparison',
+    subtitle: 'Compare 4D, 8D, 16D Encodings',
+    description: 'See how the same word encodes differently across hypercomplex dimensions. Higher dimensions capture more nuance but require more computation.',
+    concepts: ['Dimensionality', '4D vs 8D vs 16D', 'Encoding Richness'],
+    code: `import { SemanticBackend, Hypercomplex } from '@aleph-ai/tinyaleph';
+
+const backend = new SemanticBackend(config);
+
+const word = 'wisdom';
+const primes = backend.encode(word);
+
+// Encode in different dimensions
+const state4D = backend.primesToState(primes, 4);
+const state8D = backend.primesToState(primes, 8);
+const state16D = backend.primesToState(primes, 16);
+
+console.log('4D entropy:', state4D.entropy());
+console.log('8D entropy:', state8D.entropy());
+console.log('16D entropy:', state16D.entropy());`,
+  },
+  {
+    id: 'expression-builder',
+    number: '09',
+    title: 'Expression Builder',
+    subtitle: 'Chain Semantic Operations',
+    description: 'Build complex semantic expressions by chaining operations step by step. Watch the state evolve as you apply each transformation.',
+    concepts: ['Expression Chains', 'Step-by-Step', 'State Evolution'],
+    code: `import { SemanticBackend } from '@aleph-ai/tinyaleph';
+
+const backend = new SemanticBackend(config);
+
+// Build complex expression
+let state = backend.primesToState(backend.encode('love'));
+state = state.add(backend.primesToState(backend.encode('wisdom')));
+state = state.multiply(backend.primesToState(backend.encode('truth')));
+state = state.scale(0.5);
+
+console.log('Final entropy:', state.entropy());
+console.log('Final norm:', state.norm());`,
+  },
+];
 
 // Example 1: Vocabulary Building
 const VocabularyExample = () => {
@@ -1690,27 +1907,189 @@ console.log('Final norm:', state.norm());`}
     </div>
   );
 };
+// Map example IDs to components (without CodeBlock - that's handled by wrapper)
+const VocabularyExampleDemo = () => {
+  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [word, setWord] = useState('wisdom');
+  const [wordInfo, setWordInfo] = useState<{ exists: boolean; primes: number[]; state: number[]; entropy: number } | null>(null);
+
+  const safeComponents = (state: any): number[] => {
+    const c = state?.c || state?.components || [];
+    if (!Array.isArray(c)) return Array(16).fill(0);
+    return c.slice(0, 16).map((val: number) => Number.isFinite(Number(val)) ? Math.abs(Number(val)) : 0);
+  };
+
+  const lookup = useCallback(() => {
+    const exists = backend.hasWord?.(word) ?? true;
+    const primes = backend.encode(word);
+    const state = backend.primesToState(primes);
+    const entropy = state.entropy();
+    setWordInfo({ exists, primes, state: safeComponents(state), entropy: Number.isFinite(entropy) ? entropy : 0 });
+  }, [word, backend]);
+
+  const sampleWords = ['love', 'wisdom', 'truth', 'beauty', 'justice', 'freedom'];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2 mb-4">
+        <input type="text" value={word} onChange={(e) => setWord(e.target.value)}
+          className="flex-1 px-4 py-2 rounded-lg bg-secondary border border-border text-foreground" placeholder="Enter a word..." />
+        <Button onClick={lookup} className="gap-2"><Play className="w-4 h-4" /> Lookup</Button>
+      </div>
+      <div className="flex flex-wrap gap-2 mb-4">
+        {sampleWords.map(w => (
+          <button key={w} onClick={() => setWord(w)} className="px-3 py-1 rounded-full text-sm bg-muted hover:bg-primary/20 transition-colors">{w}</button>
+        ))}
+      </div>
+      {wordInfo && (
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-3">
+            <div className="p-4 rounded-lg bg-muted/50">
+              <p className="text-xs text-muted-foreground mb-1">Prime Signature</p>
+              <div className="flex flex-wrap gap-1">
+                {wordInfo.primes.slice(0, 12).map((p, i) => (
+                  <span key={i} className="px-2 py-0.5 rounded bg-primary/20 text-primary font-mono text-xs">{p}</span>
+                ))}
+                {wordInfo.primes.length > 12 && <span className="text-muted-foreground text-xs">...</span>}
+              </div>
+            </div>
+            <div className="p-4 rounded-lg bg-muted/50">
+              <p className="text-xs text-muted-foreground mb-1">State Entropy</p>
+              <p className="font-mono text-xl text-primary">{wordInfo.entropy.toFixed(4)} bits</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-center p-4 rounded-lg bg-muted/30">
+            <SedenionVisualizer components={wordInfo.state} size="md" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Map example IDs to their component implementations
+const exampleComponents: Record<string, React.FC> = {
+  'vocabulary': VocabularyExampleDemo,
+  'similarity': () => <SimilarityExample />,
+  'word-order': () => <WordOrderExample />,
+  'clustering': () => <ClusteringExample />,
+  'prime-signature': () => <PrimeSignatureExample />,
+  'hypercomplex': () => <HypercomplexExample />,
+  'composition': () => <StateCompositionExample />,
+  'dimension-comparison': () => <DimensionComparisonExample />,
+  'expression-builder': () => <ExpressionBuilderExample />,
+};
+
 const SemanticExamplesPage = () => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const currentExample = examplesMeta[currentIndex];
+  const ExampleComponent = exampleComponents[currentExample.id];
+
+  const goToPrevious = () => setCurrentIndex((prev) => (prev === 0 ? examplesMeta.length - 1 : prev - 1));
+  const goToNext = () => setCurrentIndex((prev) => (prev === examplesMeta.length - 1 ? 0 : prev + 1));
+
   return (
     <div className="pt-20">
       <div className="max-w-5xl mx-auto px-4 py-12">
+        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-display font-bold mt-4 mb-2">Semantic Computing Examples</h1>
-          <p className="text-muted-foreground">
-            Natural language processing and concept mapping using prime semantics.
-          </p>
+          <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary mb-4 transition-colors">
+            <ArrowLeft className="w-4 h-4" /> Back to Examples
+          </Link>
+          <Badge variant="outline" className="mb-2">Semantic Computing</Badge>
+          <h1 className="text-3xl font-display font-bold mb-2">Semantic Examples</h1>
+          <p className="text-muted-foreground">Natural language processing and concept mapping using prime semantics.</p>
         </div>
 
-        <div className="space-y-12">
-          <VocabularyExample />
-          <SimilarityExample />
-          <WordOrderExample />
-          <ClusteringExample />
-          <PrimeSignatureExample />
-          <HypercomplexExample />
-          <StateCompositionExample />
-          <DimensionComparisonExample />
-          <ExpressionBuilderExample />
+        {/* Navigation Pills */}
+        <div className="flex items-center justify-center gap-2 mb-8 flex-wrap">
+          {examplesMeta.map((example, index) => (
+            <button key={example.id} onClick={() => setCurrentIndex(index)}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                index === currentIndex ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground'
+              }`}>
+              {example.number}
+            </button>
+          ))}
+        </div>
+
+        {/* Example Content */}
+        <AnimatePresence mode="wait">
+          <motion.div key={currentExample.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
+            <Card className="mb-6 overflow-hidden">
+              <div className="bg-gradient-to-r from-primary/10 to-purple-500/10 px-6 py-4 border-b border-border">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
+                    <span className="text-primary font-bold text-lg">{currentExample.number}</span>
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold">{currentExample.title}</h2>
+                    <p className="text-sm text-muted-foreground">{currentExample.subtitle}</p>
+                  </div>
+                </div>
+              </div>
+              <CardContent className="pt-4">
+                <p className="text-muted-foreground leading-relaxed mb-4">{currentExample.description}</p>
+                <div className="flex flex-wrap gap-2">
+                  {currentExample.concepts.map((concept) => (
+                    <Badge key={concept} variant="secondary">{concept}</Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="mb-6">
+              <div className="px-6 py-3 border-b border-border bg-muted/30">
+                <h3 className="font-semibold text-sm">Interactive Demo</h3>
+              </div>
+              <CardContent className="pt-6">
+                <ExampleComponent />
+              </CardContent>
+            </Card>
+
+            <CodeBlock code={currentExample.code} language="javascript" title={`semantic/${currentExample.number}-${currentExample.id}.js`} />
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Bottom Navigation */}
+        <div className="flex items-center justify-between pt-6 border-t border-border mt-8">
+          <Button variant="outline" onClick={goToPrevious} className="gap-2">
+            <ChevronLeft className="w-4 h-4" /> Previous
+          </Button>
+          <div className="flex items-center gap-2">
+            {examplesMeta.map((_, index) => (
+              <button key={index} onClick={() => setCurrentIndex(index)} className="p-1">
+                <Circle className={`w-2 h-2 transition-colors ${index === currentIndex ? 'fill-primary text-primary' : 'fill-muted text-muted'}`} />
+              </button>
+            ))}
+          </div>
+          <Button variant="outline" onClick={goToNext} className="gap-2">
+            Next <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+
+        {/* Section Navigation */}
+        <div className="mt-12 pt-8 border-t border-border">
+          <div className="flex items-center justify-between">
+            <Link to="/quickstart">
+              <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground">
+                <ArrowLeft className="w-4 h-4" />
+                <div className="text-left">
+                  <div className="text-xs text-muted-foreground">Previous Section</div>
+                  <div className="font-medium">Quickstart</div>
+                </div>
+              </Button>
+            </Link>
+            <Link to="/crypto">
+              <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground">
+                <div className="text-right">
+                  <div className="text-xs text-muted-foreground">Next Section</div>
+                  <div className="font-medium">Cryptography</div>
+                </div>
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     </div>
