@@ -34,7 +34,6 @@ const navGroups = [
     items: [
       { id: 'backends', label: 'Backends', path: '/backends' },
       { id: 'engine', label: 'Engine', path: '/engine' },
-      { id: 'api', label: 'API', path: '/api' },
     ],
   },
   {
