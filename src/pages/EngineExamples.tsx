@@ -696,107 +696,178 @@ const InferenceDemo = () => {
   );
 };
 
-// Syllogistic Reasoning Demo
+// Syllogistic Reasoning Demo with Modus Ponens/Tollens
+type LogicForm = 'syllogism' | 'modus_ponens' | 'modus_tollens';
+
 const SyllogismDemo = () => {
+  const [logicForm, setLogicForm] = useState<LogicForm>('syllogism');
   const [syllogism, setSyllogism] = useState({
     majorPremise: { quantifier: 'All', subject: 'humans', predicate: 'mortal' },
     minorPremise: { quantifier: '', subject: 'Socrates', predicate: 'human' },
     conclusion: { quantifier: '', subject: 'Socrates', predicate: 'mortal' }
   });
+  const [modusPonens, setModusPonens] = useState({
+    conditional: { antecedent: 'rain', consequent: 'wet' },
+    assertion: 'rain',
+    conclusion: 'wet'
+  });
+  const [modusTollens, setModusTollens] = useState({
+    conditional: { antecedent: 'fire', consequent: 'smoke' },
+    negation: 'smoke',
+    conclusion: 'fire'
+  });
   const [result, setResult] = useState<{
     valid: boolean;
     confidence: number;
     reasoning: string[];
-    middleTermStrength: number;
+    keyStrength: number;
+    formName: string;
   } | null>(null);
 
   const backend = useMemo(() => new SemanticBackend(minimalConfig), []);
 
-  const validateSyllogism = useCallback(() => {
-    // Encode all terms
-    const majorSubject = backend.encode(syllogism.majorPremise.subject);
-    const majorPredicate = backend.encode(syllogism.majorPremise.predicate);
-    const minorSubject = backend.encode(syllogism.minorPremise.subject);
-    const minorPredicate = backend.encode(syllogism.minorPremise.predicate);
-    const conclusionSubject = backend.encode(syllogism.conclusion.subject);
-    const conclusionPredicate = backend.encode(syllogism.conclusion.predicate);
-
-    // Convert to states
-    const majorSubjectState = safeComponents(backend.primesToState(majorSubject));
-    const majorPredicateState = safeComponents(backend.primesToState(majorPredicate));
-    const minorSubjectState = safeComponents(backend.primesToState(minorSubject));
-    const minorPredicateState = safeComponents(backend.primesToState(minorPredicate));
-    const conclusionSubjectState = safeComponents(backend.primesToState(conclusionSubject));
-    const conclusionPredicateState = safeComponents(backend.primesToState(conclusionPredicate));
-
+  const validateLogic = useCallback(() => {
     const reasoning: string[] = [];
+    let valid = false;
+    let confidence = 0;
+    let keyStrength = 0;
+    let formName = '';
 
-    // Check middle term connection (major subject ↔ minor predicate)
-    const middleTermCoherence = computeCoherence(majorSubjectState, minorPredicateState);
-    reasoning.push(`Middle term coherence: "${syllogism.majorPremise.subject}" ↔ "${syllogism.minorPremise.predicate}" = ${(middleTermCoherence * 100).toFixed(0)}%`);
+    if (logicForm === 'syllogism') {
+      formName = 'Syllogism';
+      const majorSubjectState = safeComponents(backend.primesToState(backend.encode(syllogism.majorPremise.subject)));
+      const majorPredicateState = safeComponents(backend.primesToState(backend.encode(syllogism.majorPremise.predicate)));
+      const minorSubjectState = safeComponents(backend.primesToState(backend.encode(syllogism.minorPremise.subject)));
+      const minorPredicateState = safeComponents(backend.primesToState(backend.encode(syllogism.minorPremise.predicate)));
+      const conclusionSubjectState = safeComponents(backend.primesToState(backend.encode(syllogism.conclusion.subject)));
+      const conclusionPredicateState = safeComponents(backend.primesToState(backend.encode(syllogism.conclusion.predicate)));
 
-    // Check if conclusion subject matches minor subject
-    const subjectMatch = computeCoherence(conclusionSubjectState, minorSubjectState);
-    reasoning.push(`Subject preservation: "${syllogism.conclusion.subject}" ↔ "${syllogism.minorPremise.subject}" = ${(subjectMatch * 100).toFixed(0)}%`);
+      const middleTermCoherence = computeCoherence(majorSubjectState, minorPredicateState);
+      reasoning.push(`Middle term: "${syllogism.majorPremise.subject}" ↔ "${syllogism.minorPremise.predicate}" = ${(middleTermCoherence * 100).toFixed(0)}%`);
 
-    // Check if conclusion predicate matches major predicate
-    const predicateMatch = computeCoherence(conclusionPredicateState, majorPredicateState);
-    reasoning.push(`Predicate transfer: "${syllogism.conclusion.predicate}" ↔ "${syllogism.majorPremise.predicate}" = ${(predicateMatch * 100).toFixed(0)}%`);
+      const subjectMatch = computeCoherence(conclusionSubjectState, minorSubjectState);
+      const predicateMatch = computeCoherence(conclusionPredicateState, majorPredicateState);
+      reasoning.push(`Subject preservation: ${(subjectMatch * 100).toFixed(0)}% | Predicate transfer: ${(predicateMatch * 100).toFixed(0)}%`);
 
-    // Syllogism is valid if middle term connects and conclusion follows
-    const overallConfidence = (middleTermCoherence * 0.4 + subjectMatch * 0.3 + predicateMatch * 0.3);
-    const valid = middleTermCoherence > 0.3 && subjectMatch > 0.5 && predicateMatch > 0.5;
+      keyStrength = middleTermCoherence;
+      confidence = (middleTermCoherence * 0.4 + subjectMatch * 0.3 + predicateMatch * 0.3);
+      valid = middleTermCoherence > 0.3 && subjectMatch > 0.5 && predicateMatch > 0.5;
+
+    } else if (logicForm === 'modus_ponens') {
+      formName = 'Modus Ponens (P → Q, P ⊢ Q)';
+      const antecedentState = safeComponents(backend.primesToState(backend.encode(modusPonens.conditional.antecedent)));
+      const consequentState = safeComponents(backend.primesToState(backend.encode(modusPonens.conditional.consequent)));
+      const assertionState = safeComponents(backend.primesToState(backend.encode(modusPonens.assertion)));
+      const conclusionState = safeComponents(backend.primesToState(backend.encode(modusPonens.conclusion)));
+
+      // Check if assertion matches antecedent
+      const assertionMatch = computeCoherence(assertionState, antecedentState);
+      reasoning.push(`Assertion matches antecedent: "${modusPonens.assertion}" ↔ "${modusPonens.conditional.antecedent}" = ${(assertionMatch * 100).toFixed(0)}%`);
+
+      // Check if conclusion matches consequent
+      const conclusionMatch = computeCoherence(conclusionState, consequentState);
+      reasoning.push(`Conclusion matches consequent: "${modusPonens.conclusion}" ↔ "${modusPonens.conditional.consequent}" = ${(conclusionMatch * 100).toFixed(0)}%`);
+
+      // Check implication strength
+      const implicationStrength = computeCoherence(antecedentState, consequentState);
+      reasoning.push(`Implication strength: "${modusPonens.conditional.antecedent}" → "${modusPonens.conditional.consequent}" = ${(implicationStrength * 100).toFixed(0)}%`);
+
+      keyStrength = assertionMatch;
+      confidence = (assertionMatch * 0.4 + conclusionMatch * 0.4 + implicationStrength * 0.2);
+      valid = assertionMatch > 0.5 && conclusionMatch > 0.5;
+
+    } else if (logicForm === 'modus_tollens') {
+      formName = 'Modus Tollens (P → Q, ¬Q ⊢ ¬P)';
+      const antecedentState = safeComponents(backend.primesToState(backend.encode(modusTollens.conditional.antecedent)));
+      const consequentState = safeComponents(backend.primesToState(backend.encode(modusTollens.conditional.consequent)));
+      const negationState = safeComponents(backend.primesToState(backend.encode(modusTollens.negation)));
+      const conclusionState = safeComponents(backend.primesToState(backend.encode(modusTollens.conclusion)));
+
+      // Check if negation relates to consequent (semantic opposition or negation)
+      const negationMatch = computeCoherence(negationState, consequentState);
+      reasoning.push(`Negation targets consequent: "¬${modusTollens.negation}" relates to "${modusTollens.conditional.consequent}" = ${(negationMatch * 100).toFixed(0)}%`);
+
+      // Check if conclusion relates to antecedent
+      const conclusionMatch = computeCoherence(conclusionState, antecedentState);
+      reasoning.push(`Conclusion targets antecedent: "¬${modusTollens.conclusion}" relates to "${modusTollens.conditional.antecedent}" = ${(conclusionMatch * 100).toFixed(0)}%`);
+
+      // For valid modus tollens, negation should match consequent and conclusion should match antecedent
+      keyStrength = negationMatch;
+      confidence = (negationMatch * 0.5 + conclusionMatch * 0.5);
+      valid = negationMatch > 0.4 && conclusionMatch > 0.4;
+
+      reasoning.push(`If ${modusTollens.conditional.antecedent} → ${modusTollens.conditional.consequent}, and ¬${modusTollens.negation}, then ¬${modusTollens.conclusion}`);
+    }
 
     if (valid) {
-      reasoning.push(`✓ Valid syllogism: ${syllogism.minorPremise.subject} inherits "${syllogism.majorPremise.predicate}" through "${syllogism.majorPremise.subject}"`);
+      reasoning.push(`✓ Valid ${formName}: logical structure preserved`);
     } else {
-      reasoning.push(`✗ Invalid: Weak semantic connection in logical chain`);
+      reasoning.push(`✗ Invalid: semantic connections too weak for valid inference`);
     }
 
-    setResult({
-      valid,
-      confidence: overallConfidence,
-      reasoning,
-      middleTermStrength: middleTermCoherence
-    });
-  }, [syllogism, backend]);
+    setResult({ valid, confidence, reasoning, keyStrength, formName });
+  }, [logicForm, syllogism, modusPonens, modusTollens, backend]);
 
-  const presets = [
-    {
-      name: 'Classic Mortality',
-      major: { quantifier: 'All', subject: 'humans', predicate: 'mortal' },
-      minor: { quantifier: '', subject: 'Socrates', predicate: 'human' },
-      conclusion: { quantifier: '', subject: 'Socrates', predicate: 'mortal' }
-    },
-    {
-      name: 'Knowledge Chain',
-      major: { quantifier: 'All', subject: 'wisdom', predicate: 'knowledge' },
-      minor: { quantifier: '', subject: 'philosophy', predicate: 'wisdom' },
-      conclusion: { quantifier: '', subject: 'philosophy', predicate: 'knowledge' }
-    },
-    {
-      name: 'Invalid Example',
-      major: { quantifier: 'All', subject: 'cats', predicate: 'animals' },
-      minor: { quantifier: '', subject: 'dogs', predicate: 'animals' },
-      conclusion: { quantifier: '', subject: 'dogs', predicate: 'cats' }
-    }
-  ];
+  const presets: Record<LogicForm, { name: string; data: any }[]> = {
+    syllogism: [
+      { name: 'Mortality', data: { majorPremise: { quantifier: 'All', subject: 'humans', predicate: 'mortal' }, minorPremise: { quantifier: '', subject: 'Socrates', predicate: 'human' }, conclusion: { quantifier: '', subject: 'Socrates', predicate: 'mortal' } } },
+      { name: 'Knowledge', data: { majorPremise: { quantifier: 'All', subject: 'wisdom', predicate: 'knowledge' }, minorPremise: { quantifier: '', subject: 'philosophy', predicate: 'wisdom' }, conclusion: { quantifier: '', subject: 'philosophy', predicate: 'knowledge' } } },
+      { name: 'Invalid', data: { majorPremise: { quantifier: 'All', subject: 'cats', predicate: 'animals' }, minorPremise: { quantifier: '', subject: 'dogs', predicate: 'animals' }, conclusion: { quantifier: '', subject: 'dogs', predicate: 'cats' } } }
+    ],
+    modus_ponens: [
+      { name: 'Rain→Wet', data: { conditional: { antecedent: 'rain', consequent: 'wet' }, assertion: 'rain', conclusion: 'wet' } },
+      { name: 'Study→Pass', data: { conditional: { antecedent: 'study', consequent: 'success' }, assertion: 'study', conclusion: 'success' } },
+      { name: 'Fire→Heat', data: { conditional: { antecedent: 'fire', consequent: 'heat' }, assertion: 'fire', conclusion: 'heat' } }
+    ],
+    modus_tollens: [
+      { name: '¬Smoke→¬Fire', data: { conditional: { antecedent: 'fire', consequent: 'smoke' }, negation: 'smoke', conclusion: 'fire' } },
+      { name: '¬Wet→¬Rain', data: { conditional: { antecedent: 'rain', consequent: 'wet' }, negation: 'wet', conclusion: 'rain' } },
+      { name: '¬Knowledge→¬Study', data: { conditional: { antecedent: 'learning', consequent: 'knowledge' }, negation: 'knowledge', conclusion: 'learning' } }
+    ]
+  };
 
   return (
     <div className="p-6 rounded-xl border border-border bg-card">
       <div className="flex items-center gap-2 mb-4">
         <BookOpen className="w-5 h-5 text-primary" />
-        <h3 className="text-lg font-semibold">Syllogistic Reasoning</h3>
+        <h3 className="text-lg font-semibold">Formal Logic Validation</h3>
       </div>
       <p className="text-sm text-muted-foreground mb-4">
-        Validate classical syllogisms using semantic coherence analysis.
+        Validate syllogisms, modus ponens, and modus tollens using semantic analysis.
       </p>
 
+      {/* Logic Form Selector */}
+      <div className="flex gap-2 mb-4">
+        {[
+          { id: 'syllogism', label: 'Syllogism', desc: 'All A are B, C is A ⊢ C is B' },
+          { id: 'modus_ponens', label: 'Modus Ponens', desc: 'P → Q, P ⊢ Q' },
+          { id: 'modus_tollens', label: 'Modus Tollens', desc: 'P → Q, ¬Q ⊢ ¬P' }
+        ].map(form => (
+          <button
+            key={form.id}
+            onClick={() => { setLogicForm(form.id as LogicForm); setResult(null); }}
+            className={`flex-1 p-3 rounded-lg border text-left transition-colors ${
+              logicForm === form.id 
+                ? 'bg-primary/10 border-primary text-primary' 
+                : 'bg-muted/50 border-border hover:bg-muted'
+            }`}
+          >
+            <p className="font-medium text-sm">{form.label}</p>
+            <p className="text-xs text-muted-foreground font-mono">{form.desc}</p>
+          </button>
+        ))}
+      </div>
+
+      {/* Presets */}
       <div className="flex flex-wrap gap-2 mb-4">
-        {presets.map((preset) => (
+        {presets[logicForm].map((preset) => (
           <button
             key={preset.name}
-            onClick={() => setSyllogism({ majorPremise: preset.major, minorPremise: preset.minor, conclusion: preset.conclusion })}
+            onClick={() => {
+              if (logicForm === 'syllogism') setSyllogism(preset.data);
+              else if (logicForm === 'modus_ponens') setModusPonens(preset.data);
+              else setModusTollens(preset.data);
+            }}
             className="px-3 py-1 rounded-full text-xs bg-muted hover:bg-primary/20 transition-colors"
           >
             {preset.name}
@@ -804,105 +875,115 @@ const SyllogismDemo = () => {
         ))}
       </div>
 
-      <div className="space-y-3 mb-4">
-        {/* Major Premise */}
-        <div className="p-3 rounded-lg bg-muted/50">
-          <p className="text-xs text-muted-foreground mb-2">Major Premise</p>
-          <div className="flex items-center gap-2 flex-wrap">
-            <select
-              value={syllogism.majorPremise.quantifier}
-              onChange={(e) => setSyllogism({ ...syllogism, majorPremise: { ...syllogism.majorPremise, quantifier: e.target.value } })}
-              className="px-2 py-1 rounded bg-secondary border border-border text-sm"
-            >
-              <option value="All">All</option>
-              <option value="Some">Some</option>
-              <option value="No">No</option>
-            </select>
-            <input
-              value={syllogism.majorPremise.subject}
-              onChange={(e) => setSyllogism({ ...syllogism, majorPremise: { ...syllogism.majorPremise, subject: e.target.value } })}
-              className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm"
-              placeholder="A"
-            />
-            <span className="text-muted-foreground">are</span>
-            <input
-              value={syllogism.majorPremise.predicate}
-              onChange={(e) => setSyllogism({ ...syllogism, majorPremise: { ...syllogism.majorPremise, predicate: e.target.value } })}
-              className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm"
-              placeholder="B"
-            />
+      {/* Syllogism Form */}
+      {logicForm === 'syllogism' && (
+        <div className="space-y-3 mb-4">
+          <div className="p-3 rounded-lg bg-muted/50">
+            <p className="text-xs text-muted-foreground mb-2">Major Premise</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <select
+                value={syllogism.majorPremise.quantifier}
+                onChange={(e) => setSyllogism({ ...syllogism, majorPremise: { ...syllogism.majorPremise, quantifier: e.target.value } })}
+                className="px-2 py-1 rounded bg-secondary border border-border text-sm"
+              >
+                <option value="All">All</option>
+                <option value="Some">Some</option>
+                <option value="No">No</option>
+              </select>
+              <input value={syllogism.majorPremise.subject} onChange={(e) => setSyllogism({ ...syllogism, majorPremise: { ...syllogism.majorPremise, subject: e.target.value } })} className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm" />
+              <span className="text-muted-foreground">are</span>
+              <input value={syllogism.majorPremise.predicate} onChange={(e) => setSyllogism({ ...syllogism, majorPremise: { ...syllogism.majorPremise, predicate: e.target.value } })} className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm" />
+            </div>
+          </div>
+          <div className="p-3 rounded-lg bg-muted/50">
+            <p className="text-xs text-muted-foreground mb-2">Minor Premise</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <input value={syllogism.minorPremise.subject} onChange={(e) => setSyllogism({ ...syllogism, minorPremise: { ...syllogism.minorPremise, subject: e.target.value } })} className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm" />
+              <span className="text-muted-foreground">is a</span>
+              <input value={syllogism.minorPremise.predicate} onChange={(e) => setSyllogism({ ...syllogism, minorPremise: { ...syllogism.minorPremise, predicate: e.target.value } })} className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm" />
+            </div>
+          </div>
+          <div className="p-3 rounded-lg bg-primary/10 border border-primary/30">
+            <p className="text-xs text-primary mb-2">∴ Conclusion</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <input value={syllogism.conclusion.subject} onChange={(e) => setSyllogism({ ...syllogism, conclusion: { ...syllogism.conclusion, subject: e.target.value } })} className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm" />
+              <span className="text-muted-foreground">is</span>
+              <input value={syllogism.conclusion.predicate} onChange={(e) => setSyllogism({ ...syllogism, conclusion: { ...syllogism.conclusion, predicate: e.target.value } })} className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm" />
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Minor Premise */}
-        <div className="p-3 rounded-lg bg-muted/50">
-          <p className="text-xs text-muted-foreground mb-2">Minor Premise</p>
-          <div className="flex items-center gap-2 flex-wrap">
-            <input
-              value={syllogism.minorPremise.subject}
-              onChange={(e) => setSyllogism({ ...syllogism, minorPremise: { ...syllogism.minorPremise, subject: e.target.value } })}
-              className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm"
-              placeholder="C"
-            />
-            <span className="text-muted-foreground">is a</span>
-            <input
-              value={syllogism.minorPremise.predicate}
-              onChange={(e) => setSyllogism({ ...syllogism, minorPremise: { ...syllogism.minorPremise, predicate: e.target.value } })}
-              className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm"
-              placeholder="A"
-            />
+      {/* Modus Ponens Form */}
+      {logicForm === 'modus_ponens' && (
+        <div className="space-y-3 mb-4">
+          <div className="p-3 rounded-lg bg-muted/50">
+            <p className="text-xs text-muted-foreground mb-2">Conditional (P → Q)</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-muted-foreground">If</span>
+              <input value={modusPonens.conditional.antecedent} onChange={(e) => setModusPonens({ ...modusPonens, conditional: { ...modusPonens.conditional, antecedent: e.target.value } })} className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm" />
+              <span className="text-muted-foreground">then</span>
+              <input value={modusPonens.conditional.consequent} onChange={(e) => setModusPonens({ ...modusPonens, conditional: { ...modusPonens.conditional, consequent: e.target.value } })} className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm" />
+            </div>
+          </div>
+          <div className="p-3 rounded-lg bg-muted/50">
+            <p className="text-xs text-muted-foreground mb-2">Assertion (P)</p>
+            <input value={modusPonens.assertion} onChange={(e) => setModusPonens({ ...modusPonens, assertion: e.target.value })} className="w-32 px-2 py-1 rounded bg-secondary border border-border text-sm" />
+          </div>
+          <div className="p-3 rounded-lg bg-primary/10 border border-primary/30">
+            <p className="text-xs text-primary mb-2">∴ Conclusion (Q)</p>
+            <input value={modusPonens.conclusion} onChange={(e) => setModusPonens({ ...modusPonens, conclusion: e.target.value })} className="w-32 px-2 py-1 rounded bg-secondary border border-border text-sm" />
           </div>
         </div>
+      )}
 
-        {/* Conclusion */}
-        <div className="p-3 rounded-lg bg-primary/10 border border-primary/30">
-          <p className="text-xs text-primary mb-2">∴ Conclusion</p>
-          <div className="flex items-center gap-2 flex-wrap">
-            <input
-              value={syllogism.conclusion.subject}
-              onChange={(e) => setSyllogism({ ...syllogism, conclusion: { ...syllogism.conclusion, subject: e.target.value } })}
-              className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm"
-              placeholder="C"
-            />
-            <span className="text-muted-foreground">is</span>
-            <input
-              value={syllogism.conclusion.predicate}
-              onChange={(e) => setSyllogism({ ...syllogism, conclusion: { ...syllogism.conclusion, predicate: e.target.value } })}
-              className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm"
-              placeholder="B"
-            />
+      {/* Modus Tollens Form */}
+      {logicForm === 'modus_tollens' && (
+        <div className="space-y-3 mb-4">
+          <div className="p-3 rounded-lg bg-muted/50">
+            <p className="text-xs text-muted-foreground mb-2">Conditional (P → Q)</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-muted-foreground">If</span>
+              <input value={modusTollens.conditional.antecedent} onChange={(e) => setModusTollens({ ...modusTollens, conditional: { ...modusTollens.conditional, antecedent: e.target.value } })} className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm" />
+              <span className="text-muted-foreground">then</span>
+              <input value={modusTollens.conditional.consequent} onChange={(e) => setModusTollens({ ...modusTollens, conditional: { ...modusTollens.conditional, consequent: e.target.value } })} className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm" />
+            </div>
+          </div>
+          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+            <p className="text-xs text-amber-600 mb-2">Negation (¬Q)</p>
+            <div className="flex items-center gap-2">
+              <span className="text-amber-600">Not</span>
+              <input value={modusTollens.negation} onChange={(e) => setModusTollens({ ...modusTollens, negation: e.target.value })} className="w-32 px-2 py-1 rounded bg-secondary border border-border text-sm" />
+            </div>
+          </div>
+          <div className="p-3 rounded-lg bg-primary/10 border border-primary/30">
+            <p className="text-xs text-primary mb-2">∴ Conclusion (¬P)</p>
+            <div className="flex items-center gap-2">
+              <span className="text-primary">Not</span>
+              <input value={modusTollens.conclusion} onChange={(e) => setModusTollens({ ...modusTollens, conclusion: e.target.value })} className="w-32 px-2 py-1 rounded bg-secondary border border-border text-sm" />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <button
-        onClick={validateSyllogism}
-        className="w-full px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors mb-4"
-      >
-        Validate Syllogism
+      <button onClick={validateLogic} className="w-full px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors mb-4">
+        Validate Logic
       </button>
 
       {result && (
         <div className={`p-4 rounded-lg ${result.valid ? 'bg-green-500/10 border border-green-500/30' : 'bg-red-500/10 border border-red-500/30'}`}>
           <div className="flex items-center gap-2 mb-3">
             <span className={`text-lg font-semibold ${result.valid ? 'text-green-500' : 'text-red-500'}`}>
-              {result.valid ? '✓ Valid Syllogism' : '✗ Invalid Syllogism'}
+              {result.valid ? '✓ Valid' : '✗ Invalid'} {result.formName}
             </span>
-            <span className="text-sm text-muted-foreground">
-              (confidence: {(result.confidence * 100).toFixed(0)}%)
-            </span>
+            <span className="text-sm text-muted-foreground">({(result.confidence * 100).toFixed(0)}%)</span>
           </div>
-          
           <div className="mb-3">
-            <p className="text-xs text-muted-foreground mb-1">Middle Term Strength</p>
+            <p className="text-xs text-muted-foreground mb-1">Key Connection Strength</p>
             <div className="h-2 rounded-full bg-muted overflow-hidden">
-              <div 
-                className="h-full bg-primary transition-all"
-                style={{ width: `${result.middleTermStrength * 100}%` }}
-              />
+              <div className="h-full bg-primary transition-all" style={{ width: `${result.keyStrength * 100}%` }} />
             </div>
           </div>
-
           <div className="space-y-1">
             {result.reasoning.map((r, i) => (
               <p key={i} className="text-sm text-muted-foreground">{r}</p>
@@ -914,7 +995,7 @@ const SyllogismDemo = () => {
   );
 };
 
-// Concept Graph Visualization
+// Interactive Concept Graph Visualization
 const ConceptGraphDemo = () => {
   const [startConcept, setStartConcept] = useState('knowledge');
   const [targetConcept, setTargetConcept] = useState('wisdom');
@@ -924,11 +1005,18 @@ const ConceptGraphDemo = () => {
     path: string[];
   } | null>(null);
   const [animating, setAnimating] = useState(false);
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [selectedEdge, setSelectedEdge] = useState<{ from: string; to: string; weight: number; fromState: number[]; toState: number[] } | null>(null);
+  const [selectedNode, setSelectedNode] = useState<{ id: string; state: number[] } | null>(null);
+  const svgRef = useState<SVGSVGElement | null>(null);
 
   const backend = useMemo(() => new SemanticBackend(minimalConfig), []);
 
   const buildGraph = useCallback(async () => {
     setAnimating(true);
+    setSelectedEdge(null);
+    setSelectedNode(null);
     
     const concepts = [
       startConcept, targetConcept,
@@ -936,49 +1024,41 @@ const ConceptGraphDemo = () => {
       'insight', 'reason', 'intuition', 'awareness'
     ].filter((v, i, a) => a.indexOf(v) === i);
 
-    // Build nodes with positions in a circle
     const nodes = concepts.map((concept, i) => {
       const angle = (i / concepts.length) * Math.PI * 2 - Math.PI / 2;
-      const radius = 120;
+      const radius = 130;
       const primes = backend.encode(concept);
       const state = safeComponents(backend.primesToState(primes));
       return {
         id: concept,
-        x: 150 + Math.cos(angle) * radius,
-        y: 150 + Math.sin(angle) * radius,
+        x: 175 + Math.cos(angle) * radius,
+        y: 175 + Math.sin(angle) * radius,
         state,
         visited: false
       };
     });
 
-    // Build edges with coherence weights
     const edges: { from: string; to: string; weight: number }[] = [];
     for (let i = 0; i < nodes.length; i++) {
       for (let j = i + 1; j < nodes.length; j++) {
         const weight = computeCoherence(nodes[i].state, nodes[j].state);
-        if (weight > 0.25) {
+        if (weight > 0.2) {
           edges.push({ from: nodes[i].id, to: nodes[j].id, weight });
         }
       }
     }
 
     setGraph({ nodes, edges, path: [] });
-
-    // Animate path finding with delay
     await new Promise(r => setTimeout(r, 500));
 
-    // Simple greedy path finding
     const path: string[] = [startConcept];
     const visited = new Set([startConcept]);
     let current = startConcept;
 
     while (current !== targetConcept && path.length < 6) {
       const currentNode = nodes.find(n => n.id === current);
-      if (!currentNode) break;
-
-      // Find best next step toward target
       const targetNode = nodes.find(n => n.id === targetConcept);
-      if (!targetNode) break;
+      if (!currentNode || !targetNode) break;
 
       const candidates = edges
         .filter(e => (e.from === current || e.to === current) && !visited.has(e.from === current ? e.to : e.from))
@@ -997,7 +1077,6 @@ const ConceptGraphDemo = () => {
       visited.add(next);
       current = next;
 
-      // Animate step
       setGraph(g => g ? {
         ...g,
         path: [...path],
@@ -1010,14 +1089,68 @@ const ConceptGraphDemo = () => {
     setAnimating(false);
   }, [startConcept, targetConcept, backend]);
 
+  const handleMouseDown = (nodeId: string, e: React.MouseEvent) => {
+    if (animating) return;
+    const node = graph?.nodes.find(n => n.id === nodeId);
+    if (!node) return;
+    
+    const svg = (e.target as SVGElement).closest('svg');
+    if (!svg) return;
+    
+    const rect = svg.getBoundingClientRect();
+    setDragOffset({
+      x: e.clientX - rect.left - node.x,
+      y: e.clientY - rect.top - node.y
+    });
+    setDragging(nodeId);
+    setSelectedNode({ id: nodeId, state: node.state });
+    setSelectedEdge(null);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!dragging || !graph) return;
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.max(20, Math.min(330, e.clientX - rect.left - dragOffset.x));
+    const y = Math.max(20, Math.min(330, e.clientY - rect.top - dragOffset.y));
+    
+    setGraph({
+      ...graph,
+      nodes: graph.nodes.map(n => n.id === dragging ? { ...n, x, y } : n)
+    });
+  };
+
+  const handleMouseUp = () => {
+    setDragging(null);
+  };
+
+  const handleEdgeClick = (edge: { from: string; to: string; weight: number }) => {
+    if (animating) return;
+    const fromNode = graph?.nodes.find(n => n.id === edge.from);
+    const toNode = graph?.nodes.find(n => n.id === edge.to);
+    if (fromNode && toNode) {
+      setSelectedEdge({ ...edge, fromState: fromNode.state, toState: toNode.state });
+      setSelectedNode(null);
+    }
+  };
+
+  const handleNodeClick = (nodeId: string) => {
+    if (animating || dragging) return;
+    const node = graph?.nodes.find(n => n.id === nodeId);
+    if (node) {
+      setSelectedNode({ id: nodeId, state: node.state });
+      setSelectedEdge(null);
+    }
+  };
+
   return (
     <div className="p-6 rounded-xl border border-border bg-card">
       <div className="flex items-center gap-2 mb-4">
         <Network className="w-5 h-5 text-primary" />
-        <h3 className="text-lg font-semibold">Concept Graph Traversal</h3>
+        <h3 className="text-lg font-semibold">Interactive Concept Graph</h3>
       </div>
       <p className="text-sm text-muted-foreground mb-4">
-        Visualize how reasoning traverses semantic space to connect concepts.
+        Drag nodes to rearrange. Click edges to see coherence details. Click nodes to inspect state.
       </p>
 
       <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -1044,8 +1177,15 @@ const ConceptGraphDemo = () => {
       </div>
 
       {graph && (
-        <div className="relative">
-          <svg width="300" height="300" className="mx-auto bg-muted/30 rounded-lg">
+        <div className="grid md:grid-cols-[350px_1fr] gap-4">
+          <svg 
+            width="350" 
+            height="350" 
+            className="bg-muted/30 rounded-lg cursor-crosshair"
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+          >
             {/* Edges */}
             {graph.edges.map((edge, i) => {
               const fromNode = graph.nodes.find(n => n.id === edge.from);
@@ -1054,19 +1194,46 @@ const ConceptGraphDemo = () => {
               
               const isOnPath = graph.path.includes(edge.from) && graph.path.includes(edge.to) &&
                 Math.abs(graph.path.indexOf(edge.from) - graph.path.indexOf(edge.to)) === 1;
+              const isSelected = selectedEdge?.from === edge.from && selectedEdge?.to === edge.to;
               
               return (
-                <line
-                  key={i}
-                  x1={fromNode.x}
-                  y1={fromNode.y}
-                  x2={toNode.x}
-                  y2={toNode.y}
-                  stroke={isOnPath ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'}
-                  strokeWidth={isOnPath ? 3 : 1}
-                  strokeOpacity={isOnPath ? 1 : edge.weight * 0.5}
-                  className="transition-all duration-300"
-                />
+                <g key={i}>
+                  {/* Wider invisible hitbox for clicking */}
+                  <line
+                    x1={fromNode.x}
+                    y1={fromNode.y}
+                    x2={toNode.x}
+                    y2={toNode.y}
+                    stroke="transparent"
+                    strokeWidth={12}
+                    className="cursor-pointer"
+                    onClick={() => handleEdgeClick(edge)}
+                  />
+                  <line
+                    x1={fromNode.x}
+                    y1={fromNode.y}
+                    x2={toNode.x}
+                    y2={toNode.y}
+                    stroke={isSelected ? 'hsl(var(--primary))' : isOnPath ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'}
+                    strokeWidth={isSelected ? 4 : isOnPath ? 3 : Math.max(1, edge.weight * 3)}
+                    strokeOpacity={isSelected ? 1 : isOnPath ? 1 : edge.weight * 0.6}
+                    strokeDasharray={isSelected ? '5,3' : 'none'}
+                    className="transition-all duration-300 pointer-events-none"
+                  />
+                  {/* Edge weight label */}
+                  {(isSelected || edge.weight > 0.4) && (
+                    <text
+                      x={(fromNode.x + toNode.x) / 2}
+                      y={(fromNode.y + toNode.y) / 2 - 5}
+                      textAnchor="middle"
+                      fontSize="8"
+                      fill="hsl(var(--muted-foreground))"
+                      className="pointer-events-none"
+                    >
+                      {(edge.weight * 100).toFixed(0)}%
+                    </text>
+                  )}
+                </g>
               );
             })}
             
@@ -1076,38 +1243,31 @@ const ConceptGraphDemo = () => {
               const isTarget = node.id === targetConcept;
               const isOnPath = graph.path.includes(node.id);
               const pathIndex = graph.path.indexOf(node.id);
+              const isSelected = selectedNode?.id === node.id;
+              const isDragging = dragging === node.id;
               
               return (
-                <g key={node.id}>
+                <g 
+                  key={node.id}
+                  onMouseDown={(e) => handleMouseDown(node.id, e)}
+                  onClick={() => handleNodeClick(node.id)}
+                  className={`cursor-grab ${isDragging ? 'cursor-grabbing' : ''}`}
+                >
                   <circle
                     cx={node.x}
                     cy={node.y}
-                    r={isStart || isTarget ? 18 : 14}
+                    r={isStart || isTarget ? 20 : isSelected ? 18 : 16}
                     fill={isStart ? 'hsl(var(--primary))' : isTarget ? 'hsl(142, 76%, 36%)' : isOnPath ? 'hsl(var(--primary) / 0.6)' : 'hsl(var(--muted))'}
-                    stroke={isOnPath ? 'hsl(var(--primary))' : 'hsl(var(--border))'}
-                    strokeWidth={isOnPath ? 2 : 1}
-                    className="transition-all duration-300"
+                    stroke={isSelected ? 'hsl(var(--primary))' : isOnPath ? 'hsl(var(--primary))' : 'hsl(var(--border))'}
+                    strokeWidth={isSelected ? 3 : isOnPath ? 2 : 1}
+                    className="transition-all duration-200"
                   />
                   {isOnPath && pathIndex >= 0 && (
-                    <text
-                      x={node.x}
-                      y={node.y + 4}
-                      textAnchor="middle"
-                      fontSize="10"
-                      fill="white"
-                      fontWeight="bold"
-                    >
+                    <text x={node.x} y={node.y + 4} textAnchor="middle" fontSize="11" fill="white" fontWeight="bold" className="pointer-events-none">
                       {pathIndex + 1}
                     </text>
                   )}
-                  <text
-                    x={node.x}
-                    y={node.y + 28}
-                    textAnchor="middle"
-                    fontSize="9"
-                    fill="hsl(var(--foreground))"
-                    className="font-medium"
-                  >
+                  <text x={node.x} y={node.y + 32} textAnchor="middle" fontSize="10" fill="hsl(var(--foreground))" className="font-medium pointer-events-none">
                     {node.id}
                   </text>
                 </g>
@@ -1115,25 +1275,74 @@ const ConceptGraphDemo = () => {
             })}
           </svg>
 
-          {graph.path.length > 0 && (
-            <div className="mt-4 p-3 rounded-lg bg-primary/10 border border-primary/30">
-              <p className="text-xs text-muted-foreground mb-2">Reasoning Path ({graph.path.length} steps)</p>
-              <div className="flex flex-wrap items-center gap-1">
-                {graph.path.map((step, i) => (
-                  <span key={i} className="flex items-center gap-1">
-                    <span className={`px-2 py-0.5 rounded text-xs ${
-                      i === 0 ? 'bg-primary text-primary-foreground' :
-                      i === graph.path.length - 1 ? 'bg-green-500 text-white' :
-                      'bg-muted text-foreground'
-                    }`}>
-                      {step}
-                    </span>
-                    {i < graph.path.length - 1 && <ArrowRight className="w-3 h-3 text-primary" />}
-                  </span>
-                ))}
+          {/* Details Panel */}
+          <div className="space-y-4">
+            {selectedEdge && (
+              <div className="p-4 rounded-lg bg-primary/10 border border-primary/30">
+                <h4 className="font-semibold text-sm mb-2">Edge: {selectedEdge.from} ↔ {selectedEdge.to}</h4>
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Coherence: {(selectedEdge.weight * 100).toFixed(1)}%</p>
+                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full bg-primary" style={{ width: `${selectedEdge.weight * 100}%` }} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 mt-3">
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground mb-1">{selectedEdge.from}</p>
+                      <SedenionVisualizer components={selectedEdge.fromState.map(Math.abs)} size="sm" animated={false} />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground mb-1">{selectedEdge.to}</p>
+                      <SedenionVisualizer components={selectedEdge.toState.map(Math.abs)} size="sm" animated={false} />
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+
+            {selectedNode && (
+              <div className="p-4 rounded-lg bg-muted/50 border border-border">
+                <h4 className="font-semibold text-sm mb-2">Node: {selectedNode.id}</h4>
+                <div className="flex justify-center mb-3">
+                  <SedenionVisualizer components={selectedNode.state.map(Math.abs)} size="md" animated={false} />
+                </div>
+                <div className="grid grid-cols-4 gap-1 text-xs font-mono">
+                  {selectedNode.state.slice(0, 8).map((v, i) => (
+                    <div key={i} className="text-center p-1 rounded bg-muted">
+                      <span className="text-muted-foreground">e{i}:</span> {v.toFixed(2)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {graph.path.length > 0 && (
+              <div className="p-3 rounded-lg bg-primary/10 border border-primary/30">
+                <p className="text-xs text-muted-foreground mb-2">Reasoning Path ({graph.path.length} steps)</p>
+                <div className="flex flex-wrap items-center gap-1">
+                  {graph.path.map((step, i) => (
+                    <span key={i} className="flex items-center gap-1">
+                      <span className={`px-2 py-0.5 rounded text-xs ${
+                        i === 0 ? 'bg-primary text-primary-foreground' :
+                        i === graph.path.length - 1 ? 'bg-green-500 text-white' :
+                        'bg-muted text-foreground'
+                      }`}>
+                        {step}
+                      </span>
+                      {i < graph.path.length - 1 && <ArrowRight className="w-3 h-3 text-primary" />}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!selectedEdge && !selectedNode && !graph.path.length && (
+              <div className="p-4 rounded-lg bg-muted/30 text-center text-sm text-muted-foreground">
+                Click "Find Path" to start, then click nodes or edges to inspect details
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
