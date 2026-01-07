@@ -220,7 +220,9 @@ const ResonanceOperatorDemo = () => {
   });
   const [history, setHistory] = useState<{ op: string; entropy: number; coherence: number }[]>([]);
 
-  const resetState = useCallback((type: 'uniform' | 'basis' | 'random') => {
+  const [initSeed, setInitSeed] = useState(1);
+
+  const resetState = useCallback((type: 'uniform' | 'basis' | 'seeded') => {
     let newComponents: number[];
     switch (type) {
       case 'uniform':
@@ -230,8 +232,14 @@ const ResonanceOperatorDemo = () => {
         newComponents = Array(dims).fill(0);
         newComponents[0] = 1;
         break;
-      case 'random':
-        newComponents = Array(dims).fill(0).map(() => Math.random() - 0.5);
+      case 'seeded':
+        // Deterministic "random" based on seed
+        const seed = initSeed;
+        setInitSeed(s => s + 1);
+        newComponents = Array(dims).fill(0).map((_, i) => {
+          const h = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453;
+          return (h - Math.floor(h)) - 0.5;
+        });
         const norm = Math.sqrt(newComponents.reduce((s, v) => s + v * v, 0));
         newComponents = newComponents.map(v => v / norm);
         break;
@@ -241,7 +249,7 @@ const ResonanceOperatorDemo = () => {
     }
     setComponents(newComponents);
     setHistory([]);
-  }, [dims]);
+  }, [dims, initSeed]);
 
   const apply = useCallback((op: OperatorType) => {
     const newComponents = applyOperator(components, op);
@@ -285,7 +293,7 @@ const ResonanceOperatorDemo = () => {
           <div className="flex gap-2 flex-wrap">
             <Button onClick={() => resetState('basis')} variant="outline" size="sm">|0⟩ Basis</Button>
             <Button onClick={() => resetState('uniform')} variant="outline" size="sm">Uniform</Button>
-            <Button onClick={() => resetState('random')} variant="outline" size="sm">Random</Button>
+            <Button onClick={() => resetState('seeded')} variant="outline" size="sm">Seed #{initSeed}</Button>
           </div>
 
           <div className="flex gap-2">

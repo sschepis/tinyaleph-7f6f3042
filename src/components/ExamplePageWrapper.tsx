@@ -1,4 +1,4 @@
-import { useState, ReactNode } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Circle, ArrowLeft, ArrowRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -41,13 +41,34 @@ const ExamplePageWrapper = ({
   const currentExample = examples[currentIndex];
   const ExampleComponent = exampleComponents[currentExample.id];
 
-  const goToPrevious = () => {
+  const goToPrevious = useCallback(() => {
     setCurrentIndex((prev) => (prev === 0 ? examples.length - 1 : prev - 1));
-  };
+  }, [examples.length]);
 
-  const goToNext = () => {
+  const goToNext = useCallback(() => {
     setCurrentIndex((prev) => (prev === examples.length - 1 ? 0 : prev + 1));
-  };
+  }, [examples.length]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        goToPrevious();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        goToNext();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [goToPrevious, goToNext]);
 
   const isLastExample = currentIndex === examples.length - 1;
   const isFirstExample = currentIndex === 0;
@@ -84,8 +105,11 @@ const ExamplePageWrapper = ({
             </button>
           ))}
         </div>
-
-        {/* Example Content */}
+        
+        {/* Keyboard hint */}
+        <p className="text-xs text-muted-foreground text-center mb-6">
+          Use <kbd className="px-1.5 py-0.5 rounded bg-muted border text-[10px]">←</kbd> <kbd className="px-1.5 py-0.5 rounded bg-muted border text-[10px]">→</kbd> arrow keys to navigate
+        </p>
         <AnimatePresence mode="wait">
           <motion.div
             key={currentExample.id}

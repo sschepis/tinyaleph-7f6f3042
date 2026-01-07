@@ -9,12 +9,33 @@ const KuramotoExample = () => {
   const [running, setRunning] = useState(false);
   const [phases, setPhases] = useState<number[]>([]);
   const [orderParameter, setOrderParameter] = useState(0);
+  const [initMode, setInitMode] = useState<'even' | 'clustered' | 'seeded'>('even');
+  const [seed, setSeed] = useState(1);
   const bankRef = useRef<OscillatorBank | null>(null);
+
+  const initializePhases = useCallback((mode: 'even' | 'clustered' | 'seeded', seedVal: number) => {
+    if (!bankRef.current) return;
+    bankRef.current.oscillators.forEach((osc, i) => {
+      switch (mode) {
+        case 'even':
+          osc.phase = (i / oscillatorCount) * 2 * Math.PI;
+          break;
+        case 'clustered':
+          osc.phase = (i % 3) * (2 * Math.PI / 3) + (i * 0.1);
+          break;
+        case 'seeded':
+          const h = Math.sin(seedVal * 12.9898 + i * 78.233) * 43758.5453;
+          osc.phase = (h - Math.floor(h)) * 2 * Math.PI;
+          break;
+      }
+      osc.amplitude = 0.8;
+    });
+  }, [oscillatorCount]);
 
   useEffect(() => {
     const frequencies = Array.from({ length: oscillatorCount }, (_, i) => 1 + (i - oscillatorCount / 2) * 0.1);
     bankRef.current = new OscillatorBank(frequencies as any);
-    bankRef.current.oscillators.forEach(osc => { osc.phase = Math.random() * 2 * Math.PI; osc.amplitude = 0.8; });
+    initializePhases(initMode, seed);
     updateState();
   }, [oscillatorCount]);
 
@@ -42,6 +63,13 @@ const KuramotoExample = () => {
     return () => clearInterval(interval);
   }, [running, coupling]);
 
+  const resetPhases = (mode: 'even' | 'clustered' | 'seeded') => {
+    setInitMode(mode);
+    if (mode === 'seeded') setSeed(s => s + 1);
+    initializePhases(mode, mode === 'seeded' ? seed + 1 : seed);
+    updateState();
+  };
+
   const centerX = 120, centerY = 120, radius = 90;
 
   return (
@@ -59,7 +87,14 @@ const KuramotoExample = () => {
           <button onClick={() => setRunning(!running)} className={`flex items-center gap-2 px-4 py-2 rounded-lg ${running ? 'bg-accent' : 'bg-primary'} text-primary-foreground`}>
             {running ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />} {running ? 'Pause' : 'Start'}
           </button>
-          <button onClick={() => { bankRef.current?.oscillators.forEach(osc => { osc.phase = Math.random() * 2 * Math.PI; }); updateState(); }} className="px-4 py-2 rounded-lg bg-secondary"><RefreshCw className="w-4 h-4" /></button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <span className="text-xs text-muted-foreground self-center">Reset:</span>
+          <button onClick={() => resetPhases('even')} className={`px-3 py-1 rounded-md text-xs ${initMode === 'even' ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}>Even</button>
+          <button onClick={() => resetPhases('clustered')} className={`px-3 py-1 rounded-md text-xs ${initMode === 'clustered' ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}>Clustered</button>
+          <button onClick={() => resetPhases('seeded')} className="px-3 py-1 rounded-md text-xs bg-secondary flex items-center gap-1">
+            <RefreshCw className="w-3 h-3" /> Seed #{seed}
+          </button>
         </div>
         <div className="p-4 rounded-lg bg-muted/50 font-mono text-sm">
           <div className="flex justify-between"><span>Order Parameter (r):</span><span className={orderParameter > 0.7 ? 'text-primary' : ''}>{orderParameter.toFixed(4)}</span></div>
@@ -83,6 +118,9 @@ const EntropyExample = () => {
   const presets = [
     { name: 'Pure e₀', components: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
     { name: 'Uniform', components: Array(16).fill(0.25) },
+    { name: 'Diagonal', components: [0.5, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    { name: 'Spread', components: [0.4, 0.3, 0.2, 0.1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+    { name: 'Alternating', components: Array(16).fill(0).map((_, i) => i % 2 === 0 ? 0.35 : 0) },
   ];
   const calculateEntropy = useCallback((c: number[]) => {
     const state = new Hypercomplex(16);
@@ -98,6 +136,16 @@ const EntropyExample = () => {
         <span className="text-sm text-muted-foreground">Entropy</span>
         <p className="text-4xl font-mono font-bold text-primary mt-2">{entropy.toFixed(4)}</p>
         <p className="text-sm text-muted-foreground mt-1">bits</p>
+      </div>
+      <div className="grid grid-cols-8 gap-1">
+        {components.slice(0, 16).map((c, i) => (
+          <div key={i} className="text-center">
+            <div className="h-12 bg-primary/20 rounded relative overflow-hidden">
+              <div className="absolute bottom-0 left-0 right-0 bg-primary transition-all" style={{ height: `${Math.abs(c) * 100}%` }} />
+            </div>
+            <span className="text-[10px] text-muted-foreground">e{i}</span>
+          </div>
+        ))}
       </div>
     </div>
   );

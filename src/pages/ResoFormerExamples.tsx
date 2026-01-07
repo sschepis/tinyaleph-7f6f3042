@@ -337,8 +337,9 @@ const MultiLayerDemo = () => {
         normalizedAttn[i].forEach((weight, j) => {
           if (weight > 0.15 && j !== i) {
             const donor = currentPrimes[j];
-            donor.forEach(p => {
-              if (!mixed.includes(p) && Math.random() < weight) {
+            donor.forEach((p, pIdx) => {
+              // Deterministic mixing based on weight threshold and prime index
+              if (!mixed.includes(p) && weight > 0.2 + pIdx * 0.05) {
                 mixed.push(p);
               }
             });
