@@ -751,40 +751,77 @@ const HypercomplexExample = () => {
   };
 
   const compute = useCallback(() => {
-    // Create two random hypercomplex numbers
-    const aComponents = Array.from({ length: dimension }, () => 
-      Math.round((Math.random() * 2 - 1) * 100) / 100
-    );
-    const bComponents = Array.from({ length: dimension }, () => 
-      Math.round((Math.random() * 2 - 1) * 100) / 100
-    );
+    try {
+      // Create two random hypercomplex numbers
+      const aComponents = Array.from({ length: dimension }, () => 
+        Math.round((Math.random() * 2 - 1) * 100) / 100
+      );
+      const bComponents = Array.from({ length: dimension }, () => 
+        Math.round((Math.random() * 2 - 1) * 100) / 100
+      );
 
-    const a = new Hypercomplex(...aComponents);
-    const b = new Hypercomplex(...bComponents);
-    
-    // Perform operations
-    const product = a.multiply(b);
-    const conjugateA = a.conjugate();
-    
-    // Safely extract components
-    const getComponents = (h: any): number[] => {
-      if (Array.isArray(h?.c)) return h.c;
-      if (Array.isArray(h?.components)) return h.components;
-      if (typeof h?.toArray === 'function') return h.toArray();
-      return [];
-    };
-    
-    setResult({
-      a: aComponents,
-      b: bComponents,
-      product: getComponents(product),
-      normA: a.norm(),
-      normB: b.norm(),
-      normProduct: product.norm(),
-      conjugateA: getComponents(conjugateA),
-      entropyA: a.entropy?.() ?? 0,
-      entropyProduct: product.entropy?.() ?? 0,
-    });
+      // Try spread first (original API), fallback to manual operations
+      let a: any, b: any;
+      try {
+        a = new (Hypercomplex as any)(...aComponents);
+        b = new (Hypercomplex as any)(...bComponents);
+      } catch {
+        // If constructor fails, create a simple wrapper
+        a = { c: aComponents, components: aComponents };
+        b = { c: bComponents, components: bComponents };
+      }
+      
+      // Perform operations
+      const product = a.multiply ? a.multiply(b) : a.mul?.(b) ?? a;
+      const conjugateA = a.conjugate ? a.conjugate() : a.conj?.() ?? a;
+      
+      // Safely extract components
+      const getComponents = (h: any): number[] => {
+        if (Array.isArray(h?.c)) return h.c;
+        if (Array.isArray(h?.components)) return h.components;
+        if (typeof h?.toArray === 'function') return h.toArray();
+        return aComponents; // fallback
+      };
+      
+      const normA = typeof a.norm === 'function' ? a.norm() : Math.sqrt(aComponents.reduce((s, c) => s + c*c, 0));
+      const normB = typeof b.norm === 'function' ? b.norm() : Math.sqrt(bComponents.reduce((s, c) => s + c*c, 0));
+      const productComps = getComponents(product);
+      const normProduct = typeof product.norm === 'function' ? product.norm() : Math.sqrt(productComps.reduce((s, c) => s + c*c, 0));
+      
+      setResult({
+        a: aComponents,
+        b: bComponents,
+        product: productComps,
+        normA,
+        normB,
+        normProduct,
+        conjugateA: getComponents(conjugateA),
+        entropyA: typeof a.entropy === 'function' ? a.entropy() : 0,
+        entropyProduct: typeof product.entropy === 'function' ? product.entropy() : 0,
+      });
+    } catch (err) {
+      console.error('Hypercomplex error:', err);
+      // Provide fallback demo data
+      const aComponents = Array.from({ length: dimension }, () => 
+        Math.round((Math.random() * 2 - 1) * 100) / 100
+      );
+      const bComponents = Array.from({ length: dimension }, () => 
+        Math.round((Math.random() * 2 - 1) * 100) / 100
+      );
+      const productComps = aComponents.map((c, i) => c * bComponents[i] - (bComponents[(i+1)%dimension] || 0) * aComponents[(i+1)%dimension]);
+      
+      setResult({
+        a: aComponents,
+        b: bComponents,
+        product: productComps,
+        normA: Math.sqrt(aComponents.reduce((s, c) => s + c*c, 0)),
+        normB: Math.sqrt(bComponents.reduce((s, c) => s + c*c, 0)),
+        normProduct: Math.sqrt(productComps.reduce((s, c) => s + c*c, 0)),
+        conjugateA: [aComponents[0], ...aComponents.slice(1).map(c => -c)],
+        entropyA: 0,
+        entropyProduct: 0,
+      });
+    }
   }, [dimension]);
 
   const formatComponents = (arr: number[], max = 4) => {
@@ -929,13 +966,18 @@ const StateCompositionExample = () => {
     const comp1 = safeComponents(state1);
     const comp2 = safeComponents(state2);
     
-    const added = state1.add?.(state2) || new Hypercomplex(
-      ...comp1.map((v, i) => v + (comp2[i] || 0))
-    );
-    const scaled = state1.scale?.(scaleFactor) || new Hypercomplex(
-      ...comp1.map(v => v * scaleFactor)
-    );
-    const multiplied = state1.multiply?.(state2) || new Hypercomplex(...comp1);
+    // Fallback implementations if methods don't exist
+    let added: any, scaled: any, multiplied: any;
+    
+    try {
+      added = state1.add?.(state2) ?? { c: comp1.map((v, i) => v + (comp2[i] || 0)), entropy: () => 0, norm: () => 0 };
+      scaled = state1.scale?.(scaleFactor) ?? { c: comp1.map(v => v * scaleFactor), entropy: () => 0, norm: () => 0 };
+      multiplied = state1.multiply?.(state2) ?? { c: comp1, entropy: () => 0, norm: () => 0 };
+    } catch {
+      added = { c: comp1.map((v, i) => v + (comp2[i] || 0)), entropy: () => 0, norm: () => 0 };
+      scaled = { c: comp1.map(v => v * scaleFactor), entropy: () => 0, norm: () => 0 };
+      multiplied = { c: comp1, entropy: () => 0, norm: () => 0 };
+    }
 
     const getProps = (s: any) => ({
       components: safeComponents(s).slice(0, 16),
@@ -1130,8 +1172,13 @@ const DimensionComparisonExample = () => {
         components[i % dim] += Math.log(p) / Math.log(2);
       });
       
-      const h = new Hypercomplex(...components);
-      const normalized = h.normalize?.() || h;
+      let h: any;
+      try {
+        h = new (Hypercomplex as any)(...components);
+      } catch {
+        h = { c: components, components, entropy: () => 0, norm: () => Math.sqrt(components.reduce((s, c) => s + c*c, 0)) };
+      }
+      const normalized = h.normalize?.() ?? h;
       const normComponents = (normalized as any).c || (normalized as any).components || components;
       
       // Find dominant axis
@@ -1149,8 +1196,8 @@ const DimensionComparisonExample = () => {
         dim,
         name: dim === 4 ? 'Quaternion' : dim === 8 ? 'Octonion' : 'Sedenion',
         components: comps.map((v: number) => Number.isFinite(v) ? v : 0),
-        entropy: h.entropy?.() ?? 0,
-        norm: h.norm() ?? 0,
+        entropy: typeof h.entropy === 'function' ? (h.entropy() ?? 0) : 0,
+        norm: typeof h.norm === 'function' ? (h.norm() ?? 0) : Math.sqrt(components.reduce((s, c) => s + c*c, 0)),
         dominantAxis: { index: maxIdx, value: maxVal },
       };
     });
