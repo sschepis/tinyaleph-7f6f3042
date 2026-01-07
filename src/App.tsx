@@ -17,6 +17,7 @@ import SemanticExamples from "./pages/SemanticExamples";
 import CryptoExamples from "./pages/CryptoExamples";
 import MathExamples from "./pages/MathExamples";
 import MLExamples from "./pages/MLExamples";
+import ResoFormerExamples from "./pages/ResoFormerExamples";
 import ScientificExamples from "./pages/ScientificExamples";
 import TypeSystemExamples from "./pages/TypeSystemExamples";
 import ChatExamples from "./pages/ChatExamples";
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/crypto" element={<CryptoExamples />} />
             <Route path="/math" element={<MathExamples />} />
             <Route path="/ml" element={<MLExamples />} />
+            <Route path="/resoformer" element={<ResoFormerExamples />} />
             <Route path="/scientific" element={<ScientificExamples />} />
             <Route path="/typesystem" element={<TypeSystemExamples />} />
             <Route path="/chat" element={<ChatExamples />} />
