@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Bot, User, Sparkles, Activity, Loader2 } from 'lucide-react';
-import Navigation from '../components/Navigation';
-import Footer from '../components/Footer';
 import SedenionVisualizer from '../components/SedenionVisualizer';
 import { supabase } from '@/integrations/supabase/client';
 import { SemanticBackend } from '@aleph-ai/tinyaleph';
@@ -131,10 +129,8 @@ const ChatExamples = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      
-      <main className="pt-24 pb-20">
+    <div className="pt-20">
+      <main className="pb-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           {/* Header */}
           <div className="text-center mb-8">
@@ -346,8 +342,6 @@ const ChatExamples = () => {
           </div>
         </div>
       </main>
-
-      <Footer />
     </div>
   );
 };

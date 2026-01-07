@@ -1,7 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import Navigation from '../components/Navigation';
-import Footer from '../components/Footer';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -364,10 +362,8 @@ const entropy = computeEntropy(components);
 const coherence = computeCoherence(components);`;
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      
-      <main className="pt-24 pb-20">
+    <div className="pt-20">
+      <main className="pb-20">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <Link 
             to="/" 
@@ -406,8 +402,6 @@ const coherence = computeCoherence(components);`;
           </div>
         </div>
       </main>
-
-      <Footer />
     </div>
   );
 };

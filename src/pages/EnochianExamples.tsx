@@ -1,7 +1,5 @@
 import { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import Navigation from '../components/Navigation';
-import Footer from '../components/Footer';
 import CodeBlock from '../components/CodeBlock';
 import SedenionVisualizer from '../components/SedenionVisualizer';
 import { ArrowLeft, Play, Sparkles, Grid3X3, Languages } from 'lucide-react';
@@ -380,10 +378,8 @@ console.log('(A × B) × C ≠ A × (B × C)'); // Non-associative`}
 
 const EnochianExamplesPage = () => {
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      
-      <main className="pt-24 pb-20">
+    <div className="pt-20">
+      <main className="pb-20">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <Link 
             to="/" 
@@ -465,8 +461,6 @@ const EnochianExamplesPage = () => {
           </div>
         </div>
       </main>
-
-      <Footer />
     </div>
   );
 };
