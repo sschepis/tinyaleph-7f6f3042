@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 import Hero from '../components/Hero';
-import ModuleCard from '../components/ModuleCard';
-import { Layers, Waves, Database, Cpu, ArrowRight, Play, Server, Atom, Network, MessageSquare, Languages } from 'lucide-react';
+import { Layers, Waves, Database, Cpu, ArrowRight, Play, Server, Atom, MessageSquare, Languages, BookOpen } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 const exampleCategories = [
   {
@@ -123,6 +124,254 @@ const Index = () => {
     <>
       <Hero />
       
+      {/* Documentation Quick Links */}
+      <section className="py-12 border-t border-border">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { path: '/docs/getting-started', label: 'Getting Started', desc: 'Installation & setup' },
+              { path: '/docs/user-guide', label: 'User Guide', desc: 'Deep dive tutorials' },
+              { path: '/docs/app-ideas', label: 'App Ideas', desc: 'Build inspiration' },
+              { path: '/docs/reference', label: 'API Reference', desc: 'Complete documentation' },
+            ].map((doc) => (
+              <Link key={doc.path} to={doc.path} className="group">
+                <Card className="h-full hover:border-primary/50 transition-all">
+                  <CardContent className="pt-4 pb-4 flex items-center gap-3">
+                    <BookOpen className="w-5 h-5 text-primary" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium group-hover:text-primary transition-colors">{doc.label}</p>
+                      <p className="text-xs text-muted-foreground truncate">{doc.desc}</p>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Architecture Diagram - Mermaid Style */}
+      <section className="py-16 border-t border-border bg-gradient-to-b from-background to-muted/30">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-10">
+            <Badge variant="outline" className="mb-4">System Design</Badge>
+            <h2 className="text-3xl font-display font-bold mb-3">Architecture</h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              TinyAleph's modular architecture enables flexible semantic computation across multiple backends.
+            </p>
+          </div>
+          
+          {/* Main Engine Diagram */}
+          <div className="grid lg:grid-cols-2 gap-8 mb-12">
+            {/* Core Engine Flow */}
+            <Card className="overflow-hidden">
+              <div className="bg-primary/5 px-4 py-3 border-b border-border">
+                <h3 className="font-semibold text-sm">Core Engine Flow</h3>
+              </div>
+              <CardContent className="pt-6">
+                <div className="space-y-4">
+                  {/* Input */}
+                  <div className="flex items-center justify-center">
+                    <div className="px-6 py-3 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 font-mono text-sm">
+                      Input Text
+                    </div>
+                  </div>
+                  
+                  {/* Arrow */}
+                  <div className="flex justify-center">
+                    <div className="w-px h-6 bg-gradient-to-b from-blue-500/50 to-purple-500/50" />
+                  </div>
+                  
+                  {/* Transform Pipeline */}
+                  <div className="p-4 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5">
+                    <p className="text-xs text-center text-muted-foreground mb-3 font-medium">ALEPH ENGINE</p>
+                    <div className="flex items-center justify-center gap-2 flex-wrap">
+                      <div className="px-3 py-2 rounded-md bg-card border border-border text-xs font-mono">
+                        Tokenize
+                      </div>
+                      <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                      <div className="px-3 py-2 rounded-md bg-card border border-border text-xs font-mono">
+                        Prime Encode
+                      </div>
+                      <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                      <div className="px-3 py-2 rounded-md bg-card border border-border text-xs font-mono">
+                        Sedenion Map
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Arrow */}
+                  <div className="flex justify-center">
+                    <div className="w-px h-6 bg-gradient-to-b from-purple-500/50 to-green-500/50" />
+                  </div>
+                  
+                  {/* Processing */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/30 text-center">
+                      <Waves className="w-4 h-4 mx-auto mb-1 text-purple-400" />
+                      <p className="text-xs font-medium text-purple-400">Kuramoto</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-center">
+                      <Atom className="w-4 h-4 mx-auto mb-1 text-green-400" />
+                      <p className="text-xs font-medium text-green-400">Field Ops</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/30 text-center">
+                      <Layers className="w-4 h-4 mx-auto mb-1 text-orange-400" />
+                      <p className="text-xs font-medium text-orange-400">Entropy</p>
+                    </div>
+                  </div>
+                  
+                  {/* Arrow */}
+                  <div className="flex justify-center">
+                    <div className="w-px h-6 bg-gradient-to-b from-green-500/50 to-cyan-500/50" />
+                  </div>
+                  
+                  {/* Output */}
+                  <div className="flex items-center justify-center">
+                    <div className="px-6 py-3 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-mono text-sm">
+                      Semantic State
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Backend Architecture */}
+            <Card className="overflow-hidden">
+              <div className="bg-primary/5 px-4 py-3 border-b border-border">
+                <h3 className="font-semibold text-sm">Backend Architecture</h3>
+              </div>
+              <CardContent className="pt-6">
+                <div className="space-y-4">
+                  {/* AlephEngine */}
+                  <div className="p-4 rounded-xl bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/30">
+                    <div className="flex items-center justify-center gap-3">
+                      <Server className="w-5 h-5 text-primary" />
+                      <span className="font-semibold text-primary">AlephEngine</span>
+                    </div>
+                  </div>
+                  
+                  {/* Connection Lines */}
+                  <div className="flex justify-center items-center gap-4">
+                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-border" />
+                    <div className="w-2 h-2 rounded-full bg-primary/50" />
+                    <div className="flex-1 h-px bg-gradient-to-l from-transparent via-border to-border" />
+                  </div>
+                  
+                  {/* Backends Grid */}
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="p-4 rounded-lg border border-blue-500/30 bg-blue-500/5">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Database className="w-4 h-4 text-blue-400" />
+                        <span className="font-medium text-sm text-blue-400">SemanticBackend</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        <Badge variant="secondary" className="text-xs">Tokenization</Badge>
+                        <Badge variant="secondary" className="text-xs">Prime Encode</Badge>
+                        <Badge variant="secondary" className="text-xs">Similarity</Badge>
+                      </div>
+                    </div>
+                    
+                    <div className="p-4 rounded-lg border border-green-500/30 bg-green-500/5">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Layers className="w-4 h-4 text-green-400" />
+                        <span className="font-medium text-sm text-green-400">CryptoBackend</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        <Badge variant="secondary" className="text-xs">Hash</Badge>
+                        <Badge variant="secondary" className="text-xs">HMAC</Badge>
+                        <Badge variant="secondary" className="text-xs">Key Derive</Badge>
+                      </div>
+                    </div>
+                    
+                    <div className="p-4 rounded-lg border border-purple-500/30 bg-purple-500/5">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Atom className="w-4 h-4 text-purple-400" />
+                        <span className="font-medium text-sm text-purple-400">ScientificBackend</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        <Badge variant="secondary" className="text-xs">Quantum Sim</Badge>
+                        <Badge variant="secondary" className="text-xs">Wave Collapse</Badge>
+                        <Badge variant="secondary" className="text-xs">Measurement</Badge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Data Flow Diagram */}
+          <Card className="overflow-hidden">
+            <div className="bg-primary/5 px-4 py-3 border-b border-border">
+              <h3 className="font-semibold text-sm">Semantic Processing Pipeline</h3>
+            </div>
+            <CardContent className="pt-6 overflow-x-auto">
+              <div className="flex items-center justify-center gap-3 min-w-max px-4">
+                {/* Text Input */}
+                <div className="text-center">
+                  <div className="w-20 h-20 rounded-full bg-blue-500/10 border-2 border-blue-500/40 flex items-center justify-center mb-2">
+                    <span className="text-2xl">📝</span>
+                  </div>
+                  <p className="text-xs font-medium">Text</p>
+                </div>
+                
+                <ArrowRight className="w-6 h-6 text-muted-foreground" />
+                
+                {/* Prime Encoding */}
+                <div className="text-center">
+                  <div className="w-20 h-20 rounded-full bg-purple-500/10 border-2 border-purple-500/40 flex items-center justify-center mb-2">
+                    <span className="text-2xl">🔢</span>
+                  </div>
+                  <p className="text-xs font-medium">Primes</p>
+                </div>
+                
+                <ArrowRight className="w-6 h-6 text-muted-foreground" />
+                
+                {/* Sedenion */}
+                <div className="text-center">
+                  <div className="w-20 h-20 rounded-full bg-green-500/10 border-2 border-green-500/40 flex items-center justify-center mb-2">
+                    <span className="text-2xl">🔮</span>
+                  </div>
+                  <p className="text-xs font-medium">Sedenion</p>
+                </div>
+                
+                <ArrowRight className="w-6 h-6 text-muted-foreground" />
+                
+                {/* Oscillators */}
+                <div className="text-center">
+                  <div className="w-20 h-20 rounded-full bg-orange-500/10 border-2 border-orange-500/40 flex items-center justify-center mb-2">
+                    <span className="text-2xl">〰️</span>
+                  </div>
+                  <p className="text-xs font-medium">Oscillate</p>
+                </div>
+                
+                <ArrowRight className="w-6 h-6 text-muted-foreground" />
+                
+                {/* Sync */}
+                <div className="text-center">
+                  <div className="w-20 h-20 rounded-full bg-cyan-500/10 border-2 border-cyan-500/40 flex items-center justify-center mb-2">
+                    <span className="text-2xl">🎯</span>
+                  </div>
+                  <p className="text-xs font-medium">Sync</p>
+                </div>
+                
+                <ArrowRight className="w-6 h-6 text-muted-foreground" />
+                
+                {/* Output */}
+                <div className="text-center">
+                  <div className="w-20 h-20 rounded-full bg-primary/10 border-2 border-primary/40 flex items-center justify-center mb-2">
+                    <span className="text-2xl">✨</span>
+                  </div>
+                  <p className="text-xs font-medium">Result</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+      
       {/* Interactive Examples Section */}
       <section className="py-20 border-t border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
@@ -209,35 +458,6 @@ console.log('Entropy:', result.entropy);
 console.log('Order Parameter:', result.oscillators.orderParameter);`}</pre>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Architecture Diagram */}
-      <section className="py-20 border-t border-border">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <h2 className="text-3xl font-display font-bold text-center mb-8">Architecture</h2>
-          
-          <div className="p-8 rounded-xl border border-border bg-card overflow-x-auto">
-            <pre className="font-mono text-xs sm:text-sm text-muted-foreground leading-relaxed">
-{`┌─────────────────────────────────────────────────────────────────┐
-│                        AlephEngine                              │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
-│  │ Oscillators │◄─┤   Field     │◄─┤      Transform          │ │
-│  │  (Kuramoto) │  │  (Sedenion) │  │      Pipeline           │ │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-         ┌────────────────────┼────────────────────┐
-         ▼                    ▼                    ▼
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│ SemanticBackend │ │CryptographicBack│ │ScientificBackend│
-│                 │ │                 │ │                 │
-│ • Tokenization  │ │ • Hash          │ │ • Quantum sim   │
-│ • Prime encode  │ │ • Key derive    │ │ • Wave collapse │
-│ • Transforms    │ │ • Verify        │ │ • Measurement   │
-└─────────────────┘ └─────────────────┘ └─────────────────┘`}
-            </pre>
           </div>
         </div>
       </section>
