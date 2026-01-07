@@ -1550,6 +1550,204 @@ network.layers.forEach((layer, i) => {
   );
 };
 
+// ==================== Attention Comparison Demo ====================
+
+const AttentionComparisonDemo = () => {
+  const [tokens, setTokens] = useState(['wisdom', 'ancient', 'truth', 'light']);
+  const [dotProductMatrix, setDotProductMatrix] = useState<number[][]>([]);
+  const [resonanceMatrix, setResonanceMatrix] = useState<number[][]>([]);
+  const [computed, setComputed] = useState(false);
+
+  // Simple word to embedding (hash-based for demo)
+  const wordToEmbedding = (word: string, dim: number = 8): number[] => {
+    const embedding: number[] = [];
+    for (let i = 0; i < dim; i++) {
+      let hash = 0;
+      for (let j = 0; j < word.length; j++) {
+        hash = ((hash << 5) - hash + word.charCodeAt(j) * (i + 1)) | 0;
+      }
+      embedding.push(Math.sin(hash) * 0.5 + 0.5);
+    }
+    // Normalize
+    const norm = Math.sqrt(embedding.reduce((s, v) => s + v * v, 0));
+    return embedding.map(v => v / norm);
+  };
+
+  // Prime encoding
+  const PRIME_MAP: Record<string, number> = {
+    a: 2, b: 3, c: 5, d: 7, e: 11, f: 13, g: 17, h: 19, i: 23, j: 29,
+    k: 31, l: 37, m: 41, n: 43, o: 47, p: 53, q: 59, r: 61, s: 67, t: 71,
+    u: 73, v: 79, w: 83, x: 89, y: 97, z: 101
+  };
+
+  const wordToPrimes = (word: string): number[] => {
+    return word.toLowerCase().split('').filter(c => PRIME_MAP[c]).map(c => PRIME_MAP[c]);
+  };
+
+  const dotProduct = (a: number[], b: number[]): number => {
+    return a.reduce((s, v, i) => s + v * b[i], 0);
+  };
+
+  const primeResonance = (p1: number[], p2: number[]): number => {
+    const overlap = p1.filter(p => p2.includes(p)).length;
+    const union = new Set([...p1, ...p2]).size;
+    return union > 0 ? overlap / union : 0;
+  };
+
+  const compute = useCallback(() => {
+    const embeddings = tokens.map(t => wordToEmbedding(t));
+    const primes = tokens.map(wordToPrimes);
+
+    // Dot-product attention matrix
+    const dpMatrix: number[][] = [];
+    for (let i = 0; i < tokens.length; i++) {
+      const row: number[] = [];
+      for (let j = 0; j < tokens.length; j++) {
+        row.push(dotProduct(embeddings[i], embeddings[j]));
+      }
+      dpMatrix.push(row);
+    }
+
+    // Softmax normalize
+    const dpNormalized = dpMatrix.map(row => {
+      const sum = row.reduce((s, v) => s + Math.exp(v * 2), 0);
+      return row.map(v => Math.exp(v * 2) / sum);
+    });
+    setDotProductMatrix(dpNormalized);
+
+    // Resonance attention matrix
+    const resMatrix: number[][] = [];
+    for (let i = 0; i < tokens.length; i++) {
+      const row: number[] = [];
+      for (let j = 0; j < tokens.length; j++) {
+        row.push(primeResonance(primes[i], primes[j]));
+      }
+      resMatrix.push(row);
+    }
+
+    // Softmax normalize
+    const resNormalized = resMatrix.map(row => {
+      const sum = row.reduce((s, v) => s + Math.exp(v * 3), 0);
+      return row.map(v => Math.exp(v * 3) / sum);
+    });
+    setResonanceMatrix(resNormalized);
+    setComputed(true);
+  }, [tokens]);
+
+  const MatrixView = ({ matrix, title, colorHue }: { matrix: number[][], title: string, colorHue: number }) => (
+    <div className="p-4 rounded-lg bg-muted/50">
+      <p className="text-sm font-medium mb-3 text-center">{title}</p>
+      <div 
+        className="grid gap-1 mx-auto w-fit" 
+        style={{ gridTemplateColumns: `60px repeat(${tokens.length}, 48px)` }}
+      >
+        <div></div>
+        {tokens.map((t, i) => (
+          <div key={i} className="text-[10px] text-center truncate text-muted-foreground">
+            {t.slice(0, 5)}
+          </div>
+        ))}
+        {matrix.map((row, i) => (
+          <>
+            <div key={`label-${i}`} className="text-[10px] text-right pr-2 text-muted-foreground flex items-center justify-end">
+              {tokens[i].slice(0, 6)}
+            </div>
+            {row.map((val, j) => (
+              <div
+                key={`${i}-${j}`}
+                className="w-12 h-10 rounded flex items-center justify-center text-[10px] font-mono transition-all"
+                style={{ 
+                  backgroundColor: `hsla(${colorHue}, 70%, 45%, ${val})`,
+                  color: val > 0.35 ? 'white' : 'inherit'
+                }}
+              >
+                {val.toFixed(2)}
+              </div>
+            ))}
+          </>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="p-6 rounded-xl border border-border bg-card">
+      <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+        <Grid3X3 className="w-5 h-5 text-primary" />
+        Attention Mechanism Comparison
+      </h3>
+
+      <p className="text-sm text-muted-foreground mb-4">
+        Compare traditional <span className="text-blue-400">dot-product attention</span> (learned embeddings) 
+        with ResoFormer's <span className="text-emerald-400">prime resonance attention</span> (algebraic structure).
+      </p>
+
+      <div className="mb-4">
+        <label className="text-sm text-muted-foreground mb-2 block">Input Tokens (comma-separated)</label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={tokens.join(', ')}
+            onChange={(e) => {
+              setTokens(e.target.value.split(',').map(t => t.trim()).filter(Boolean));
+              setComputed(false);
+            }}
+            className="flex-1 px-4 py-2 rounded-lg bg-muted border border-border focus:border-primary outline-none"
+          />
+          <button
+            onClick={compute}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            <Play className="w-4 h-4" /> Compute
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2 mb-6">
+        {['wisdom,ancient,truth,light', 'king,queen,prince,princess', 'fire,water,earth,air', 'hello,world,code,data'].map(preset => (
+          <button
+            key={preset}
+            onClick={() => { setTokens(preset.split(',')); setComputed(false); }}
+            className="px-2 py-1 rounded text-xs bg-muted hover:bg-primary/20 transition-colors"
+          >
+            {preset}
+          </button>
+        ))}
+      </div>
+
+      {computed && (
+        <div className="grid md:grid-cols-2 gap-6">
+          <MatrixView matrix={dotProductMatrix} title="Dot-Product Attention (Q·K/√d)" colorHue={210} />
+          <MatrixView matrix={resonanceMatrix} title="Prime Resonance (|P∩P'|/|P∪P'|)" colorHue={160} />
+        </div>
+      )}
+
+      {computed && (
+        <div className="mt-6 grid md:grid-cols-2 gap-4">
+          <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
+            <h4 className="font-medium text-blue-400 mb-2">Dot-Product Attention</h4>
+            <ul className="text-sm text-muted-foreground space-y-1">
+              <li>• Learned embeddings required</li>
+              <li>• Dense, continuous similarity</li>
+              <li>• No inherent interpretability</li>
+              <li>• Scales with embedding dimension</li>
+            </ul>
+          </div>
+          <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+            <h4 className="font-medium text-emerald-400 mb-2">Prime Resonance Attention</h4>
+            <ul className="text-sm text-muted-foreground space-y-1">
+              <li>• No training needed</li>
+              <li>• Sparse, algebraic similarity</li>
+              <li>• Fully interpretable (shared primes)</li>
+              <li>• Captures structural overlap</li>
+            </ul>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const MLExamplesPage = () => {
   return (
     <div className="min-h-screen bg-background">
@@ -1564,10 +1762,41 @@ const MLExamplesPage = () => {
           </p>
         </div>
 
+        {/* ResoFormer CTA */}
+        <Link 
+          to="/resoformer"
+          className="block mb-8 p-6 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 transition-all group"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-primary/20 group-hover:bg-primary/30 transition-colors">
+                <Brain className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-primary group-hover:text-primary/90">
+                  ResoFormer Deep Dive →
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Explore the full architecture with interactive multi-layer processing, quaternion rotations, and adaptive depth visualization.
+                </p>
+              </div>
+            </div>
+            <Network className="w-8 h-8 text-primary/50 group-hover:text-primary transition-colors hidden md:block" />
+          </div>
+        </Link>
+
         <div className="space-y-12">
           <section>
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
               <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">1</span>
+              Attention Comparison: Dot-Product vs Resonance
+            </h2>
+            <AttentionComparisonDemo />
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">2</span>
               Quaternion Composition
             </h2>
             <QuaternionExample />
@@ -1575,7 +1804,7 @@ const MLExamplesPage = () => {
 
           <section>
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">2</span>
+              <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">3</span>
               Sparse Prime States
             </h2>
             <SparsePrimeStateExample />
@@ -1583,7 +1812,7 @@ const MLExamplesPage = () => {
 
           <section>
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">3</span>
+              <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">4</span>
               Word Embeddings
             </h2>
             <EmbeddingsExample />
@@ -1591,7 +1820,7 @@ const MLExamplesPage = () => {
 
           <section>
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">4</span>
+              <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">5</span>
               Self-Attention Matrix
             </h2>
             <AttentionMatrixExample />
@@ -1599,7 +1828,7 @@ const MLExamplesPage = () => {
 
           <section>
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">5</span>
+              <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">6</span>
               Animated Gradient Descent
             </h2>
             <GradientDescentExample />
@@ -1607,7 +1836,7 @@ const MLExamplesPage = () => {
 
           <section>
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">6</span>
+              <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">7</span>
               Neural Network Forward Pass
             </h2>
             <NeuralNetworkExample />
@@ -1615,7 +1844,7 @@ const MLExamplesPage = () => {
 
           <section>
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">7</span>
+              <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">8</span>
               ResoFormer Architecture
             </h2>
             <ResonantAttentionExample />
