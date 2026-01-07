@@ -49,8 +49,14 @@ const HypercomplexExample = () => {
     setMultiplyResult([...(product as any).c]);
   }, [dim]);
 
+  // Deterministic "random" based on current components
   const randomize = useCallback(() => {
-    const newComponents = Array.from({ length: dim }, () => Math.random() * 2 - 1);
+    const seed = Date.now() % 1000; // Use a seed for reproducibility hint
+    const newComponents = Array.from({ length: dim }, (_, i) => {
+      // Deterministic pseudo-random based on index and seed
+      const h = Math.sin(seed * 9.8 + i * 7.3) * 43758.5453;
+      return (h - Math.floor(h)) * 2 - 1;
+    });
     setComponents(newComponents);
   }, [dim]);
 
