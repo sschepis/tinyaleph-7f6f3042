@@ -293,83 +293,267 @@ console.log('Halt?', shouldHalt);`}
   );
 };
 
-// Resonant Attention
+// Resonant Attention - Interactive Demo
 const ResonantAttentionExample = () => {
+  const [tokens, setTokens] = useState(['wisdom', 'ancient', 'truth', 'knowledge']);
+  const [attentionMatrix, setAttentionMatrix] = useState<number[][]>([]);
+  const [primeStates, setPrimeStates] = useState<{ word: string; primes: number[]; entropy: number }[]>([]);
+  const [coherenceScores, setCoherenceScores] = useState<number[]>([]);
+  const [collapsed, setCollapsed] = useState<{ word: string; confidence: number } | null>(null);
+
+  // Encode word to primes (simplified)
+  const wordToPrimes = (word: string): number[] => {
+    const PRIME_MAP: Record<string, number> = {
+      a: 2, b: 3, c: 5, d: 7, e: 11, f: 13, g: 17, h: 19, i: 23, j: 29,
+      k: 31, l: 37, m: 41, n: 43, o: 47, p: 53, q: 59, r: 61, s: 67, t: 71,
+      u: 73, v: 79, w: 83, x: 89, y: 97, z: 101
+    };
+    return word.toLowerCase().split('').filter(c => PRIME_MAP[c]).map(c => PRIME_MAP[c]).slice(0, 5);
+  };
+
+  // Resonance between two prime signatures
+  const primeResonance = (p1: number[], p2: number[]): number => {
+    const overlap = p1.filter(p => p2.includes(p)).length;
+    const union = new Set([...p1, ...p2]).size;
+    return union > 0 ? overlap / union : 0;
+  };
+
+  // Compute entropy of prime distribution
+  const computeEntropy = (primes: number[]): number => {
+    const freq: Record<number, number> = {};
+    primes.forEach(p => freq[p] = (freq[p] || 0) + 1);
+    const total = primes.length || 1;
+    const probs = Object.values(freq).map(f => f / total);
+    return -probs.reduce((s, p) => s + (p > 0 ? p * Math.log2(p) : 0), 0);
+  };
+
+  const runResonantAttention = useCallback(() => {
+    // Encode tokens to prime states
+    const states = tokens.map(word => {
+      const primes = wordToPrimes(word);
+      return { word, primes, entropy: computeEntropy(primes) };
+    });
+    setPrimeStates(states);
+
+    // Build resonance-based attention matrix
+    const matrix: number[][] = [];
+    for (let i = 0; i < states.length; i++) {
+      const row: number[] = [];
+      for (let j = 0; j < states.length; j++) {
+        row.push(primeResonance(states[i].primes, states[j].primes));
+      }
+      matrix.push(row);
+    }
+    
+    // Normalize rows (softmax-like)
+    const normalized = matrix.map(row => {
+      const sum = row.reduce((s, v) => s + Math.exp(v * 3), 0); // temperature=3
+      return row.map(v => Math.exp(v * 3) / sum);
+    });
+    setAttentionMatrix(normalized);
+
+    // Compute coherence per token (how much attention it receives)
+    const coherence = tokens.map((_, i) => 
+      normalized.reduce((s, row) => s + row[i], 0) / tokens.length
+    );
+    setCoherenceScores(coherence);
+
+    // Entropy collapse: select most coherent token
+    const maxIdx = coherence.indexOf(Math.max(...coherence));
+    setCollapsed({ 
+      word: tokens[maxIdx], 
+      confidence: coherence[maxIdx] 
+    });
+  }, [tokens]);
+
   return (
     <div className="space-y-6">
       <div className="p-6 rounded-xl border border-border bg-card">
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <Brain className="w-5 h-5 text-primary" />
-          ResoFormer Architecture
+          Interactive Resonant Attention
         </h3>
 
-        <div className="space-y-4">
-          <p className="text-muted-foreground">
-            ResoFormer replaces standard attention with prime resonance-based computation:
-          </p>
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              ResoFormer computes attention weights using prime resonance instead of dot-product similarity.
+              Tokens with overlapping prime signatures attend to each other more strongly.
+            </p>
 
-          <div className="grid md:grid-cols-3 gap-4">
-            <div className="p-4 rounded-lg bg-muted/50">
-              <h4 className="font-semibold mb-2 text-primary">Resonant Attention</h4>
-              <p className="text-sm text-muted-foreground">
-                Attention weights based on prime resonance scores instead of dot-product similarity.
-              </p>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Input Tokens (comma-separated)</label>
+              <input
+                type="text"
+                value={tokens.join(', ')}
+                onChange={(e) => setTokens(e.target.value.split(',').map(t => t.trim()).filter(Boolean))}
+                className="w-full px-4 py-2 rounded-lg bg-muted border border-border focus:border-primary outline-none"
+              />
             </div>
-            <div className="p-4 rounded-lg bg-muted/50">
-              <h4 className="font-semibold mb-2 text-primary">Entropy Collapse Head</h4>
-              <p className="text-sm text-muted-foreground">
-                Output layer that collapses high-entropy states to low-entropy predictions.
-              </p>
+
+            <div className="flex flex-wrap gap-2">
+              {['wisdom,ancient,truth,knowledge', 'fire,water,earth,air', 'king,queen,prince,princess'].map(preset => (
+                <button
+                  key={preset}
+                  onClick={() => setTokens(preset.split(','))}
+                  className="px-2 py-1 rounded text-xs bg-muted hover:bg-primary/20 transition-colors"
+                >
+                  {preset}
+                </button>
+              ))}
             </div>
-            <div className="p-4 rounded-lg bg-muted/50">
-              <h4 className="font-semibold mb-2 text-primary">Coherence Gating</h4>
-              <p className="text-sm text-muted-foreground">
-                Dynamic computation that halts when coherence exceeds threshold.
-              </p>
-            </div>
+
+            <button
+              onClick={runResonantAttention}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <Play className="w-4 h-4" /> Compute Resonant Attention
+            </button>
+
+            {/* Prime States */}
+            {primeStates.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Prime Encodings</p>
+                {primeStates.map((state, i) => (
+                  <div key={i} className="flex items-center gap-2 p-2 rounded bg-muted/50">
+                    <span className="font-mono text-primary w-20 truncate">{state.word}</span>
+                    <span className="text-xs text-muted-foreground">→</span>
+                    <span className="font-mono text-xs flex-1">[{state.primes.join(', ')}]</span>
+                    <span className="text-xs text-muted-foreground">H={state.entropy.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div className="p-4 rounded-lg bg-primary/10 border border-primary/30 font-mono text-sm">
-            <pre className="overflow-x-auto">{`┌──────────────────────────────────────────────────────┐
-│              ResoFormer Layer                        │
-│  ┌────────────┐    ┌────────────┐    ┌────────────┐ │
-│  │ Prime      │ → │ Resonant   │ → │ Hamilton   │ │
-│  │ Encoding   │    │ Attention  │    │ Compose    │ │
-│  └────────────┘    └────────────┘    └────────────┘ │
-│         ↓                ↓                ↓         │
-│  ┌────────────────────────────────────────────────┐ │
-│  │         Coherence-Gated Output                 │ │
-│  │    if coherence > θ: halt else: continue      │ │
-│  └────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────┘`}</pre>
+          <div className="space-y-4">
+            {/* Attention Matrix Heatmap */}
+            {attentionMatrix.length > 0 && (
+              <div className="p-4 rounded-lg bg-muted/50">
+                <p className="text-sm font-medium mb-3">Resonance Attention Matrix</p>
+                <div className="grid gap-1" style={{ gridTemplateColumns: `auto repeat(${tokens.length}, 1fr)` }}>
+                  <div></div>
+                  {tokens.map((t, i) => (
+                    <div key={i} className="text-xs text-center truncate px-1 text-muted-foreground">{t.slice(0, 4)}</div>
+                  ))}
+                  {attentionMatrix.map((row, i) => (
+                    <>
+                      <div key={`label-${i}`} className="text-xs text-right pr-2 text-muted-foreground">{tokens[i].slice(0, 4)}</div>
+                      {row.map((val, j) => (
+                        <div
+                          key={`${i}-${j}`}
+                          className="aspect-square rounded flex items-center justify-center text-[10px] font-mono"
+                          style={{ 
+                            backgroundColor: `hsla(200, 80%, 50%, ${val})`,
+                            color: val > 0.4 ? 'white' : 'hsl(var(--foreground))'
+                          }}
+                          title={`${tokens[i]} → ${tokens[j]}: ${val.toFixed(3)}`}
+                        >
+                          {val.toFixed(2)}
+                        </div>
+                      ))}
+                    </>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Coherence Scores */}
+            {coherenceScores.length > 0 && (
+              <div className="p-4 rounded-lg bg-muted/50">
+                <p className="text-sm font-medium mb-3">Coherence Scores (Attention Received)</p>
+                <div className="space-y-2">
+                  {tokens.map((t, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="w-20 text-sm truncate">{t}</span>
+                      <div className="flex-1 h-4 bg-secondary rounded overflow-hidden">
+                        <div 
+                          className="h-full bg-primary transition-all"
+                          style={{ width: `${coherenceScores[i] * 100}%` }}
+                        />
+                      </div>
+                      <span className="font-mono text-xs w-12 text-right">{coherenceScores[i].toFixed(3)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Entropy Collapse Result */}
+            {collapsed && (
+              <div className="p-4 rounded-lg bg-green-500/20 border border-green-500/50">
+                <p className="text-sm font-medium mb-1">Entropy Collapse Output</p>
+                <p className="font-mono text-xl text-green-400">{collapsed.word}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Confidence: {(collapsed.confidence * 100).toFixed(1)}% (most coherent token)
+                </p>
+              </div>
+            )}
           </div>
+        </div>
+
+        {/* Architecture Diagram */}
+        <div className="mt-6 p-4 rounded-lg bg-primary/10 border border-primary/30 font-mono text-sm">
+          <pre className="overflow-x-auto">{`┌──────────────────────────────────────────────────────────────┐
+│                    ResoFormer Layer                          │
+│  ┌────────────┐    ┌──────────────┐    ┌────────────────┐   │
+│  │ Prime      │ → │  Resonant    │ → │ Hamilton       │   │
+│  │ Encoding   │    │  Attention   │    │ Quaternion Mix │   │
+│  └────────────┘    └──────────────┘    └────────────────┘   │
+│         ↓                 ↓                   ↓              │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │           Coherence-Gated Entropy Collapse              │ │
+│  │      if coherence(state) > θ: return collapse(state)   │ │
+│  │      else: continue to next layer                       │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────┘`}</pre>
         </div>
       </div>
 
       <CodeBlock
         code={`import { 
+  ResoFormer,
   resonantAttention,
   EntropyCollapseHead,
   coherenceGatedCompute,
-  generateAttractorCodebook
+  PrimeEncoder
 } from '@aleph-ai/tinyaleph';
 
-// Generate attractor codebook from vocabulary
-const codebook = generateAttractorCodebook(vocabulary, 256);
-
-// Resonant attention replaces softmax(QK^T)V
-const attended = resonantAttention(query, keys, values);
-
-// Entropy collapse for output projection
-const head = new EntropyCollapseHead(hiddenDim, vocabSize);
-const logits = head.forward(hiddenState);
-
-// Coherence-gated compute (adaptive depth)
-const output = coherenceGatedCompute(
-  input,
-  layers,
+// Create ResoFormer model
+const model = new ResoFormer({
+  layers: 6,
+  hiddenDim: 256,
+  numHeads: 8,
   coherenceThreshold: 0.9
-);`}
+});
+
+// Encode input tokens to prime states
+const encoder = new PrimeEncoder(vocabulary);
+const primeStates = encoder.encode(['wisdom', 'ancient', 'truth']);
+
+// Resonant attention: uses prime overlap instead of dot product
+const attended = resonantAttention(
+  query: primeStates,
+  keys: primeStates,
+  values: primeStates
+);
+// Attention weights based on |P_q ∩ P_k| / |P_q ∪ P_k|
+
+// Entropy collapse head for output
+const head = new EntropyCollapseHead(256, vocabSize);
+const output = head.forward(attended);
+// Selects token with minimum entropy (maximum coherence)
+
+// Full forward pass with adaptive depth
+const result = model.forward(input, {
+  maxLayers: 12,
+  coherenceThreshold: 0.9,  // Halt when coherence exceeds
+  returnTrace: true
+});
+
+console.log('Output:', result.output);
+console.log('Layers used:', result.layersUsed);  // Adaptive depth
+console.log('Final coherence:', result.coherence);`}
         language="javascript"
         title="resoformer.js"
       />
