@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Layout from "./components/Layout";
 import Index from "./pages/Index";
 import CoreExamples from "./pages/CoreExamples";
 import PhysicsExamples from "./pages/PhysicsExamples";
@@ -30,27 +31,29 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/core" element={<CoreExamples />} />
-          <Route path="/physics" element={<PhysicsExamples />} />
-          <Route path="/backends" element={<BackendsExamples />} />
-          <Route path="/engine" element={<EngineExamples />} />
-          <Route path="/api" element={<ApiExamples />} />
-          <Route path="/quantum" element={<QuantumExamples />} />
-          <Route path="/kuramoto" element={<KuramotoExamples />} />
-          <Route path="/quickstart" element={<QuickstartExamples />} />
-          <Route path="/semantic" element={<SemanticExamples />} />
-          <Route path="/crypto" element={<CryptoExamples />} />
-          <Route path="/math" element={<MathExamples />} />
-          <Route path="/ml" element={<MLExamples />} />
-          <Route path="/scientific" element={<ScientificExamples />} />
-          <Route path="/typesystem" element={<TypeSystemExamples />} />
-          <Route path="/chat" element={<ChatExamples />} />
-          <Route path="/enochian" element={<EnochianExamples />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/core" element={<CoreExamples />} />
+            <Route path="/physics" element={<PhysicsExamples />} />
+            <Route path="/backends" element={<BackendsExamples />} />
+            <Route path="/engine" element={<EngineExamples />} />
+            <Route path="/api" element={<ApiExamples />} />
+            <Route path="/quantum" element={<QuantumExamples />} />
+            <Route path="/kuramoto" element={<KuramotoExamples />} />
+            <Route path="/quickstart" element={<QuickstartExamples />} />
+            <Route path="/semantic" element={<SemanticExamples />} />
+            <Route path="/crypto" element={<CryptoExamples />} />
+            <Route path="/math" element={<MathExamples />} />
+            <Route path="/ml" element={<MLExamples />} />
+            <Route path="/scientific" element={<ScientificExamples />} />
+            <Route path="/typesystem" element={<TypeSystemExamples />} />
+            <Route path="/chat" element={<ChatExamples />} />
+            <Route path="/enochian" element={<EnochianExamples />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Layout>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

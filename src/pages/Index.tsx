@@ -1,7 +1,5 @@
 import { Link } from 'react-router-dom';
-import Navigation from '../components/Navigation';
 import Hero from '../components/Hero';
-import Footer from '../components/Footer';
 import ModuleCard from '../components/ModuleCard';
 import { Layers, Waves, Database, Cpu, ArrowRight, Play, Server, Atom, Network, MessageSquare, Languages } from 'lucide-react';
 
@@ -122,8 +120,7 @@ const exampleCategories = [
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
+    <>
       <Hero />
       
       {/* Interactive Examples Section */}
@@ -244,9 +241,7 @@ console.log('Order Parameter:', result.oscillators.orderParameter);`}</pre>
           </div>
         </div>
       </section>
-
-      <Footer />
-    </div>
+    </>
   );
 };
 

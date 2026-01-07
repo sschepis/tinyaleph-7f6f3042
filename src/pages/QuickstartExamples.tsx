@@ -1,8 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Play, Hash, Shuffle } from 'lucide-react';
 import CodeBlock from '../components/CodeBlock';
-import Navigation from '../components/Navigation';
-import Footer from '../components/Footer';
 import SedenionVisualizer from '../components/SedenionVisualizer';
 import {
   SemanticBackend,
@@ -363,11 +361,9 @@ psi.c[1] = result === 'tails' ? 1 : 0;`}
 
 const QuickstartExamplesPage = () => {
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
+    <div className="pt-20">
       <div className="max-w-5xl mx-auto px-4 py-12">
         <div className="mb-8">
-          <a href="/" className="text-primary hover:underline text-sm">← Back to Examples</a>
           <h1 className="text-3xl font-display font-bold mt-4 mb-2">Quickstart Examples</h1>
           <p className="text-muted-foreground">
             Simple, copy-paste examples to get you started immediately with TinyAleph.
@@ -380,7 +376,6 @@ const QuickstartExamplesPage = () => {
           <QuantumCoinExample />
         </div>
       </div>
-      <Footer />
     </div>
   );
 };

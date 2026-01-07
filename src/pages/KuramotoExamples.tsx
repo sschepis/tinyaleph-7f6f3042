@@ -1,7 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import Navigation from '../components/Navigation';
-import Footer from '../components/Footer';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import CodeBlock from '../components/CodeBlock';
@@ -778,10 +776,8 @@ for (let t = 0; t < 2000; t++) {
 }`;
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      
-      <main className="pt-24 pb-20">
+    <div className="pt-20">
+      <main className="pb-20">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <Link 
             to="/" 
@@ -880,8 +876,6 @@ for (let t = 0; t < 2000; t++) {
           </div>
         </div>
       </main>
-
-      <Footer />
     </div>
   );
 };
