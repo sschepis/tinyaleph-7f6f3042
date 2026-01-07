@@ -4,7 +4,16 @@ import { Menu, X, Github, ExternalLink, Boxes, ChevronDown } from 'lucide-react'
 
 const navGroups = [
   {
-    label: 'Getting Started',
+    label: 'Docs',
+    items: [
+      { id: 'getting-started', label: 'Getting Started', path: '/docs/getting-started' },
+      { id: 'user-guide', label: 'User Guide', path: '/docs/user-guide' },
+      { id: 'app-ideas', label: 'App Ideas', path: '/docs/app-ideas' },
+      { id: 'reference', label: 'Reference', path: '/docs/reference' },
+    ],
+  },
+  {
+    label: 'Examples',
     items: [
       { id: 'quickstart', label: 'Quickstart', path: '/quickstart' },
       { id: 'semantic', label: 'Semantic', path: '/semantic' },
