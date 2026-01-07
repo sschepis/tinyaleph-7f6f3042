@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Play, Brain, Plus, X } from 'lucide-react';
+import { Play, Brain, Plus, X, RotateCcw } from 'lucide-react';
 import ExamplePageWrapper, { ExampleConfig } from '../components/ExamplePageWrapper';
 
 // Deterministic hash for consistent token similarity
@@ -155,9 +155,17 @@ const GradientExample = () => {
     });
   }, []);
 
+  const reset = useCallback(() => {
+    setStep(0);
+    setLoss(100);
+  }, []);
+
   return (
     <div className="space-y-4">
-      <button onClick={runStep} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground"><Play className="w-4 h-4" /> Step</button>
+      <div className="flex gap-2">
+        <button onClick={runStep} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground"><Play className="w-4 h-4" /> Step</button>
+        <button onClick={reset} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary text-secondary-foreground border border-border"><RotateCcw className="w-4 h-4" /> Reset</button>
+      </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="p-4 rounded-lg bg-muted/50 text-center"><p className="text-sm text-muted-foreground">Step</p><p className="text-2xl font-mono text-primary">{step}</p></div>
         <div className="p-4 rounded-lg bg-muted/50 text-center"><p className="text-sm text-muted-foreground">Loss</p><p className="text-2xl font-mono text-primary">{loss.toFixed(2)}</p></div>
