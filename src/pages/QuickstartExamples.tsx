@@ -1,10 +1,8 @@
 import { useState, useCallback } from 'react';
-import { Play, Hash, Shuffle, ChevronLeft, ChevronRight, Circle } from 'lucide-react';
+import { Play, Hash, Shuffle } from 'lucide-react';
 import SedenionVisualizer from '../components/SedenionVisualizer';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { motion, AnimatePresence } from 'framer-motion';
+import ExamplePageWrapper, { ExampleConfig } from '../components/ExamplePageWrapper';
 import {
   SemanticBackend,
   hash,
@@ -13,7 +11,7 @@ import {
 import { minimalConfig } from '@/lib/tinyaleph-config';
 
 // Example metadata with descriptions
-const examples = [
+const examples: ExampleConfig[] = [
   {
     id: 'hello-world',
     number: '01',
@@ -21,14 +19,43 @@ const examples = [
     subtitle: 'Your First Semantic Encoding',
     description: 'Learn the fundamental building blocks of TinyAleph. This example shows how to take natural language text and convert it into a mathematical representation using prime numbers and hypercomplex states. The semantic backend tokenizes your input, encodes each token as a prime number, then projects everything into a 16-dimensional sedenion space where meaning can be measured mathematically.',
     concepts: ['Tokenization', 'Prime Encoding', 'Sedenion States', 'Entropy'],
+    code: `import { SemanticBackend } from '@aleph-ai/tinyaleph';
+import config from '@aleph-ai/tinyaleph/data.json';
+
+const backend = new SemanticBackend(config);
+
+// Tokenize and filter stop words
+const tokens = backend.tokenize('What is love?', true);
+
+// Encode to prime signature
+const primes = backend.encode('What is love?');
+
+// Convert to hypercomplex state
+const state = backend.primesToState(primes);
+
+console.log('Entropy:', state.entropy());
+console.log('Decoded:', backend.decode(primes));`,
+    codeTitle: '01-hello-world.js',
   },
   {
     id: 'basic-hash',
     number: '02',
     title: 'Basic Hashing',
     subtitle: 'Semantic-Aware Cryptographic Hashing',
-    description: 'Traditional hashes treat input as meaningless bytes. TinyAleph\'s hash function is semantic-aware: similar meanings produce similar hash prefixes while maintaining cryptographic properties. This makes it useful for both security applications and semantic similarity detection. Choose from 16D, 32D, or 64D output dimensions based on your collision resistance needs.',
+    description: "Traditional hashes treat input as meaningless bytes. TinyAleph's hash function is semantic-aware: similar meanings produce similar hash prefixes while maintaining cryptographic properties. This makes it useful for both security applications and semantic similarity detection. Choose from 16D, 32D, or 64D output dimensions based on your collision resistance needs.",
     concepts: ['Cryptographic Hashing', 'Semantic Similarity', 'Determinism'],
+    code: `import { hash } from '@aleph-ai/tinyaleph';
+
+// Hash any string to a semantic hash
+const h = hash('my secret password', 32);
+console.log(h);
+
+// Hashes are deterministic:
+// hash('hello') === hash('hello')  // true
+
+// Similar meanings → similar hashes:
+// hash('love') is close to hash('affection')`,
+    codeTitle: '02-basic-hash.js',
   },
   {
     id: 'quantum-coin',
@@ -37,6 +64,24 @@ const examples = [
     subtitle: 'Superposition & Measurement',
     description: 'Experience quantum mechanics in action. This demo creates a quantum superposition state |+⟩ = (|0⟩ + |1⟩)/√2 where the coin exists as both heads AND tails simultaneously. When you measure, the wavefunction collapses according to the Born rule, giving truly random results. Watch the statistics converge to 50/50 over many flips—a hallmark of quantum randomness.',
     concepts: ['Superposition', 'Born Rule', 'Wavefunction Collapse', 'Quantum Randomness'],
+    code: `import { Hypercomplex } from '@aleph-ai/tinyaleph';
+
+// Create superposition: |+⟩ = (|0⟩ + |1⟩)/√2
+const psi = new Hypercomplex(16);
+psi.c[0] = 1 / Math.sqrt(2);  // |0⟩ amplitude
+psi.c[1] = 1 / Math.sqrt(2);  // |1⟩ amplitude
+
+// Born rule measurement
+const probHeads = psi.c[0] ** 2;
+const probTails = psi.c[1] ** 2;
+
+// Measure (collapse wavefunction)
+const result = Math.random() < probHeads ? 'heads' : 'tails';
+
+// State collapses to |0⟩ or |1⟩
+psi.c[0] = result === 'heads' ? 1 : 0;
+psi.c[1] = result === 'tails' ? 1 : 0;`,
+    codeTitle: '03-quantum-coin.js',
   },
 ];
 
@@ -287,138 +332,15 @@ const exampleComponents: Record<string, React.FC> = {
 };
 
 const QuickstartExamplesPage = () => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const currentExample = examples[currentIndex];
-  const ExampleComponent = exampleComponents[currentExample.id];
-
-  const goToPrevious = () => {
-    setCurrentIndex((prev) => (prev === 0 ? examples.length - 1 : prev - 1));
-  };
-
-  const goToNext = () => {
-    setCurrentIndex((prev) => (prev === examples.length - 1 ? 0 : prev + 1));
-  };
-
   return (
-    <div className="pt-20">
-      <div className="max-w-5xl mx-auto px-4 py-12">
-        {/* Header */}
-        <div className="mb-8">
-          <Badge variant="outline" className="mb-2">Getting Started</Badge>
-          <h1 className="text-3xl font-display font-bold mb-2">Quickstart Examples</h1>
-          <p className="text-muted-foreground">
-            Simple, copy-paste examples to get you started immediately with TinyAleph.
-          </p>
-        </div>
-
-        {/* Navigation Pills */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          {examples.map((example, index) => (
-            <button
-              key={example.id}
-              onClick={() => setCurrentIndex(index)}
-              className={`
-                px-4 py-2 rounded-full text-sm font-medium transition-all
-                ${index === currentIndex 
-                  ? 'bg-primary text-primary-foreground' 
-                  : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground'
-                }
-              `}
-            >
-              {example.number}. {example.title}
-            </button>
-          ))}
-        </div>
-
-        {/* Example Content */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentExample.id}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.3 }}
-          >
-            {/* Example Header Card */}
-            <Card className="mb-6 overflow-hidden">
-              <div className="bg-gradient-to-r from-primary/10 to-purple-500/10 px-6 py-4 border-b border-border">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
-                    <span className="text-primary font-bold text-lg">{currentExample.number}</span>
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold">{currentExample.title}</h2>
-                    <p className="text-sm text-muted-foreground">{currentExample.subtitle}</p>
-                  </div>
-                </div>
-              </div>
-              <CardContent className="pt-4">
-                <p className="text-muted-foreground leading-relaxed mb-4">
-                  {currentExample.description}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {currentExample.concepts.map((concept) => (
-                    <Badge key={concept} variant="secondary">
-                      {concept}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Interactive Demo */}
-            <Card className="mb-6">
-              <div className="px-6 py-3 border-b border-border bg-muted/30">
-                <h3 className="font-semibold text-sm">Interactive Demo</h3>
-              </div>
-              <CardContent className="pt-6">
-                <ExampleComponent />
-              </CardContent>
-            </Card>
-          </motion.div>
-        </AnimatePresence>
-
-        {/* Bottom Navigation */}
-        <div className="flex items-center justify-between pt-6 border-t border-border">
-          <Button
-            variant="outline"
-            onClick={goToPrevious}
-            className="gap-2"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Previous
-          </Button>
-
-          {/* Dot Indicators */}
-          <div className="flex items-center gap-2">
-            {examples.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentIndex(index)}
-                className="p-1"
-              >
-                <Circle
-                  className={`w-2 h-2 transition-colors ${
-                    index === currentIndex 
-                      ? 'fill-primary text-primary' 
-                      : 'fill-muted text-muted'
-                  }`}
-                />
-              </button>
-            ))}
-          </div>
-
-          <Button
-            variant="outline"
-            onClick={goToNext}
-            className="gap-2"
-          >
-            Next
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-    </div>
+    <ExamplePageWrapper
+      category="Getting Started"
+      title="Quickstart Examples"
+      description="Simple, copy-paste examples to get you started immediately with TinyAleph."
+      examples={examples}
+      exampleComponents={exampleComponents}
+      nextSection={{ title: 'Semantic Examples', path: '/semantic' }}
+    />
   );
 };
 
