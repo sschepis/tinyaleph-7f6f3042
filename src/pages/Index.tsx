@@ -3,7 +3,7 @@ import Navigation from '../components/Navigation';
 import Hero from '../components/Hero';
 import Footer from '../components/Footer';
 import ModuleCard from '../components/ModuleCard';
-import { Layers, Waves, Database, Cpu, ArrowRight, Play, Server, Atom, Network, MessageSquare } from 'lucide-react';
+import { Layers, Waves, Database, Cpu, ArrowRight, Play, Server, Atom, Network, MessageSquare, Languages } from 'lucide-react';
 
 const exampleCategories = [
   {
@@ -109,6 +109,14 @@ const exampleCategories = [
     title: 'Aleph Chat',
     description: 'Semantic AI chat with prime algebra',
     examples: ['LLM integration', 'Semantic encoding', 'Cross-coherence', 'Real-time visualization']
+  },
+  {
+    id: 'enochian',
+    path: '/enochian',
+    icon: Languages,
+    title: 'Enochian Module',
+    description: '21-letter angelic alphabet with sedenion encoding',
+    examples: ['Prime basis P_E', 'Word encoding', 'Sedenion multiplication', '16D visualization']
   },
 ];
 
