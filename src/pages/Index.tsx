@@ -3,6 +3,53 @@ import Hero from '../components/Hero';
 import { Layers, Waves, Database, Cpu, ArrowRight, Play, Server, Atom, MessageSquare, Languages, BookOpen } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { motion } from 'framer-motion';
+
+// Animation variants
+const fadeInUp = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 }
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const scaleIn = {
+  hidden: { opacity: 0, scale: 0.8 },
+  visible: { opacity: 1, scale: 1 }
+};
+
+const slideInFromLeft = {
+  hidden: { opacity: 0, x: -30 },
+  visible: { opacity: 1, x: 0 }
+};
+
+const slideInFromRight = {
+  hidden: { opacity: 0, x: 30 },
+  visible: { opacity: 1, x: 0 }
+};
+
+const pulseAnimation = {
+  initial: { scale: 1 },
+  animate: { 
+    scale: [1, 1.05, 1],
+    transition: { duration: 2, repeat: Infinity, ease: "easeInOut" }
+  }
+};
+
+const flowAnimation = {
+  hidden: { pathLength: 0, opacity: 0 },
+  visible: { 
+    pathLength: 1, 
+    opacity: 1,
+    transition: { duration: 1, ease: "easeInOut" }
+  }
+};
 
 const exampleCategories = [
   {
@@ -163,144 +210,350 @@ const Index = () => {
           </div>
           
           {/* Main Engine Diagram */}
-          <div className="grid lg:grid-cols-2 gap-8 mb-12">
+          <motion.div 
+            className="grid lg:grid-cols-2 gap-8 mb-12"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            variants={staggerContainer}
+          >
             {/* Core Engine Flow */}
-            <Card className="overflow-hidden">
-              <div className="bg-primary/5 px-4 py-3 border-b border-border">
-                <h3 className="font-semibold text-sm">Core Engine Flow</h3>
-              </div>
-              <CardContent className="pt-6">
-                <div className="space-y-4">
-                  {/* Input */}
-                  <div className="flex items-center justify-center">
-                    <div className="px-6 py-3 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 font-mono text-sm">
-                      Input Text
-                    </div>
-                  </div>
-                  
-                  {/* Arrow */}
-                  <div className="flex justify-center">
-                    <div className="w-px h-6 bg-gradient-to-b from-blue-500/50 to-purple-500/50" />
-                  </div>
-                  
-                  {/* Transform Pipeline */}
-                  <div className="p-4 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5">
-                    <p className="text-xs text-center text-muted-foreground mb-3 font-medium">ALEPH ENGINE</p>
-                    <div className="flex items-center justify-center gap-2 flex-wrap">
-                      <div className="px-3 py-2 rounded-md bg-card border border-border text-xs font-mono">
-                        Tokenize
-                      </div>
-                      <ArrowRight className="w-3 h-3 text-muted-foreground" />
-                      <div className="px-3 py-2 rounded-md bg-card border border-border text-xs font-mono">
-                        Prime Encode
-                      </div>
-                      <ArrowRight className="w-3 h-3 text-muted-foreground" />
-                      <div className="px-3 py-2 rounded-md bg-card border border-border text-xs font-mono">
-                        Sedenion Map
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Arrow */}
-                  <div className="flex justify-center">
-                    <div className="w-px h-6 bg-gradient-to-b from-purple-500/50 to-green-500/50" />
-                  </div>
-                  
-                  {/* Processing */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/30 text-center">
-                      <Waves className="w-4 h-4 mx-auto mb-1 text-purple-400" />
-                      <p className="text-xs font-medium text-purple-400">Kuramoto</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-center">
-                      <Atom className="w-4 h-4 mx-auto mb-1 text-green-400" />
-                      <p className="text-xs font-medium text-green-400">Field Ops</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/30 text-center">
-                      <Layers className="w-4 h-4 mx-auto mb-1 text-orange-400" />
-                      <p className="text-xs font-medium text-orange-400">Entropy</p>
-                    </div>
-                  </div>
-                  
-                  {/* Arrow */}
-                  <div className="flex justify-center">
-                    <div className="w-px h-6 bg-gradient-to-b from-green-500/50 to-cyan-500/50" />
-                  </div>
-                  
-                  {/* Output */}
-                  <div className="flex items-center justify-center">
-                    <div className="px-6 py-3 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-mono text-sm">
-                      Semantic State
-                    </div>
-                  </div>
+            <motion.div variants={slideInFromLeft}>
+              <Card className="overflow-hidden h-full">
+                <div className="bg-primary/5 px-4 py-3 border-b border-border">
+                  <h3 className="font-semibold text-sm">Core Engine Flow</h3>
                 </div>
-              </CardContent>
-            </Card>
+                <CardContent className="pt-6">
+                  <motion.div 
+                    className="space-y-4"
+                    variants={staggerContainer}
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true }}
+                  >
+                    {/* Input */}
+                    <motion.div 
+                      className="flex items-center justify-center"
+                      variants={fadeInUp}
+                    >
+                      <motion.div 
+                        className="px-6 py-3 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 font-mono text-sm"
+                        whileHover={{ scale: 1.05, borderColor: "rgba(59, 130, 246, 0.6)" }}
+                        transition={{ type: "spring", stiffness: 400 }}
+                      >
+                        Input Text
+                      </motion.div>
+                    </motion.div>
+                    
+                    {/* Animated Arrow */}
+                    <motion.div 
+                      className="flex justify-center"
+                      variants={fadeInUp}
+                    >
+                      <motion.div 
+                        className="w-px h-6 bg-gradient-to-b from-blue-500/50 to-purple-500/50"
+                        initial={{ scaleY: 0 }}
+                        whileInView={{ scaleY: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5, delay: 0.2 }}
+                      />
+                    </motion.div>
+                    
+                    {/* Transform Pipeline */}
+                    <motion.div 
+                      className="p-4 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5"
+                      variants={scaleIn}
+                      whileHover={{ borderColor: "hsl(var(--primary))", scale: 1.02 }}
+                      transition={{ type: "spring", stiffness: 300 }}
+                    >
+                      <p className="text-xs text-center text-muted-foreground mb-3 font-medium">ALEPH ENGINE</p>
+                      <motion.div 
+                        className="flex items-center justify-center gap-2 flex-wrap"
+                        variants={staggerContainer}
+                      >
+                        {["Tokenize", "Prime Encode", "Sedenion Map"].map((step, i) => (
+                          <motion.div key={step} className="flex items-center gap-2">
+                            <motion.div 
+                              className="px-3 py-2 rounded-md bg-card border border-border text-xs font-mono"
+                              variants={scaleIn}
+                              whileHover={{ scale: 1.1, backgroundColor: "hsl(var(--primary) / 0.1)" }}
+                            >
+                              {step}
+                            </motion.div>
+                            {i < 2 && (
+                              <motion.div
+                                initial={{ opacity: 0, x: -5 }}
+                                whileInView={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.3 + i * 0.1 }}
+                              >
+                                <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                              </motion.div>
+                            )}
+                          </motion.div>
+                        ))}
+                      </motion.div>
+                    </motion.div>
+                    
+                    {/* Arrow */}
+                    <motion.div 
+                      className="flex justify-center"
+                      variants={fadeInUp}
+                    >
+                      <motion.div 
+                        className="w-px h-6 bg-gradient-to-b from-purple-500/50 to-green-500/50"
+                        initial={{ scaleY: 0 }}
+                        whileInView={{ scaleY: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5, delay: 0.4 }}
+                      />
+                    </motion.div>
+                    
+                    {/* Processing */}
+                    <motion.div 
+                      className="grid grid-cols-3 gap-2"
+                      variants={staggerContainer}
+                    >
+                      {[
+                        { icon: Waves, label: "Kuramoto", color: "purple" },
+                        { icon: Atom, label: "Field Ops", color: "green" },
+                        { icon: Layers, label: "Entropy", color: "orange" }
+                      ].map((item, i) => (
+                        <motion.div 
+                          key={item.label}
+                          className={`p-3 rounded-lg bg-${item.color}-500/10 border border-${item.color}-500/30 text-center`}
+                          variants={scaleIn}
+                          whileHover={{ scale: 1.08, y: -2 }}
+                          transition={{ type: "spring", stiffness: 400 }}
+                        >
+                          <motion.div
+                            animate={{ rotate: [0, 5, -5, 0] }}
+                            transition={{ duration: 3, repeat: Infinity, delay: i * 0.5 }}
+                          >
+                            <item.icon className={`w-4 h-4 mx-auto mb-1 text-${item.color}-400`} />
+                          </motion.div>
+                          <p className={`text-xs font-medium text-${item.color}-400`}>{item.label}</p>
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                    
+                    {/* Arrow */}
+                    <motion.div 
+                      className="flex justify-center"
+                      variants={fadeInUp}
+                    >
+                      <motion.div 
+                        className="w-px h-6 bg-gradient-to-b from-green-500/50 to-cyan-500/50"
+                        initial={{ scaleY: 0 }}
+                        whileInView={{ scaleY: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5, delay: 0.6 }}
+                      />
+                    </motion.div>
+                    
+                    {/* Output */}
+                    <motion.div 
+                      className="flex items-center justify-center"
+                      variants={fadeInUp}
+                    >
+                      <motion.div 
+                        className="px-6 py-3 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-mono text-sm"
+                        whileHover={{ scale: 1.05, boxShadow: "0 0 20px rgba(34, 211, 238, 0.3)" }}
+                        animate={{ boxShadow: ["0 0 0px rgba(34, 211, 238, 0)", "0 0 15px rgba(34, 211, 238, 0.2)", "0 0 0px rgba(34, 211, 238, 0)"] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        Semantic State
+                      </motion.div>
+                    </motion.div>
+                  </motion.div>
+                </CardContent>
+              </Card>
+            </motion.div>
 
             {/* Backend Architecture */}
+            <motion.div variants={slideInFromRight}>
+              <Card className="overflow-hidden h-full">
+                <div className="bg-primary/5 px-4 py-3 border-b border-border">
+                  <h3 className="font-semibold text-sm">Backend Architecture</h3>
+                </div>
+                <CardContent className="pt-6">
+                  <motion.div 
+                    className="space-y-4"
+                    variants={staggerContainer}
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true }}
+                  >
+                    {/* AlephEngine */}
+                    <motion.div 
+                      className="p-4 rounded-xl bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/30"
+                      variants={scaleIn}
+                      whileHover={{ scale: 1.02 }}
+                      animate={{ 
+                        boxShadow: ["0 0 0px hsl(var(--primary) / 0)", "0 0 20px hsl(var(--primary) / 0.2)", "0 0 0px hsl(var(--primary) / 0)"]
+                      }}
+                      transition={{ duration: 3, repeat: Infinity }}
+                    >
+                      <div className="flex items-center justify-center gap-3">
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                        >
+                          <Server className="w-5 h-5 text-primary" />
+                        </motion.div>
+                        <span className="font-semibold text-primary">AlephEngine</span>
+                      </div>
+                    </motion.div>
+                    
+                    {/* Connection Lines */}
+                    <motion.div 
+                      className="flex justify-center items-center gap-4"
+                      variants={fadeInUp}
+                    >
+                      <motion.div 
+                        className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-border"
+                        initial={{ scaleX: 0 }}
+                        whileInView={{ scaleX: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5 }}
+                      />
+                      <motion.div 
+                        className="w-2 h-2 rounded-full bg-primary/50"
+                        animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      />
+                      <motion.div 
+                        className="flex-1 h-px bg-gradient-to-l from-transparent via-border to-border"
+                        initial={{ scaleX: 0 }}
+                        whileInView={{ scaleX: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5 }}
+                      />
+                    </motion.div>
+                    
+                    {/* Backends Grid */}
+                    <motion.div 
+                      className="grid grid-cols-1 gap-3"
+                      variants={staggerContainer}
+                    >
+                      {[
+                        { icon: Database, name: "SemanticBackend", color: "blue", badges: ["Tokenization", "Prime Encode", "Similarity"] },
+                        { icon: Layers, name: "CryptoBackend", color: "green", badges: ["Hash", "HMAC", "Key Derive"] },
+                        { icon: Atom, name: "ScientificBackend", color: "purple", badges: ["Quantum Sim", "Wave Collapse", "Measurement"] }
+                      ].map((backend, i) => (
+                        <motion.div 
+                          key={backend.name}
+                          className={`p-4 rounded-lg border border-${backend.color}-500/30 bg-${backend.color}-500/5`}
+                          variants={fadeInUp}
+                          whileHover={{ scale: 1.02, x: 5 }}
+                          transition={{ type: "spring", stiffness: 400 }}
+                        >
+                          <div className="flex items-center gap-3 mb-2">
+                            <motion.div
+                              whileHover={{ rotate: 180 }}
+                              transition={{ duration: 0.3 }}
+                            >
+                              <backend.icon className={`w-4 h-4 text-${backend.color}-400`} />
+                            </motion.div>
+                            <span className={`font-medium text-sm text-${backend.color}-400`}>{backend.name}</span>
+                          </div>
+                          <motion.div 
+                            className="flex flex-wrap gap-1"
+                            variants={staggerContainer}
+                          >
+                            {backend.badges.map((badge, j) => (
+                              <motion.div
+                                key={badge}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                whileInView={{ opacity: 1, scale: 1 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: i * 0.1 + j * 0.05 }}
+                              >
+                                <Badge variant="secondary" className="text-xs">{badge}</Badge>
+                              </motion.div>
+                            ))}
+                          </motion.div>
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  </motion.div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </motion.div>
+
+          {/* Data Flow Diagram */}
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            variants={fadeInUp}
+          >
             <Card className="overflow-hidden">
               <div className="bg-primary/5 px-4 py-3 border-b border-border">
-                <h3 className="font-semibold text-sm">Backend Architecture</h3>
+                <h3 className="font-semibold text-sm">Semantic Processing Pipeline</h3>
               </div>
-              <CardContent className="pt-6">
-                <div className="space-y-4">
-                  {/* AlephEngine */}
-                  <div className="p-4 rounded-xl bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/30">
-                    <div className="flex items-center justify-center gap-3">
-                      <Server className="w-5 h-5 text-primary" />
-                      <span className="font-semibold text-primary">AlephEngine</span>
-                    </div>
-                  </div>
-                  
-                  {/* Connection Lines */}
-                  <div className="flex justify-center items-center gap-4">
-                    <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-border" />
-                    <div className="w-2 h-2 rounded-full bg-primary/50" />
-                    <div className="flex-1 h-px bg-gradient-to-l from-transparent via-border to-border" />
-                  </div>
-                  
-                  {/* Backends Grid */}
-                  <div className="grid grid-cols-1 gap-3">
-                    <div className="p-4 rounded-lg border border-blue-500/30 bg-blue-500/5">
-                      <div className="flex items-center gap-3 mb-2">
-                        <Database className="w-4 h-4 text-blue-400" />
-                        <span className="font-medium text-sm text-blue-400">SemanticBackend</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        <Badge variant="secondary" className="text-xs">Tokenization</Badge>
-                        <Badge variant="secondary" className="text-xs">Prime Encode</Badge>
-                        <Badge variant="secondary" className="text-xs">Similarity</Badge>
-                      </div>
-                    </div>
-                    
-                    <div className="p-4 rounded-lg border border-green-500/30 bg-green-500/5">
-                      <div className="flex items-center gap-3 mb-2">
-                        <Layers className="w-4 h-4 text-green-400" />
-                        <span className="font-medium text-sm text-green-400">CryptoBackend</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        <Badge variant="secondary" className="text-xs">Hash</Badge>
-                        <Badge variant="secondary" className="text-xs">HMAC</Badge>
-                        <Badge variant="secondary" className="text-xs">Key Derive</Badge>
-                      </div>
-                    </div>
-                    
-                    <div className="p-4 rounded-lg border border-purple-500/30 bg-purple-500/5">
-                      <div className="flex items-center gap-3 mb-2">
-                        <Atom className="w-4 h-4 text-purple-400" />
-                        <span className="font-medium text-sm text-purple-400">ScientificBackend</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        <Badge variant="secondary" className="text-xs">Quantum Sim</Badge>
-                        <Badge variant="secondary" className="text-xs">Wave Collapse</Badge>
-                        <Badge variant="secondary" className="text-xs">Measurement</Badge>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              <CardContent className="pt-6 overflow-x-auto">
+                <motion.div 
+                  className="flex items-center justify-center gap-3 min-w-max px-4"
+                  variants={staggerContainer}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                >
+                  {[
+                    { emoji: "📝", label: "Text", color: "blue" },
+                    { emoji: "🔢", label: "Primes", color: "purple" },
+                    { emoji: "🔮", label: "Sedenion", color: "green" },
+                    { emoji: "〰️", label: "Oscillate", color: "orange" },
+                    { emoji: "🎯", label: "Sync", color: "cyan" },
+                    { emoji: "✨", label: "Result", color: "primary" }
+                  ].map((step, i, arr) => (
+                    <motion.div key={step.label} className="flex items-center gap-3">
+                      <motion.div 
+                        className="text-center"
+                        variants={scaleIn}
+                        transition={{ delay: i * 0.1 }}
+                      >
+                        <motion.div 
+                          className={`w-20 h-20 rounded-full bg-${step.color}-500/10 border-2 border-${step.color}-500/40 flex items-center justify-center mb-2`}
+                          whileHover={{ scale: 1.1, rotate: 5 }}
+                          animate={i === arr.length - 1 ? {
+                            boxShadow: ["0 0 0px rgba(var(--primary), 0)", "0 0 20px hsl(var(--primary) / 0.4)", "0 0 0px rgba(var(--primary), 0)"]
+                          } : undefined}
+                          transition={i === arr.length - 1 ? { duration: 2, repeat: Infinity } : { type: "spring" }}
+                        >
+                          <motion.span 
+                            className="text-2xl"
+                            animate={{ y: [0, -3, 0] }}
+                            transition={{ duration: 2, repeat: Infinity, delay: i * 0.2 }}
+                          >
+                            {step.emoji}
+                          </motion.span>
+                        </motion.div>
+                        <p className="text-xs font-medium">{step.label}</p>
+                      </motion.div>
+                      
+                      {i < arr.length - 1 && (
+                        <motion.div
+                          initial={{ opacity: 0, x: -10 }}
+                          whileInView={{ opacity: 1, x: 0 }}
+                          viewport={{ once: true }}
+                          transition={{ delay: 0.3 + i * 0.1 }}
+                        >
+                          <motion.div
+                            animate={{ x: [0, 5, 0] }}
+                            transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.2 }}
+                          >
+                            <ArrowRight className="w-6 h-6 text-muted-foreground" />
+                          </motion.div>
+                        </motion.div>
+                      )}
+                    </motion.div>
+                  ))}
+                </motion.div>
               </CardContent>
             </Card>
-          </div>
+          </motion.div>
 
           {/* Data Flow Diagram */}
           <Card className="overflow-hidden">
