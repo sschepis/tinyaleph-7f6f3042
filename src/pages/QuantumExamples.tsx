@@ -1,11 +1,9 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import SedenionVisualizer from '../components/SedenionVisualizer';
-import CodeBlock from '../components/CodeBlock';
-import { ArrowLeft, Play, Dice1, Atom, Waves } from 'lucide-react';
+import ExamplePageWrapper, { ExampleConfig } from '../components/ExamplePageWrapper';
+import { Play, Dice1, Atom, Waves } from 'lucide-react';
 
 // PrimeState: quantum-like state built from prime factors
 interface PrimeState {
@@ -38,7 +36,6 @@ function createPrimeState(n: number): PrimeState {
     phases.push(remaining % (2 * Math.PI));
   }
   
-  // Normalize
   const norm = Math.sqrt(amplitudes.reduce((s, a) => s + a * a, 0));
   return {
     primes,
@@ -60,7 +57,6 @@ function bornMeasurement(state: PrimeState): { outcome: number; probability: num
   return { outcome: state.primes[state.primes.length - 1], probability: probabilities[probabilities.length - 1] };
 }
 
-// Resonance Operators
 type OperatorType = 'P' | 'R' | 'H';
 
 function applyOperator(components: number[], operator: OperatorType): number[] {
@@ -68,7 +64,7 @@ function applyOperator(components: number[], operator: OperatorType): number[] {
   const result = [...components];
   
   switch (operator) {
-    case 'P': // Phase rotation
+    case 'P':
       for (let i = 0; i < n; i++) {
         const phase = (i / n) * Math.PI / 2;
         const cos = Math.cos(phase);
@@ -80,13 +76,13 @@ function applyOperator(components: number[], operator: OperatorType): number[] {
         result[j] = newJ;
       }
       break;
-    case 'R': // Resonance contraction
+    case 'R':
       const dominant = result.reduce((max, v, i) => Math.abs(v) > Math.abs(result[max]) ? i : max, 0);
       for (let i = 0; i < n; i++) {
         result[i] *= i === dominant ? 1.2 : 0.9;
       }
       break;
-    case 'H': // Hadamard-like mixing
+    case 'H':
       for (let i = 0; i < n; i += 2) {
         if (i + 1 < n) {
           const a = result[i];
@@ -98,7 +94,6 @@ function applyOperator(components: number[], operator: OperatorType): number[] {
       break;
   }
   
-  // Normalize
   const norm = Math.sqrt(result.reduce((s, v) => s + v * v, 0));
   return result.map(v => v / (norm || 1));
 }
@@ -116,7 +111,6 @@ function computeCoherence(components: number[]): number {
   return maxEntropy > 0 ? 1 - entropy / maxEntropy : 1;
 }
 
-// PrimeState Demo Component
 const PrimeStateDemo = () => {
   const [inputNumber, setInputNumber] = useState(360);
   const [state, setState] = useState<PrimeState | null>(null);
@@ -137,11 +131,6 @@ const PrimeStateDemo = () => {
   const measureMany = useCallback(() => {
     if (!state) return;
     const results = Array.from({ length: 100 }, () => bornMeasurement(state));
-    const counts = results.reduce((acc, r) => {
-      acc[r.outcome] = (acc[r.outcome] || 0) + 1;
-      return acc;
-    }, {} as Record<number, number>);
-    console.log('Measurement distribution:', counts);
     setMeasurements(results.slice(-10));
   }, [state]);
 
@@ -222,7 +211,6 @@ const PrimeStateDemo = () => {
   );
 };
 
-// ResonanceOperator Demo Component
 const ResonanceOperatorDemo = () => {
   const [dims, setDims] = useState(8);
   const [components, setComponents] = useState<number[]>(() => {
@@ -339,17 +327,35 @@ const ResonanceOperatorDemo = () => {
   );
 };
 
-const QuantumExamplesPage = () => {
-  const primeStateCode = `// Create a PrimeState from a number
+const examples: ExampleConfig[] = [
+  {
+    id: 'prime-state',
+    number: '1',
+    title: 'PrimeState Builder',
+    subtitle: 'Quantum-like states from factorization',
+    description: 'Build quantum-like superposition states from the prime factorization of integers. Each prime factor becomes a basis state with amplitude proportional to its multiplicity.',
+    concepts: ['Prime Factorization', 'Superposition', 'Born Rule', 'Measurement'],
+    code: `// Create a PrimeState from a number
 const state = createPrimeState(360);
 // state.primes = [2, 3, 5]
 // state.amplitudes = normalized amplitudes
 
 // Perform Born measurement
 const { outcome, probability } = bornMeasurement(state);
-console.log(\`Measured |\${outcome}⟩ with p=\${probability}\`);`;
+console.log(\`Measured |\${outcome}⟩ with p=\${probability}\`);
 
-  const operatorCode = `// Initialize a basis state
+// Multiple measurements follow the probability distribution
+const results = Array.from({ length: 100 }, () => bornMeasurement(state));`,
+    codeTitle: 'quantum/01-prime-state.js',
+  },
+  {
+    id: 'resonance-operators',
+    number: '2',
+    title: 'Resonance Operators',
+    subtitle: 'State manipulation',
+    description: 'Apply unitary-like operators to transform state vectors. Phase rotation, resonance contraction, and Hadamard mixing demonstrate different aspects of state evolution.',
+    concepts: ['Unitary Operators', 'Phase Rotation', 'Hadamard Gate', 'State Evolution'],
+    code: `// Initialize a basis state
 let components = [1, 0, 0, 0, 0, 0, 0, 0];
 
 // Apply operators
@@ -359,50 +365,30 @@ components = applyOperator(components, 'R'); // Resonance
 
 // Measure entropy and coherence
 const entropy = computeEntropy(components);
-const coherence = computeCoherence(components);`;
+const coherence = computeCoherence(components);
 
+console.log('Entropy:', entropy, 'bits');
+console.log('Coherence:', (coherence * 100).toFixed(1), '%');`,
+    codeTitle: 'quantum/02-operators.js',
+  },
+];
+
+const exampleComponents: Record<string, React.FC> = {
+  'prime-state': PrimeStateDemo,
+  'resonance-operators': ResonanceOperatorDemo,
+};
+
+const QuantumExamplesPage = () => {
   return (
-    <div className="pt-20">
-      <main className="pb-20">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <Link 
-            to="/" 
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary mb-8 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Examples
-          </Link>
-
-          <div className="mb-12">
-            <h1 className="text-4xl font-display font-bold mb-4">Quantum State Examples</h1>
-            <p className="text-muted-foreground text-lg">
-              Interactive demos for PrimeState construction and ResonanceOperators.
-              Explore quantum-like state building and Born measurements.
-            </p>
-          </div>
-
-          <div className="space-y-12">
-            <div className="p-6 rounded-xl border border-border bg-card">
-              <PrimeStateDemo />
-            </div>
-
-            <div>
-              <h3 className="font-display font-semibold text-lg mb-4">PrimeState Code</h3>
-              <CodeBlock code={primeStateCode} language="typescript" />
-            </div>
-
-            <div className="p-6 rounded-xl border border-border bg-card">
-              <ResonanceOperatorDemo />
-            </div>
-
-            <div>
-              <h3 className="font-display font-semibold text-lg mb-4">Operator Code</h3>
-              <CodeBlock code={operatorCode} language="typescript" />
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
+    <ExamplePageWrapper
+      category="Quantum"
+      title="Quantum State Examples"
+      description="Interactive demos for PrimeState construction and ResonanceOperators. Explore quantum-like state building and Born measurements."
+      examples={examples}
+      exampleComponents={exampleComponents}
+      previousSection={{ title: 'Enochian', path: '/enochian' }}
+      nextSection={{ title: 'Quickstart', path: '/quickstart' }}
+    />
   );
 };
 
