@@ -141,14 +141,6 @@ const exampleCategories = [
     examples: ['AlephEngine', 'Transform pipelines', 'Entropy minimization', 'Field states']
   },
   {
-    id: 'api',
-    path: '/api',
-    icon: Server,
-    title: 'Backend API',
-    description: 'Server-side edge functions',
-    examples: ['API calls', 'Heavy computations', 'Prime endpoints', 'Engine execution']
-  },
-  {
     id: 'chat',
     path: '/chat',
     icon: MessageSquare,
