@@ -145,8 +145,14 @@ const GradientExample = () => {
   const [loss, setLoss] = useState(100);
 
   const runStep = useCallback(() => {
-    setStep(s => s + 1);
-    setLoss(l => l * 0.9 + Math.random() * 5);
+    setStep(s => {
+      const newStep = s + 1;
+      // Deterministic decay with step-based variation
+      const baseLoss = 100 * Math.exp(-0.1 * newStep);
+      const variation = Math.sin(newStep * 0.5) * 2;
+      setLoss(Math.max(0.5, baseLoss + variation));
+      return newStep;
+    });
   }, []);
 
   return (
