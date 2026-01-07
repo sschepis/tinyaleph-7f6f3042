@@ -2,13 +2,45 @@ import { useState, useCallback } from 'react';
 import { Play, Brain } from 'lucide-react';
 import ExamplePageWrapper, { ExampleConfig } from '../components/ExamplePageWrapper';
 
+// Deterministic hash for consistent token similarity
+const hashString = (str: string): number => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return Math.abs(hash);
+};
+
+// Compute semantic similarity based on shared characters and letter patterns
+const tokenSimilarity = (a: string, b: string): number => {
+  if (a === b) return 1.0;
+  const setA = new Set(a.toLowerCase());
+  const setB = new Set(b.toLowerCase());
+  const intersection = [...setA].filter(c => setB.has(c)).length;
+  const union = new Set([...setA, ...setB]).size;
+  const jaccard = intersection / union;
+  // Add hash-based component for more nuanced similarity
+  const hashSim = 1 - Math.abs(hashString(a) - hashString(b)) / (hashString(a) + hashString(b) + 1);
+  return jaccard * 0.6 + hashSim * 0.4;
+};
+
 const AttentionExample = () => {
   const [tokens] = useState(['wisdom', 'ancient', 'truth', 'knowledge']);
   const [matrix, setMatrix] = useState<number[][]>([]);
 
   const compute = useCallback(() => {
-    const m = tokens.map(() => tokens.map(() => Math.random()));
-    const normalized = m.map(row => { const sum = row.reduce((a, b) => a + Math.exp(b), 0); return row.map(v => Math.exp(v) / sum); });
+    // Compute deterministic attention based on token similarity
+    const rawScores = tokens.map((t1) => 
+      tokens.map((t2) => tokenSimilarity(t1, t2))
+    );
+    // Apply softmax normalization
+    const normalized = rawScores.map(row => {
+      const maxVal = Math.max(...row);
+      const expRow = row.map(v => Math.exp((v - maxVal) * 3)); // temperature scaling
+      const sum = expRow.reduce((a, b) => a + b, 0);
+      return expRow.map(v => v / sum);
+    });
     setMatrix(normalized);
   }, [tokens]);
 
