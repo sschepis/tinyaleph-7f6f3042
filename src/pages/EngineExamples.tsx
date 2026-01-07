@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
-import { Play, RefreshCw } from 'lucide-react';
+import { useState, useCallback, useMemo } from 'react';
+import { Play, RefreshCw, ArrowRight, Brain, Zap, GitBranch, Scale, Lightbulb, Layers } from 'lucide-react';
 import CodeBlock from '../components/CodeBlock';
 import SedenionVisualizer from '../components/SedenionVisualizer';
 import {
   createEngine,
+  SemanticBackend,
 } from '@aleph-ai/tinyaleph';
 import { minimalConfig } from '@/lib/tinyaleph-config';
 
@@ -201,6 +202,497 @@ for (const step of result.steps) {
         title="engine-example.js"
       />
     </div>
+);
+};
+
+// Helper to safely extract state components
+const safeComponents = (state: any): number[] => {
+  const c = state?.c || state?.components || [];
+  if (!Array.isArray(c)) return Array(16).fill(0);
+  return c.slice(0, 16).map((val: number) => {
+    const n = Number(val);
+    return Number.isFinite(n) ? n : 0;
+  });
+};
+
+// Helper to compute coherence between two state arrays
+const computeCoherence = (a: number[], b: number[]): number => {
+  const normA = Math.sqrt(a.reduce((s, v) => s + v * v, 0));
+  const normB = Math.sqrt(b.reduce((s, v) => s + v * v, 0));
+  if (normA === 0 || normB === 0) return 0;
+  const dot = a.reduce((s, v, i) => s + v * (b[i] || 0), 0);
+  return Math.abs(dot) / (normA * normB);
+};
+
+// Analogical Reasoning Demo
+const AnalogicalReasoningDemo = () => {
+  const [baseA, setBaseA] = useState('king');
+  const [baseB, setBaseB] = useState('queen');
+  const [targetA, setTargetA] = useState('man');
+  const [result, setResult] = useState<{ predicted: string; confidence: number; candidates: { word: string; score: number }[] } | null>(null);
+  const [running, setRunning] = useState(false);
+
+  const backend = useMemo(() => new SemanticBackend(minimalConfig), []);
+
+  const runAnalogy = useCallback(() => {
+    setRunning(true);
+    try {
+      // Encode terms to primes then to state
+      const primesA = backend.encode(baseA);
+      const primesB = backend.encode(baseB);
+      const primesTarget = backend.encode(targetA);
+      
+      const stateA = safeComponents(backend.primesToState(primesA));
+      const stateB = safeComponents(backend.primesToState(primesB));
+      const stateTarget = safeComponents(backend.primesToState(primesTarget));
+
+      // Compute difference vector (B - A)
+      const diff = stateB.map((v, i) => v - stateA[i]);
+      
+      // Apply to target: targetA + diff = predicted
+      const predictedComponents = stateTarget.map((v, i) => v + diff[i] * 0.8);
+      
+      // Find closest matches in vocabulary
+      const candidates = ['woman', 'boy', 'girl', 'prince', 'princess', 'child', 'person', 'human', 'wisdom', 'truth', 'love', 'power']
+        .map(word => {
+          const wordPrimes = backend.encode(word);
+          const wordState = safeComponents(backend.primesToState(wordPrimes));
+          const similarity = computeCoherence(predictedComponents, wordState);
+          return { word, score: similarity };
+        })
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5);
+
+      setResult({
+        predicted: candidates[0]?.word || 'unknown',
+        confidence: candidates[0]?.score || 0,
+        candidates
+      });
+    } catch (e) {
+      console.error(e);
+    }
+    setRunning(false);
+  }, [baseA, baseB, targetA, backend]);
+
+  return (
+    <div className="p-6 rounded-xl border border-border bg-card">
+      <div className="flex items-center gap-2 mb-4">
+        <Brain className="w-5 h-5 text-primary" />
+        <h3 className="text-lg font-semibold">Analogical Reasoning</h3>
+      </div>
+      <p className="text-sm text-muted-foreground mb-4">
+        Vector arithmetic: A is to B as C is to ?
+      </p>
+
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <input
+          value={baseA}
+          onChange={(e) => setBaseA(e.target.value)}
+          className="w-24 px-3 py-2 rounded-lg bg-secondary border border-border text-sm"
+          placeholder="A"
+        />
+        <span className="text-muted-foreground">:</span>
+        <input
+          value={baseB}
+          onChange={(e) => setBaseB(e.target.value)}
+          className="w-24 px-3 py-2 rounded-lg bg-secondary border border-border text-sm"
+          placeholder="B"
+        />
+        <span className="text-muted-foreground">::</span>
+        <input
+          value={targetA}
+          onChange={(e) => setTargetA(e.target.value)}
+          className="w-24 px-3 py-2 rounded-lg bg-secondary border border-border text-sm"
+          placeholder="C"
+        />
+        <span className="text-muted-foreground">:</span>
+        <span className="px-3 py-2 rounded-lg bg-primary/20 text-primary font-semibold min-w-[80px]">
+          {result?.predicted || '?'}
+        </span>
+        <button
+          onClick={runAnalogy}
+          disabled={running}
+          className="ml-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+        >
+          {running ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+        </button>
+      </div>
+
+      {result && (
+        <div className="p-4 rounded-lg bg-muted/50 space-y-3">
+          <div className="flex items-center gap-4 text-sm">
+            <span className="text-muted-foreground">Confidence:</span>
+            <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+              <div 
+                className="h-full bg-primary transition-all"
+                style={{ width: `${result.confidence * 100}%` }}
+              />
+            </div>
+            <span className="font-mono text-primary">{(result.confidence * 100).toFixed(1)}%</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {result.candidates.map((c, i) => (
+              <span 
+                key={c.word}
+                className={`px-2 py-1 rounded text-xs ${i === 0 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
+              >
+                {c.word} ({(c.score * 100).toFixed(0)}%)
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Semantic Entailment Demo
+const EntailmentDemo = () => {
+  const [premise, setPremise] = useState('knowledge');
+  const [hypothesis, setHypothesis] = useState('wisdom');
+  const [result, setResult] = useState<{ entails: boolean; confidence: number; sharedPrimes: number[]; explanation: string } | null>(null);
+
+  const backend = useMemo(() => new SemanticBackend(minimalConfig), []);
+
+  const checkEntailment = useCallback(() => {
+    const premisePrimes = backend.encode(premise);
+    const hypothesisPrimes = backend.encode(hypothesis);
+    
+    const premiseState = safeComponents(backend.primesToState(premisePrimes));
+    const hypothesisState = safeComponents(backend.primesToState(hypothesisPrimes));
+    
+    const coherence = computeCoherence(premiseState, hypothesisState);
+    
+    // Find shared semantic primes
+    const premisePrimeSet = new Set(premisePrimes);
+    const shared = hypothesisPrimes.filter((p: number) => premisePrimeSet.has(p));
+    
+    // Entailment if high coherence and shared primes
+    const entails = coherence > 0.4 && shared.length > 0;
+    
+    const explanation = entails 
+      ? `"${premise}" semantically entails "${hypothesis}" via shared primes [${shared.join(', ')}]`
+      : `"${premise}" does not directly entail "${hypothesis}" (low overlap)`;
+
+    setResult({ entails, confidence: coherence, sharedPrimes: shared, explanation });
+  }, [premise, hypothesis, backend]);
+
+  return (
+    <div className="p-6 rounded-xl border border-border bg-card">
+      <div className="flex items-center gap-2 mb-4">
+        <GitBranch className="w-5 h-5 text-primary" />
+        <h3 className="text-lg font-semibold">Semantic Entailment</h3>
+      </div>
+      <p className="text-sm text-muted-foreground mb-4">
+        Does the premise semantically entail the hypothesis?
+      </p>
+
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <input
+          value={premise}
+          onChange={(e) => setPremise(e.target.value)}
+          className="flex-1 min-w-[120px] px-3 py-2 rounded-lg bg-secondary border border-border text-sm"
+          placeholder="Premise"
+        />
+        <ArrowRight className="w-4 h-4 text-muted-foreground" />
+        <input
+          value={hypothesis}
+          onChange={(e) => setHypothesis(e.target.value)}
+          className="flex-1 min-w-[120px] px-3 py-2 rounded-lg bg-secondary border border-border text-sm"
+          placeholder="Hypothesis"
+        />
+        <button
+          onClick={checkEntailment}
+          className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          Check
+        </button>
+      </div>
+
+      {result && (
+        <div className={`p-4 rounded-lg ${result.entails ? 'bg-green-500/10 border border-green-500/30' : 'bg-red-500/10 border border-red-500/30'}`}>
+          <div className="flex items-center gap-2 mb-2">
+            <span className={`text-lg font-semibold ${result.entails ? 'text-green-500' : 'text-red-500'}`}>
+              {result.entails ? '✓ Entails' : '✗ Does Not Entail'}
+            </span>
+            <span className="text-sm text-muted-foreground">
+              (confidence: {(result.confidence * 100).toFixed(1)}%)
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground">{result.explanation}</p>
+          {result.sharedPrimes.length > 0 && (
+            <div className="mt-2 flex gap-1">
+              {result.sharedPrimes.map(p => (
+                <span key={p} className="px-2 py-0.5 rounded bg-primary/20 text-primary text-xs font-mono">{p}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Chain of Thought Reasoning
+const ChainOfThoughtDemo = () => {
+  const [query, setQuery] = useState('What leads to understanding?');
+  const [chain, setChain] = useState<{ step: number; concept: string; entropy: number; reasoning: string }[]>([]);
+  const [running, setRunning] = useState(false);
+
+  const backend = useMemo(() => new SemanticBackend(minimalConfig), []);
+
+  const runChainOfThought = useCallback(async () => {
+    setRunning(true);
+    setChain([]);
+    
+    const concepts = ['curiosity', 'learning', 'knowledge', 'wisdom', 'understanding'];
+    const thoughtChain: { step: number; concept: string; entropy: number; reasoning: string }[] = [];
+    
+    const queryPrimes = backend.encode(query.split(' ')[0] || 'question');
+    let prevState = safeComponents(backend.primesToState(queryPrimes));
+    
+    for (let i = 0; i < concepts.length; i++) {
+      const currentPrimes = backend.encode(concepts[i]);
+      const currentStateObj = backend.primesToState(currentPrimes);
+      const currentState = safeComponents(currentStateObj);
+      const coherence = computeCoherence(prevState, currentState);
+      const entropy = typeof currentStateObj.entropy === 'function' ? currentStateObj.entropy() : 0;
+      
+      const reasoning = coherence > 0.4
+        ? `High coherence (${(coherence * 100).toFixed(0)}%) suggests logical progression`
+        : `Moderate coherence (${(coherence * 100).toFixed(0)}%) indicates conceptual leap`;
+      
+      thoughtChain.push({
+        step: i + 1,
+        concept: concepts[i],
+        entropy: Number.isFinite(entropy) ? entropy : 0,
+        reasoning
+      });
+      
+      setChain([...thoughtChain]);
+      await new Promise(r => setTimeout(r, 400));
+      prevState = currentState;
+    }
+    
+    setRunning(false);
+  }, [query, backend]);
+
+  return (
+    <div className="p-6 rounded-xl border border-border bg-card">
+      <div className="flex items-center gap-2 mb-4">
+        <Layers className="w-5 h-5 text-primary" />
+        <h3 className="text-lg font-semibold">Chain of Thought Reasoning</h3>
+      </div>
+      <p className="text-sm text-muted-foreground mb-4">
+        Step-by-step reasoning through semantic space.
+      </p>
+
+      <div className="flex gap-2 mb-4">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="flex-1 px-3 py-2 rounded-lg bg-secondary border border-border text-sm"
+          placeholder="Enter a query..."
+        />
+        <button
+          onClick={runChainOfThought}
+          disabled={running}
+          className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+        >
+          {running ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Reason'}
+        </button>
+      </div>
+
+      {chain.length > 0 && (
+        <div className="space-y-2">
+          {chain.map((step, i) => (
+            <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 animate-in fade-in slide-in-from-left-2">
+              <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold shrink-0">
+                {step.step}
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">{step.concept}</span>
+                  <span className="text-xs text-muted-foreground font-mono">H={step.entropy.toFixed(2)}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">{step.reasoning}</p>
+              </div>
+              {i < chain.length - 1 && (
+                <ArrowRight className="w-4 h-4 text-primary shrink-0 mt-1" />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Contradiction Detection
+const ContradictionDemo = () => {
+  const [statements, setStatements] = useState(['light', 'darkness']);
+  const [result, setResult] = useState<{ contradicts: boolean; score: number; explanation: string } | null>(null);
+
+  const backend = useMemo(() => new SemanticBackend(minimalConfig), []);
+
+  const detectContradiction = useCallback(() => {
+    if (statements.length < 2) return;
+    
+    const primes1 = backend.encode(statements[0]);
+    const primes2 = backend.encode(statements[1]);
+    const state1 = safeComponents(backend.primesToState(primes1));
+    const state2 = safeComponents(backend.primesToState(primes2));
+    
+    const coherence = computeCoherence(state1, state2);
+    
+    // Check for opposing semantic dimensions
+    const dotProduct = state1.reduce((sum, v, i) => sum + v * state2[i], 0);
+    const contradicts = dotProduct < 0 || coherence < 0.2;
+    
+    const explanation = contradicts
+      ? `Semantic opposition detected: "${statements[0]}" and "${statements[1]}" occupy opposing regions of semantic space`
+      : `No clear contradiction: concepts share semantic overlap (coherence: ${(coherence * 100).toFixed(0)}%)`;
+
+    setResult({ contradicts, score: 1 - coherence, explanation });
+  }, [statements, backend]);
+
+  return (
+    <div className="p-6 rounded-xl border border-border bg-card">
+      <div className="flex items-center gap-2 mb-4">
+        <Zap className="w-5 h-5 text-primary" />
+        <h3 className="text-lg font-semibold">Contradiction Detection</h3>
+      </div>
+      <p className="text-sm text-muted-foreground mb-4">
+        Detect semantic contradictions between concepts.
+      </p>
+
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <input
+          value={statements[0]}
+          onChange={(e) => setStatements([e.target.value, statements[1]])}
+          className="flex-1 min-w-[100px] px-3 py-2 rounded-lg bg-secondary border border-border text-sm"
+          placeholder="Concept A"
+        />
+        <Scale className="w-4 h-4 text-muted-foreground" />
+        <input
+          value={statements[1]}
+          onChange={(e) => setStatements([statements[0], e.target.value])}
+          className="flex-1 min-w-[100px] px-3 py-2 rounded-lg bg-secondary border border-border text-sm"
+          placeholder="Concept B"
+        />
+        <button
+          onClick={detectContradiction}
+          className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          Detect
+        </button>
+      </div>
+
+      {result && (
+        <div className={`p-4 rounded-lg ${result.contradicts ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-green-500/10 border border-green-500/30'}`}>
+          <div className="flex items-center gap-2 mb-2">
+            <span className={`text-lg font-semibold ${result.contradicts ? 'text-amber-500' : 'text-green-500'}`}>
+              {result.contradicts ? '⚡ Contradiction Detected' : '✓ Compatible'}
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground">{result.explanation}</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Inference Engine Demo
+const InferenceDemo = () => {
+  const [premises, setPremises] = useState(['fire', 'heat']);
+  const [conclusion, setConclusion] = useState<{ inferred: string; strength: number; path: string[] } | null>(null);
+
+  const backend = useMemo(() => new SemanticBackend(minimalConfig), []);
+
+  const runInference = useCallback(() => {
+    // Encode premises to states
+    const premiseStates = premises.map(p => {
+      const primes = backend.encode(p);
+      return safeComponents(backend.primesToState(primes));
+    });
+    
+    // Combine premise states
+    const combinedComponents = premiseStates[0].map((_, i) => 
+      premiseStates.reduce((sum, state) => sum + state[i], 0) / premises.length
+    );
+    
+    // Find best matching conclusion from candidates
+    const candidates = ['energy', 'light', 'warmth', 'destruction', 'power', 'change', 'transformation'];
+    const scored = candidates.map(word => {
+      const wordPrimes = backend.encode(word);
+      const wordState = safeComponents(backend.primesToState(wordPrimes));
+      const similarity = computeCoherence(combinedComponents, wordState);
+      return { word, score: similarity };
+    }).sort((a, b) => b.score - a.score);
+
+    setConclusion({
+      inferred: scored[0].word,
+      strength: scored[0].score,
+      path: [...premises, '→', scored[0].word]
+    });
+  }, [premises, backend]);
+
+  return (
+    <div className="p-6 rounded-xl border border-border bg-card">
+      <div className="flex items-center gap-2 mb-4">
+        <Lightbulb className="w-5 h-5 text-primary" />
+        <h3 className="text-lg font-semibold">Semantic Inference</h3>
+      </div>
+      <p className="text-sm text-muted-foreground mb-4">
+        Infer conclusions from combined premises.
+      </p>
+
+      <div className="space-y-3 mb-4">
+        {premises.map((p, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground w-16">Premise {i + 1}:</span>
+            <input
+              value={p}
+              onChange={(e) => {
+                const newPremises = [...premises];
+                newPremises[i] = e.target.value;
+                setPremises(newPremises);
+              }}
+              className="flex-1 px-3 py-2 rounded-lg bg-secondary border border-border text-sm"
+            />
+          </div>
+        ))}
+        <button
+          onClick={() => setPremises([...premises, ''])}
+          className="text-xs text-primary hover:underline"
+        >
+          + Add premise
+        </button>
+      </div>
+
+      <button
+        onClick={runInference}
+        className="w-full px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors mb-4"
+      >
+        Run Inference
+      </button>
+
+      {conclusion && (
+        <div className="p-4 rounded-lg bg-primary/10 border border-primary/30">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-lg font-semibold text-primary">Inferred: {conclusion.inferred}</span>
+            <span className="text-sm text-muted-foreground">
+              (strength: {(conclusion.strength * 100).toFixed(0)}%)
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {conclusion.path.map((p, i) => (
+              <span key={i} className={p === '→' ? '' : 'px-2 py-0.5 rounded bg-muted'}>{p}</span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -210,9 +702,9 @@ const EngineExamplesPage = () => {
       <div className="max-w-5xl mx-auto px-4 py-12">
         <div className="mb-8">
           <a href="/" className="text-primary hover:underline text-sm">← Back to Examples</a>
-          <h1 className="text-3xl font-display font-bold mt-4 mb-2">Engine Module</h1>
+          <h1 className="text-3xl font-display font-bold mt-4 mb-2">Engine & Reasoning Module</h1>
           <p className="text-muted-foreground">
-            Interactive examples of the unified computation engine.
+            Interactive examples of reasoning capabilities: analogies, entailment, inference, and contradiction detection.
           </p>
         </div>
 
@@ -223,6 +715,70 @@ const EngineExamplesPage = () => {
               AlephEngine Pipeline
             </h2>
             <EngineExample />
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">2</span>
+              Analogical Reasoning
+            </h2>
+            <AnalogicalReasoningDemo />
+            <div className="mt-4">
+              <CodeBlock
+                code={`import { SemanticBackend } from '@aleph-ai/tinyaleph';
+
+const backend = new SemanticBackend(config);
+
+// Encode analogy terms: A is to B as C is to ?
+const king = backend.encode('king');
+const queen = backend.encode('queen');
+const man = backend.encode('man');
+
+// Compute difference vector: B - A
+const diff = queen.c.map((v, i) => v - king.c[i]);
+
+// Apply to target: C + diff = predicted
+const predicted = man.c.map((v, i) => v + diff[i]);
+
+// Find closest word in vocabulary
+const result = backend.findNearest({ c: predicted });
+console.log(result); // "woman"`}
+                language="javascript"
+                title="analogical-reasoning.js"
+              />
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">3</span>
+              Semantic Entailment
+            </h2>
+            <EntailmentDemo />
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">4</span>
+              Chain of Thought
+            </h2>
+            <ChainOfThoughtDemo />
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">5</span>
+              Contradiction Detection
+            </h2>
+            <ContradictionDemo />
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">6</span>
+              Semantic Inference
+            </h2>
+            <InferenceDemo />
           </section>
         </div>
       </div>
