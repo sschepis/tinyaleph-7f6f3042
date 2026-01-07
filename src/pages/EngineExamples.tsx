@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Play, RefreshCw, ArrowRight, Brain, Zap, GitBranch, Scale, Lightbulb, Layers } from 'lucide-react';
+import { Play, RefreshCw, ArrowRight, Brain, Zap, GitBranch, Scale, Lightbulb, Layers, BookOpen, Network } from 'lucide-react';
 import CodeBlock from '../components/CodeBlock';
 import SedenionVisualizer from '../components/SedenionVisualizer';
 import {
@@ -696,6 +696,450 @@ const InferenceDemo = () => {
   );
 };
 
+// Syllogistic Reasoning Demo
+const SyllogismDemo = () => {
+  const [syllogism, setSyllogism] = useState({
+    majorPremise: { quantifier: 'All', subject: 'humans', predicate: 'mortal' },
+    minorPremise: { quantifier: '', subject: 'Socrates', predicate: 'human' },
+    conclusion: { quantifier: '', subject: 'Socrates', predicate: 'mortal' }
+  });
+  const [result, setResult] = useState<{
+    valid: boolean;
+    confidence: number;
+    reasoning: string[];
+    middleTermStrength: number;
+  } | null>(null);
+
+  const backend = useMemo(() => new SemanticBackend(minimalConfig), []);
+
+  const validateSyllogism = useCallback(() => {
+    // Encode all terms
+    const majorSubject = backend.encode(syllogism.majorPremise.subject);
+    const majorPredicate = backend.encode(syllogism.majorPremise.predicate);
+    const minorSubject = backend.encode(syllogism.minorPremise.subject);
+    const minorPredicate = backend.encode(syllogism.minorPremise.predicate);
+    const conclusionSubject = backend.encode(syllogism.conclusion.subject);
+    const conclusionPredicate = backend.encode(syllogism.conclusion.predicate);
+
+    // Convert to states
+    const majorSubjectState = safeComponents(backend.primesToState(majorSubject));
+    const majorPredicateState = safeComponents(backend.primesToState(majorPredicate));
+    const minorSubjectState = safeComponents(backend.primesToState(minorSubject));
+    const minorPredicateState = safeComponents(backend.primesToState(minorPredicate));
+    const conclusionSubjectState = safeComponents(backend.primesToState(conclusionSubject));
+    const conclusionPredicateState = safeComponents(backend.primesToState(conclusionPredicate));
+
+    const reasoning: string[] = [];
+
+    // Check middle term connection (major subject ↔ minor predicate)
+    const middleTermCoherence = computeCoherence(majorSubjectState, minorPredicateState);
+    reasoning.push(`Middle term coherence: "${syllogism.majorPremise.subject}" ↔ "${syllogism.minorPremise.predicate}" = ${(middleTermCoherence * 100).toFixed(0)}%`);
+
+    // Check if conclusion subject matches minor subject
+    const subjectMatch = computeCoherence(conclusionSubjectState, minorSubjectState);
+    reasoning.push(`Subject preservation: "${syllogism.conclusion.subject}" ↔ "${syllogism.minorPremise.subject}" = ${(subjectMatch * 100).toFixed(0)}%`);
+
+    // Check if conclusion predicate matches major predicate
+    const predicateMatch = computeCoherence(conclusionPredicateState, majorPredicateState);
+    reasoning.push(`Predicate transfer: "${syllogism.conclusion.predicate}" ↔ "${syllogism.majorPremise.predicate}" = ${(predicateMatch * 100).toFixed(0)}%`);
+
+    // Syllogism is valid if middle term connects and conclusion follows
+    const overallConfidence = (middleTermCoherence * 0.4 + subjectMatch * 0.3 + predicateMatch * 0.3);
+    const valid = middleTermCoherence > 0.3 && subjectMatch > 0.5 && predicateMatch > 0.5;
+
+    if (valid) {
+      reasoning.push(`✓ Valid syllogism: ${syllogism.minorPremise.subject} inherits "${syllogism.majorPremise.predicate}" through "${syllogism.majorPremise.subject}"`);
+    } else {
+      reasoning.push(`✗ Invalid: Weak semantic connection in logical chain`);
+    }
+
+    setResult({
+      valid,
+      confidence: overallConfidence,
+      reasoning,
+      middleTermStrength: middleTermCoherence
+    });
+  }, [syllogism, backend]);
+
+  const presets = [
+    {
+      name: 'Classic Mortality',
+      major: { quantifier: 'All', subject: 'humans', predicate: 'mortal' },
+      minor: { quantifier: '', subject: 'Socrates', predicate: 'human' },
+      conclusion: { quantifier: '', subject: 'Socrates', predicate: 'mortal' }
+    },
+    {
+      name: 'Knowledge Chain',
+      major: { quantifier: 'All', subject: 'wisdom', predicate: 'knowledge' },
+      minor: { quantifier: '', subject: 'philosophy', predicate: 'wisdom' },
+      conclusion: { quantifier: '', subject: 'philosophy', predicate: 'knowledge' }
+    },
+    {
+      name: 'Invalid Example',
+      major: { quantifier: 'All', subject: 'cats', predicate: 'animals' },
+      minor: { quantifier: '', subject: 'dogs', predicate: 'animals' },
+      conclusion: { quantifier: '', subject: 'dogs', predicate: 'cats' }
+    }
+  ];
+
+  return (
+    <div className="p-6 rounded-xl border border-border bg-card">
+      <div className="flex items-center gap-2 mb-4">
+        <BookOpen className="w-5 h-5 text-primary" />
+        <h3 className="text-lg font-semibold">Syllogistic Reasoning</h3>
+      </div>
+      <p className="text-sm text-muted-foreground mb-4">
+        Validate classical syllogisms using semantic coherence analysis.
+      </p>
+
+      <div className="flex flex-wrap gap-2 mb-4">
+        {presets.map((preset) => (
+          <button
+            key={preset.name}
+            onClick={() => setSyllogism({ majorPremise: preset.major, minorPremise: preset.minor, conclusion: preset.conclusion })}
+            className="px-3 py-1 rounded-full text-xs bg-muted hover:bg-primary/20 transition-colors"
+          >
+            {preset.name}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-3 mb-4">
+        {/* Major Premise */}
+        <div className="p-3 rounded-lg bg-muted/50">
+          <p className="text-xs text-muted-foreground mb-2">Major Premise</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <select
+              value={syllogism.majorPremise.quantifier}
+              onChange={(e) => setSyllogism({ ...syllogism, majorPremise: { ...syllogism.majorPremise, quantifier: e.target.value } })}
+              className="px-2 py-1 rounded bg-secondary border border-border text-sm"
+            >
+              <option value="All">All</option>
+              <option value="Some">Some</option>
+              <option value="No">No</option>
+            </select>
+            <input
+              value={syllogism.majorPremise.subject}
+              onChange={(e) => setSyllogism({ ...syllogism, majorPremise: { ...syllogism.majorPremise, subject: e.target.value } })}
+              className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm"
+              placeholder="A"
+            />
+            <span className="text-muted-foreground">are</span>
+            <input
+              value={syllogism.majorPremise.predicate}
+              onChange={(e) => setSyllogism({ ...syllogism, majorPremise: { ...syllogism.majorPremise, predicate: e.target.value } })}
+              className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm"
+              placeholder="B"
+            />
+          </div>
+        </div>
+
+        {/* Minor Premise */}
+        <div className="p-3 rounded-lg bg-muted/50">
+          <p className="text-xs text-muted-foreground mb-2">Minor Premise</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <input
+              value={syllogism.minorPremise.subject}
+              onChange={(e) => setSyllogism({ ...syllogism, minorPremise: { ...syllogism.minorPremise, subject: e.target.value } })}
+              className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm"
+              placeholder="C"
+            />
+            <span className="text-muted-foreground">is a</span>
+            <input
+              value={syllogism.minorPremise.predicate}
+              onChange={(e) => setSyllogism({ ...syllogism, minorPremise: { ...syllogism.minorPremise, predicate: e.target.value } })}
+              className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm"
+              placeholder="A"
+            />
+          </div>
+        </div>
+
+        {/* Conclusion */}
+        <div className="p-3 rounded-lg bg-primary/10 border border-primary/30">
+          <p className="text-xs text-primary mb-2">∴ Conclusion</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <input
+              value={syllogism.conclusion.subject}
+              onChange={(e) => setSyllogism({ ...syllogism, conclusion: { ...syllogism.conclusion, subject: e.target.value } })}
+              className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm"
+              placeholder="C"
+            />
+            <span className="text-muted-foreground">is</span>
+            <input
+              value={syllogism.conclusion.predicate}
+              onChange={(e) => setSyllogism({ ...syllogism, conclusion: { ...syllogism.conclusion, predicate: e.target.value } })}
+              className="w-24 px-2 py-1 rounded bg-secondary border border-border text-sm"
+              placeholder="B"
+            />
+          </div>
+        </div>
+      </div>
+
+      <button
+        onClick={validateSyllogism}
+        className="w-full px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors mb-4"
+      >
+        Validate Syllogism
+      </button>
+
+      {result && (
+        <div className={`p-4 rounded-lg ${result.valid ? 'bg-green-500/10 border border-green-500/30' : 'bg-red-500/10 border border-red-500/30'}`}>
+          <div className="flex items-center gap-2 mb-3">
+            <span className={`text-lg font-semibold ${result.valid ? 'text-green-500' : 'text-red-500'}`}>
+              {result.valid ? '✓ Valid Syllogism' : '✗ Invalid Syllogism'}
+            </span>
+            <span className="text-sm text-muted-foreground">
+              (confidence: {(result.confidence * 100).toFixed(0)}%)
+            </span>
+          </div>
+          
+          <div className="mb-3">
+            <p className="text-xs text-muted-foreground mb-1">Middle Term Strength</p>
+            <div className="h-2 rounded-full bg-muted overflow-hidden">
+              <div 
+                className="h-full bg-primary transition-all"
+                style={{ width: `${result.middleTermStrength * 100}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            {result.reasoning.map((r, i) => (
+              <p key={i} className="text-sm text-muted-foreground">{r}</p>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Concept Graph Visualization
+const ConceptGraphDemo = () => {
+  const [startConcept, setStartConcept] = useState('knowledge');
+  const [targetConcept, setTargetConcept] = useState('wisdom');
+  const [graph, setGraph] = useState<{
+    nodes: { id: string; x: number; y: number; state: number[]; visited: boolean }[];
+    edges: { from: string; to: string; weight: number }[];
+    path: string[];
+  } | null>(null);
+  const [animating, setAnimating] = useState(false);
+
+  const backend = useMemo(() => new SemanticBackend(minimalConfig), []);
+
+  const buildGraph = useCallback(async () => {
+    setAnimating(true);
+    
+    const concepts = [
+      startConcept, targetConcept,
+      'truth', 'understanding', 'learning', 'experience', 
+      'insight', 'reason', 'intuition', 'awareness'
+    ].filter((v, i, a) => a.indexOf(v) === i);
+
+    // Build nodes with positions in a circle
+    const nodes = concepts.map((concept, i) => {
+      const angle = (i / concepts.length) * Math.PI * 2 - Math.PI / 2;
+      const radius = 120;
+      const primes = backend.encode(concept);
+      const state = safeComponents(backend.primesToState(primes));
+      return {
+        id: concept,
+        x: 150 + Math.cos(angle) * radius,
+        y: 150 + Math.sin(angle) * radius,
+        state,
+        visited: false
+      };
+    });
+
+    // Build edges with coherence weights
+    const edges: { from: string; to: string; weight: number }[] = [];
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const weight = computeCoherence(nodes[i].state, nodes[j].state);
+        if (weight > 0.25) {
+          edges.push({ from: nodes[i].id, to: nodes[j].id, weight });
+        }
+      }
+    }
+
+    setGraph({ nodes, edges, path: [] });
+
+    // Animate path finding with delay
+    await new Promise(r => setTimeout(r, 500));
+
+    // Simple greedy path finding
+    const path: string[] = [startConcept];
+    const visited = new Set([startConcept]);
+    let current = startConcept;
+
+    while (current !== targetConcept && path.length < 6) {
+      const currentNode = nodes.find(n => n.id === current);
+      if (!currentNode) break;
+
+      // Find best next step toward target
+      const targetNode = nodes.find(n => n.id === targetConcept);
+      if (!targetNode) break;
+
+      const candidates = edges
+        .filter(e => (e.from === current || e.to === current) && !visited.has(e.from === current ? e.to : e.from))
+        .map(e => {
+          const nextId = e.from === current ? e.to : e.from;
+          const nextNode = nodes.find(n => n.id === nextId);
+          const targetProximity = nextNode ? computeCoherence(nextNode.state, targetNode.state) : 0;
+          return { id: nextId, score: e.weight * 0.5 + targetProximity * 0.5 };
+        })
+        .sort((a, b) => b.score - a.score);
+
+      if (candidates.length === 0) break;
+
+      const next = candidates[0].id;
+      path.push(next);
+      visited.add(next);
+      current = next;
+
+      // Animate step
+      setGraph(g => g ? {
+        ...g,
+        path: [...path],
+        nodes: g.nodes.map(n => ({ ...n, visited: visited.has(n.id) }))
+      } : null);
+
+      await new Promise(r => setTimeout(r, 600));
+    }
+
+    setAnimating(false);
+  }, [startConcept, targetConcept, backend]);
+
+  return (
+    <div className="p-6 rounded-xl border border-border bg-card">
+      <div className="flex items-center gap-2 mb-4">
+        <Network className="w-5 h-5 text-primary" />
+        <h3 className="text-lg font-semibold">Concept Graph Traversal</h3>
+      </div>
+      <p className="text-sm text-muted-foreground mb-4">
+        Visualize how reasoning traverses semantic space to connect concepts.
+      </p>
+
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <input
+          value={startConcept}
+          onChange={(e) => setStartConcept(e.target.value)}
+          className="w-28 px-3 py-2 rounded-lg bg-secondary border border-border text-sm"
+          placeholder="Start"
+        />
+        <ArrowRight className="w-4 h-4 text-muted-foreground" />
+        <input
+          value={targetConcept}
+          onChange={(e) => setTargetConcept(e.target.value)}
+          className="w-28 px-3 py-2 rounded-lg bg-secondary border border-border text-sm"
+          placeholder="Target"
+        />
+        <button
+          onClick={buildGraph}
+          disabled={animating}
+          className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+        >
+          {animating ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Find Path'}
+        </button>
+      </div>
+
+      {graph && (
+        <div className="relative">
+          <svg width="300" height="300" className="mx-auto bg-muted/30 rounded-lg">
+            {/* Edges */}
+            {graph.edges.map((edge, i) => {
+              const fromNode = graph.nodes.find(n => n.id === edge.from);
+              const toNode = graph.nodes.find(n => n.id === edge.to);
+              if (!fromNode || !toNode) return null;
+              
+              const isOnPath = graph.path.includes(edge.from) && graph.path.includes(edge.to) &&
+                Math.abs(graph.path.indexOf(edge.from) - graph.path.indexOf(edge.to)) === 1;
+              
+              return (
+                <line
+                  key={i}
+                  x1={fromNode.x}
+                  y1={fromNode.y}
+                  x2={toNode.x}
+                  y2={toNode.y}
+                  stroke={isOnPath ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'}
+                  strokeWidth={isOnPath ? 3 : 1}
+                  strokeOpacity={isOnPath ? 1 : edge.weight * 0.5}
+                  className="transition-all duration-300"
+                />
+              );
+            })}
+            
+            {/* Nodes */}
+            {graph.nodes.map((node) => {
+              const isStart = node.id === startConcept;
+              const isTarget = node.id === targetConcept;
+              const isOnPath = graph.path.includes(node.id);
+              const pathIndex = graph.path.indexOf(node.id);
+              
+              return (
+                <g key={node.id}>
+                  <circle
+                    cx={node.x}
+                    cy={node.y}
+                    r={isStart || isTarget ? 18 : 14}
+                    fill={isStart ? 'hsl(var(--primary))' : isTarget ? 'hsl(142, 76%, 36%)' : isOnPath ? 'hsl(var(--primary) / 0.6)' : 'hsl(var(--muted))'}
+                    stroke={isOnPath ? 'hsl(var(--primary))' : 'hsl(var(--border))'}
+                    strokeWidth={isOnPath ? 2 : 1}
+                    className="transition-all duration-300"
+                  />
+                  {isOnPath && pathIndex >= 0 && (
+                    <text
+                      x={node.x}
+                      y={node.y + 4}
+                      textAnchor="middle"
+                      fontSize="10"
+                      fill="white"
+                      fontWeight="bold"
+                    >
+                      {pathIndex + 1}
+                    </text>
+                  )}
+                  <text
+                    x={node.x}
+                    y={node.y + 28}
+                    textAnchor="middle"
+                    fontSize="9"
+                    fill="hsl(var(--foreground))"
+                    className="font-medium"
+                  >
+                    {node.id}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+
+          {graph.path.length > 0 && (
+            <div className="mt-4 p-3 rounded-lg bg-primary/10 border border-primary/30">
+              <p className="text-xs text-muted-foreground mb-2">Reasoning Path ({graph.path.length} steps)</p>
+              <div className="flex flex-wrap items-center gap-1">
+                {graph.path.map((step, i) => (
+                  <span key={i} className="flex items-center gap-1">
+                    <span className={`px-2 py-0.5 rounded text-xs ${
+                      i === 0 ? 'bg-primary text-primary-foreground' :
+                      i === graph.path.length - 1 ? 'bg-green-500 text-white' :
+                      'bg-muted text-foreground'
+                    }`}>
+                      {step}
+                    </span>
+                    {i < graph.path.length - 1 && <ArrowRight className="w-3 h-3 text-primary" />}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const EngineExamplesPage = () => {
   return (
     <div className="min-h-screen bg-background">
@@ -779,6 +1223,48 @@ console.log(result); // "woman"`}
               Semantic Inference
             </h2>
             <InferenceDemo />
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">7</span>
+              Syllogistic Reasoning
+            </h2>
+            <SyllogismDemo />
+            <div className="mt-4">
+              <CodeBlock
+                code={`import { SemanticBackend } from '@aleph-ai/tinyaleph';
+
+const backend = new SemanticBackend(config);
+
+// Validate: All A are B, C is A, therefore C is B
+function validateSyllogism(majorSubject, majorPredicate, minorSubject, minorPredicate) {
+  const A = backend.primesToState(backend.encode(majorSubject));
+  const B = backend.primesToState(backend.encode(majorPredicate));
+  const C = backend.primesToState(backend.encode(minorSubject));
+  const A2 = backend.primesToState(backend.encode(minorPredicate));
+  
+  // Middle term must connect: A ↔ A2
+  const middleTermStrength = coherence(A.c, A2.c);
+  
+  // Conclusion follows if middle term is strong
+  return middleTermStrength > 0.3;
+}
+
+console.log(validateSyllogism('humans', 'mortal', 'Socrates', 'human'));
+// → true`}
+                language="javascript"
+                title="syllogism-validation.js"
+              />
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-mono text-sm">8</span>
+              Concept Graph Traversal
+            </h2>
+            <ConceptGraphDemo />
           </section>
         </div>
       </div>
