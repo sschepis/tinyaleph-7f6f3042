@@ -1646,18 +1646,20 @@ const ExpressionBuilderExample = () => {
                   H = {result.entropy.toFixed(4)} · ||v|| = {result.norm.toFixed(4)}
                 </span>
               </div>
-              <div className="flex gap-0.5 h-12">
+              <div className="flex gap-0.5 h-12 bg-muted/20 rounded-lg p-1">
                 {result.components.map((v, i) => {
-                  const normalized = Math.min(1, Math.abs(v));
+                  const maxVal = Math.max(...result.components.map(Math.abs), 0.001);
+                  const normalizedHeight = (Math.abs(v) / maxVal) * 100;
                   return (
                     <div 
                       key={i} 
-                      className="flex-1 rounded-sm flex items-end bg-muted/30"
+                      className="flex-1 rounded-sm flex items-end"
                     >
                       <div 
                         className="w-full rounded-sm transition-all"
                         style={{ 
-                          height: `${normalized * 100}%`,
+                          height: `${Math.max(4, normalizedHeight)}%`,
+                          minHeight: '4px',
                           backgroundColor: v >= 0 ? 'hsl(var(--primary))' : 'hsl(var(--destructive))',
                           opacity: 0.8
                         }}
