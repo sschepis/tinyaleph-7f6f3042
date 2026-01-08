@@ -3,9 +3,9 @@ import { useLocation, Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { 
   BookOpen, Zap, Package, Lightbulb, Code2, FileText, 
-  Brain, Atom, Dna, Calculator, ChevronRight, Menu, X
+  Brain, Atom, Dna, Calculator, ChevronRight, Menu
 } from 'lucide-react';
-import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 
 interface DocSection {
@@ -20,7 +20,7 @@ interface DocsPage {
   sections: DocSection[];
 }
 
-const docsStructure: DocsPage[] = [
+export const docsStructure: DocsPage[] = [
   {
     path: '/docs/getting-started',
     title: 'Getting Started',
