@@ -3,6 +3,8 @@ export { GatePalette } from './GatePalette';
 export { DebugPanel } from './DebugPanel';
 export { WireDisplay } from './WireDisplay';
 export { HelpDialog, useFirstRun } from './HelpDialog';
+export { SaveLoadDialog } from './SaveLoadDialog';
+export { HistoryPanel } from './HistoryPanel';
 
 // Visualizations
 export { BlochSphere } from './visualizations/BlochSphere';

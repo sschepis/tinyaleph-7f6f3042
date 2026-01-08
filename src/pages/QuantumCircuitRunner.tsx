@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Plus, RotateCcw, GripVertical, Zap, Circle, BarChart3, ArrowLeft, Sparkles, Target, Download, Upload, Wand2, Layers, GitBranch, ShieldCheck, Activity, GitCompare, Bug, HelpCircle, Share2, Check, Link2 } from 'lucide-react';
+import { Play, Plus, RotateCcw, GripVertical, Zap, Circle, BarChart3, ArrowLeft, Sparkles, Target, Download, Upload, Wand2, Layers, GitBranch, ShieldCheck, Activity, GitCompare, Bug, HelpCircle, Share2, Check, Link2, Save, FolderOpen, Undo2, Redo2 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import SedenionVisualizer from '@/components/SedenionVisualizer';
 import CodeBlock from '@/components/CodeBlock';
@@ -24,7 +24,11 @@ import {
   DebugPanel,
   HelpDialog,
   useFirstRun,
+  SaveLoadDialog,
+  HistoryPanel,
 } from '@/components/quantum-circuit';
+
+import { CircuitHistoryManager, CircuitSnapshot } from '@/lib/quantum-circuit/storage';
 
 import {
   GateType,
@@ -82,6 +86,13 @@ const QuantumCircuitRunner = () => {
   const [isFirstRun, markAsSeen] = useFirstRun('help-seen');
   const [showHelp, setShowHelp] = useState(false);
   
+  // Save/Load dialog state
+  const [showSaveLoad, setShowSaveLoad] = useState(false);
+  
+  // Circuit history manager
+  const historyManager = useRef(new CircuitHistoryManager());
+  const [historyVersion, setHistoryVersion] = useState(0); // Force re-renders
+  
   // Show help on first run
   useEffect(() => {
     if (isFirstRun) {
@@ -90,8 +101,60 @@ const QuantumCircuitRunner = () => {
     }
   }, [isFirstRun, markAsSeen]);
   
+  // Initialize history on mount
+  useEffect(() => {
+    historyManager.current.initialize(gates, wires);
+  }, []);
+  
   const nextGateId = useRef(1);
   const hasLoadedFromUrl = useRef(false);
+  
+  // Push to history when gates change
+  const pushHistory = useCallback((label?: string) => {
+    historyManager.current.push(gates, wires, label);
+    setHistoryVersion(v => v + 1);
+  }, [gates, wires]);
+  
+  // Undo
+  const handleUndo = useCallback(() => {
+    const snapshot = historyManager.current.undo();
+    if (snapshot) {
+      setGates(snapshot.gates);
+      setWires(snapshot.wires);
+      setExecutedState(null);
+      setHistoryVersion(v => v + 1);
+    }
+  }, []);
+  
+  // Redo
+  const handleRedo = useCallback(() => {
+    const snapshot = historyManager.current.redo();
+    if (snapshot) {
+      setGates(snapshot.gates);
+      setWires(snapshot.wires);
+      setExecutedState(null);
+      setHistoryVersion(v => v + 1);
+    }
+  }, []);
+  
+  // Restore snapshot
+  const handleRestoreSnapshot = useCallback((snapshot: CircuitSnapshot) => {
+    setGates(snapshot.gates);
+    setWires(snapshot.wires);
+    setExecutedState(null);
+    historyManager.current.push(snapshot.gates, snapshot.wires, 'Restored from history');
+    setHistoryVersion(v => v + 1);
+  }, []);
+  
+  // Load circuit from save/load dialog
+  const handleLoadCircuit = useCallback((loadedWires: Wire[], loadedGates: GateInstance[]) => {
+    setWires(loadedWires);
+    setGates(loadedGates);
+    setExecutedState(null);
+    nextGateId.current = loadedGates.length + 1;
+    historyManager.current.initialize(loadedGates, loadedWires);
+    setHistoryVersion(v => v + 1);
+  }, []);
 
   // Encode circuit to URL-safe string
   const encodeCircuit = useCallback(() => {
@@ -172,10 +235,16 @@ const QuantumCircuitRunner = () => {
 
   const addWire = useCallback(() => {
     if (wires.length >= 4) return;
-    setWires(prev => [...prev, { id: prev.length + 1, label: `q[${prev.length}]` }]);
+    const newWires = [...wires, { id: wires.length + 1, label: `q[${wires.length}]` }];
+    setWires(newWires);
     setHistory(prev => [...prev, `Added qubit q[${wires.length}]`]);
     setExecutedState(null);
-  }, [wires.length]);
+    // Push to history after state update
+    setTimeout(() => {
+      historyManager.current.push(gates, newWires, `Added qubit q[${wires.length}]`);
+      setHistoryVersion(v => v + 1);
+    }, 0);
+  }, [wires, gates]);
 
   const handleDragStart = useCallback((gateType: GateType) => {
     setDraggedGate(gateType);
@@ -210,16 +279,24 @@ const QuantumCircuitRunner = () => {
       parameter: draggedGate === 'RZ' ? Math.PI / 4 : undefined,
     };
     
-    setGates(prev => [...prev, newGate]);
+    const newGates = [...gates, newGate];
+    setGates(newGates);
     setHistory(prev => [...prev, `Added ${draggedGate} to q[${wireIndex}]`]);
     setDraggedGate(null);
     setExecutedState(null);
-  }, [draggedGate, gates]);
+    // Push to history
+    historyManager.current.push(newGates, wires, `Added ${draggedGate}`);
+    setHistoryVersion(v => v + 1);
+  }, [draggedGate, gates, wires]);
 
   const removeGate = useCallback((gateId: string) => {
-    setGates(prev => prev.filter(g => g.id !== gateId));
+    const newGates = gates.filter(g => g.id !== gateId);
+    setGates(newGates);
     setExecutedState(null);
-  }, []);
+    // Push to history
+    historyManager.current.push(newGates, wires, 'Removed gate');
+    setHistoryVersion(v => v + 1);
+  }, [gates, wires]);
 
   const loadPreset = useCallback((preset: typeof ALGORITHM_PRESETS[0]) => {
     const newWires = Array.from({ length: preset.numQubits }, (_, i) => ({
@@ -238,6 +315,9 @@ const QuantumCircuitRunner = () => {
     setGates(newGates);
     setExecutedState(null);
     setHistory(prev => [...prev, `Loaded: ${preset.name}`]);
+    // Push to history
+    historyManager.current.push(newGates, newWires, `Loaded ${preset.name}`);
+    setHistoryVersion(v => v + 1);
   }, []);
 
   const runCircuit = useCallback(() => {
@@ -375,8 +455,15 @@ const QuantumCircuitRunner = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Help Dialog */}
+      {/* Dialogs */}
       <HelpDialog open={showHelp} onOpenChange={setShowHelp} />
+      <SaveLoadDialog 
+        open={showSaveLoad} 
+        onOpenChange={setShowSaveLoad}
+        currentGates={gates}
+        currentWires={wires}
+        onLoad={handleLoadCircuit}
+      />
       
       <div className="container mx-auto py-8 px-4">
         <div className="mb-8">
@@ -483,19 +570,27 @@ const QuantumCircuitRunner = () => {
                     <RotateCcw className="w-3 h-3 mr-1" /> Reset
                   </Button>
                 </div>
-                <div className="pt-2 border-t border-border mt-1">
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border mt-1">
                   <Button 
                     onClick={shareCircuit} 
                     variant="outline" 
                     size="sm" 
-                    className="w-full h-9"
+                    className="h-9"
                     disabled={gates.length === 0}
                   >
                     {linkCopied ? (
                       <><Check className="w-3 h-3 mr-1 text-green-500" /> Copied!</>
                     ) : (
-                      <><Share2 className="w-3 h-3 mr-1" /> Share Circuit</>
+                      <><Share2 className="w-3 h-3 mr-1" /> Share</>
                     )}
+                  </Button>
+                  <Button 
+                    onClick={() => setShowSaveLoad(true)} 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-9"
+                  >
+                    <FolderOpen className="w-3 h-3 mr-1" /> Library
                   </Button>
                 </div>
                 <div className="pt-3 border-t border-border mt-1">
@@ -508,6 +603,22 @@ const QuantumCircuitRunner = () => {
                     className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer accent-primary" />
                 </div>
               </div>
+            </div>
+
+            {/* History Panel */}
+            <div className="p-4 rounded-xl border border-border bg-card shadow-sm">
+              <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <Undo2 className="w-4 h-4 text-primary" /> History
+              </h2>
+              <HistoryPanel
+                canUndo={historyManager.current.canUndo()}
+                canRedo={historyManager.current.canRedo()}
+                onUndo={handleUndo}
+                onRedo={handleRedo}
+                history={historyManager.current.getHistory()}
+                currentGates={gates}
+                onRestoreSnapshot={handleRestoreSnapshot}
+              />
             </div>
 
             {/* Debug Panel */}
