@@ -1,5 +1,6 @@
 // Main components
 export { GatePalette } from './GatePalette';
+export { DebugPanel } from './DebugPanel';
 export { WireDisplay } from './WireDisplay';
 
 // Visualizations

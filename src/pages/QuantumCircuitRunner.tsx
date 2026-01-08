@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Plus, RotateCcw, GripVertical, Zap, Circle, BarChart3, ArrowLeft, Sparkles, Target, Download, Upload, Wand2, Layers, GitBranch, ShieldCheck, Activity, GitCompare } from 'lucide-react';
+import { Play, Plus, RotateCcw, GripVertical, Zap, Circle, BarChart3, ArrowLeft, Sparkles, Target, Download, Upload, Wand2, Layers, GitBranch, ShieldCheck, Activity, GitCompare, Bug } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SedenionVisualizer from '@/components/SedenionVisualizer';
 
@@ -13,6 +13,7 @@ import {
   CircuitComparison,
   ParameterSweep,
   StateTomography,
+  DebugPanel,
 } from '@/components/quantum-circuit';
 
 import {
@@ -38,6 +39,12 @@ import {
   generateCodeExample,
 } from '@/lib/quantum-circuit/simulation';
 
+import {
+  DebugSession,
+  initDebugSession,
+  toggleBreakpoint,
+} from '@/lib/quantum-circuit/debugger';
+
 const QuantumCircuitRunner = () => {
   const [wires, setWires] = useState<Wire[]>([
     { id: 1, label: 'q[0]' },
@@ -53,6 +60,10 @@ const QuantumCircuitRunner = () => {
   const [noiseResult, setNoiseResult] = useState<NoiseSimResult | null>(null);
   const [noiseLevel, setNoiseLevel] = useState(0.01);
   const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
+  
+  // Debug mode state
+  const [debugMode, setDebugMode] = useState(false);
+  const [debugSession, setDebugSession] = useState<DebugSession | null>(null);
   
   const nextGateId = useRef(1);
 
@@ -217,8 +228,47 @@ const QuantumCircuitRunner = () => {
     });
   }, [executedState, gates, wires.length, noiseLevel, measurementSeed]);
 
-  const sedenionState = useMemo(() => executedState ? stateToSedenion(executedState) : Array(16).fill(0), [executedState]);
-  const entropy = useMemo(() => executedState ? computeEntropy(executedState) : 0, [executedState]);
+  // Debug mode functions
+  const enterDebugMode = useCallback(() => {
+    if (gates.length === 0) return;
+    const session = initDebugSession(gates, wires.length);
+    setDebugSession(session);
+    setDebugMode(true);
+  }, [gates, wires.length]);
+
+  const exitDebugMode = useCallback(() => {
+    setDebugMode(false);
+    // Keep the final state from debug session
+    if (debugSession && debugSession.history.length > 0) {
+      const finalState = debugSession.history[debugSession.history.length - 1].state;
+      setExecutedState(finalState);
+    }
+    setDebugSession(null);
+  }, [debugSession]);
+
+  const handleToggleBreakpoint = useCallback((gateId: string) => {
+    if (debugSession) {
+      setDebugSession(toggleBreakpoint(debugSession, gateId));
+    }
+  }, [debugSession]);
+
+  // Get current debug gate ID for highlighting
+  const currentDebugGateId = useMemo(() => {
+    if (!debugMode || !debugSession || debugSession.currentStep === 0) return null;
+    const currentHistoryEntry = debugSession.history[debugSession.history.length - 1];
+    return currentHistoryEntry.gate?.id ?? null;
+  }, [debugMode, debugSession]);
+
+  // State to display (either from debug session or executed state)
+  const displayState = useMemo(() => {
+    if (debugMode && debugSession && debugSession.history.length > 0) {
+      return debugSession.history[debugSession.history.length - 1].state;
+    }
+    return executedState;
+  }, [debugMode, debugSession, executedState]);
+
+  const sedenionState = useMemo(() => displayState ? stateToSedenion(displayState) : Array(16).fill(0), [displayState]);
+  const entropy = useMemo(() => displayState ? computeEntropy(displayState) : 0, [displayState]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -277,6 +327,16 @@ const QuantumCircuitRunner = () => {
                   <RotateCcw className="w-4 h-4 mr-2" /> Reset
                 </Button>
                 <div className="pt-2 border-t border-border mt-2">
+                  <Button 
+                    onClick={debugMode ? exitDebugMode : enterDebugMode} 
+                    variant={debugMode ? "default" : "outline"}
+                    className="w-full"
+                    disabled={gates.length === 0 && !debugMode}
+                  >
+                    <Bug className="w-4 h-4 mr-2" /> {debugMode ? 'Exit Debug' : 'Debug Mode'}
+                  </Button>
+                </div>
+                <div className="pt-2 border-t border-border mt-2">
                   <label className="text-xs text-muted-foreground">Noise: {(noiseLevel * 100).toFixed(1)}%</label>
                   <input type="range" min="0" max="0.1" step="0.005" value={noiseLevel}
                     onChange={(e) => setNoiseLevel(parseFloat(e.target.value))}
@@ -284,6 +344,20 @@ const QuantumCircuitRunner = () => {
                 </div>
               </div>
             </div>
+
+            {/* Debug Panel */}
+            {debugMode && debugSession && (
+              <div className="p-4 rounded-lg border border-yellow-500/50 bg-yellow-500/5">
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2 text-yellow-500">
+                  <Bug className="w-5 h-5" /> Debug Mode
+                </h2>
+                <DebugPanel 
+                  session={debugSession}
+                  onSessionChange={setDebugSession}
+                  onExit={exitDebugMode}
+                />
+              </div>
+            )}
 
             {comparisonResult && (
               <div className="p-4 rounded-lg border border-border bg-card">
@@ -297,9 +371,10 @@ const QuantumCircuitRunner = () => {
 
           {/* Center - Circuit + Code */}
           <div className="space-y-6">
-            <div className="p-4 rounded-lg border border-border bg-card">
+            <div className={`p-4 rounded-lg border bg-card ${debugMode ? 'border-yellow-500/50' : 'border-border'}`}>
               <h2 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
                 <GripVertical className="w-5 h-5" /> Circuit
+                {debugMode && <span className="text-xs text-yellow-500 ml-2">(Click gates to set breakpoints)</span>}
               </h2>
               <div className="relative min-h-[200px]">
                 <svg className="absolute inset-0 pointer-events-none z-20" style={{ overflow: 'visible' }}>
@@ -324,7 +399,12 @@ const QuantumCircuitRunner = () => {
                       onDropGate={(pos) => handleDropGate(idx, pos)}
                       onRemoveGate={removeGate}
                       isActive={draggedGate !== null}
-                      numWires={wires.length} />
+                      numWires={wires.length}
+                      debugMode={debugMode}
+                      breakpoints={debugSession?.breakpoints}
+                      onToggleBreakpoint={handleToggleBreakpoint}
+                      currentDebugGateId={currentDebugGateId}
+                    />
                   ))}
                 </div>
               </div>
@@ -375,7 +455,7 @@ const QuantumCircuitRunner = () => {
               <h2 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
                 <Circle className="w-5 h-5" /> Bloch Sphere
               </h2>
-              {executedState ? <BlochSphere state={executedState} /> : (
+              {displayState ? <BlochSphere state={displayState} /> : (
                 <div className="aspect-square bg-muted/30 rounded-lg flex items-center justify-center text-muted-foreground text-sm">Execute to see</div>
               )}
             </div>
@@ -384,14 +464,14 @@ const QuantumCircuitRunner = () => {
               <h2 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
                 <BarChart3 className="w-5 h-5" /> Amplitudes
               </h2>
-              {executedState ? <AmplitudePlot state={executedState} /> : (
+              {displayState ? <AmplitudePlot state={displayState} /> : (
                 <div className="h-32 bg-muted/30 rounded-lg flex items-center justify-center text-muted-foreground text-sm">Execute to see</div>
               )}
             </div>
 
             <div className="p-4 rounded-lg border border-border bg-card">
               <h2 className="text-lg font-semibold text-primary mb-4">Sedenion State</h2>
-              <SedenionVisualizer components={sedenionState} animated={!!executedState} size="lg" />
+              <SedenionVisualizer components={sedenionState} animated={!!displayState} size="lg" />
               <div className="mt-3 text-center">
                 <p className="text-sm text-muted-foreground">Entropy</p>
                 <p className="text-2xl font-mono text-primary">{entropy.toFixed(3)} bits</p>

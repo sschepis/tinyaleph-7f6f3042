@@ -5,6 +5,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { GATE_DEFINITIONS, GateInstance, Wire } from '@/lib/quantum-circuit/types';
+import { Circle } from 'lucide-react';
 
 interface WireDisplayProps {
   wire: Wire;
@@ -14,6 +15,11 @@ interface WireDisplayProps {
   isActive: boolean;
   numWires: number;
   wireIndex: number;
+  // Debug mode props
+  debugMode?: boolean;
+  breakpoints?: Set<string>;
+  onToggleBreakpoint?: (gateId: string) => void;
+  currentDebugGateId?: string | null;
 }
 
 export const WireDisplay = ({
@@ -24,6 +30,10 @@ export const WireDisplay = ({
   isActive,
   numWires,
   wireIndex,
+  debugMode = false,
+  breakpoints = new Set(),
+  onToggleBreakpoint,
+  currentDebugGateId,
 }: WireDisplayProps) => {
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -32,6 +42,15 @@ export const WireDisplay = ({
   const handleDrop = (e: React.DragEvent, position: number) => {
     e.preventDefault();
     onDropGate(position);
+  };
+
+  const handleGateClick = (gate: GateInstance, e: React.MouseEvent) => {
+    if (debugMode && onToggleBreakpoint) {
+      e.stopPropagation();
+      onToggleBreakpoint(gate.id);
+    } else {
+      onRemoveGate(gate.id);
+    }
   };
 
   const slots = 10;
@@ -47,6 +66,8 @@ export const WireDisplay = ({
       <div className="flex gap-1 flex-1 relative z-10">
         {Array.from({ length: slots }).map((_, slotIdx) => {
           const gateAtSlot = gates.find(g => g.position === slotIdx);
+          const hasBreakpoint = gateAtSlot && breakpoints.has(gateAtSlot.id);
+          const isCurrentDebugGate = gateAtSlot && gateAtSlot.id === currentDebugGateId;
           
           return (
             <div
@@ -57,7 +78,7 @@ export const WireDisplay = ({
                 gateAtSlot 
                   ? 'border-transparent' 
                   : 'border-border/50 hover:border-primary/50 hover:bg-primary/10'
-              }`}
+              } ${isCurrentDebugGate ? 'ring-2 ring-yellow-500 ring-offset-2 ring-offset-background' : ''}`}
             >
               {gateAtSlot ? (
                 <TooltipProvider delayDuration={300}>
@@ -65,12 +86,28 @@ export const WireDisplay = ({
                     <TooltipTrigger asChild>
                       <div
                         className={`${GATE_DEFINITIONS[gateAtSlot.type].color} text-white w-10 h-10 rounded flex items-center justify-center font-bold cursor-pointer hover:scale-105 transition-transform relative group`}
-                        onClick={() => onRemoveGate(gateAtSlot.id)}
+                        onClick={(e) => handleGateClick(gateAtSlot, e)}
                       >
                         {gateAtSlot.type}
-                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          ×
-                        </div>
+                        
+                        {/* Breakpoint indicator */}
+                        {hasBreakpoint && (
+                          <Circle className="absolute -left-1 -top-1 w-3 h-3 text-red-500 fill-red-500" />
+                        )}
+                        
+                        {/* Remove button (only in non-debug mode) */}
+                        {!debugMode && (
+                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            ×
+                          </div>
+                        )}
+                        
+                        {/* Debug mode: toggle breakpoint hint */}
+                        {debugMode && (
+                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500/80 rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Circle className="w-2 h-2" />
+                          </div>
+                        )}
                       </div>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -78,6 +115,11 @@ export const WireDisplay = ({
                       <p className="text-xs font-mono text-primary">{GATE_DEFINITIONS[gateAtSlot.type].matrix}</p>
                       {gateAtSlot.parameter !== undefined && (
                         <p className="text-xs text-muted-foreground">θ = {gateAtSlot.parameter.toFixed(3)}</p>
+                      )}
+                      {debugMode && (
+                        <p className="text-xs text-yellow-500 mt-1">
+                          Click to {hasBreakpoint ? 'remove' : 'set'} breakpoint
+                        </p>
                       )}
                     </TooltipContent>
                   </Tooltip>
