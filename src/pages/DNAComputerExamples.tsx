@@ -14,7 +14,7 @@ import {
   PROPERTY_COLORS,
 } from '@/lib/dna-computer/types';
 
-// Import native BioinformaticsBackend from tinyaleph 1.3.0
+// Import BioinformaticsBackend from tinyaleph
 let BioinformaticsBackend: any = null;
 let DNACircuit: any = null;
 let ANDGate: any = null;
@@ -121,7 +121,7 @@ function generateRandomSequence(length: number): string {
   ).join('');
 }
 
-// Native API wrappers for 1.3.0 features
+// Native API wrappers
 function transcribeDNA(sequence: string): { success: boolean; mRNA: string } {
   if (backend) {
     try {
@@ -292,7 +292,7 @@ const NucleotideEncoderDemo = () => {
           className="font-mono text-lg"
         />
         {error && <p className="text-destructive text-sm mt-1">{error}</p>}
-        {backend && <Badge variant="outline" className="mt-2 text-green-400 border-green-400">Using native BioinformaticsBackend 1.3.0</Badge>}
+        {backend && <Badge variant="outline" className="mt-2 text-green-400 border-green-400">Using BioinformaticsBackend</Badge>}
       </div>
 
       {/* Strand Visualization */}
@@ -326,7 +326,7 @@ const NucleotideEncoderDemo = () => {
 
       {/* Prime Encoding */}
       <div>
-        <h4 className="text-sm font-medium mb-2">Prime Encoding (Native 1.3.0 API)</h4>
+        <h4 className="text-sm font-medium mb-2">Prime Encoding</h4>
         <div className="flex flex-wrap gap-2">
           {[...sequence].map((nuc, i) => (
             <div
@@ -375,7 +375,7 @@ const NucleotideEncoderDemo = () => {
   );
 };
 
-// Demo 2: Central Dogma (new in 1.3.0)
+// Demo 2: Central Dogma
 const CentralDogmaDemo = () => {
   const [dnaSequence, setDnaSequence] = useState('ATGCATGCATACTAA');
   
@@ -1180,7 +1180,7 @@ const examples: ExampleConfig[] = [
     number: '1',
     title: 'Nucleotide Encoder',
     subtitle: 'DNA → Primes → Sedenions',
-    description: 'Map DNA sequences to prime numbers and 16-dimensional sedenion states using the native BioinformaticsBackend from tinyaleph 1.3.0.',
+    description: 'Map DNA sequences to prime numbers and 16-dimensional sedenion states using the BioinformaticsBackend.',
     concepts: ['Prime Encoding', 'Sedenion States', 'GC Content', 'Melting Temperature'],
     code: `import { BioinformaticsBackend } from '@aleph-ai/tinyaleph';
 
@@ -1203,7 +1203,7 @@ console.log('Round-trip:', decoded === dna ? 'SUCCESS' : 'FAIL');`,
     number: '2',
     title: 'Central Dogma',
     subtitle: 'DNA → mRNA → Protein',
-    description: 'Simulate the central dogma of molecular biology: transcription (DNA→mRNA) and translation (mRNA→Protein) using the native 1.3.0 APIs.',
+    description: 'Simulate the central dogma of molecular biology: transcription (DNA→mRNA) and translation (mRNA→Protein).',
     concepts: ['Transcription', 'Translation', 'Codons', 'Amino Acids'],
     code: `import { BioinformaticsBackend } from '@aleph-ai/tinyaleph';
 
@@ -1353,7 +1353,7 @@ const DNAComputerExamples = () => {
     <ExamplePageWrapper
       category="Applications"
       title="DNA Computer"
-      description="Explore DNA computing through prime encoding, sedenion states, and Kuramoto dynamics using the native BioinformaticsBackend from tinyaleph 1.3.0"
+      description="Explore DNA computing through prime encoding, sedenion states, and Kuramoto dynamics"
       examples={examples}
       exampleComponents={exampleComponents}
       previousSection={{ title: 'Enochian', path: '/enochian' }}

@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import SedenionVisualizer from '@/components/SedenionVisualizer';
 
-// Symbol database from tinyaleph 1.3.0
+// Symbol database
 const SYMBOL_DATABASE: Record<string, {
   name: string;
   prime: number;
@@ -818,7 +818,7 @@ const SymbolicAIExamples = () => {
     <ExamplePageWrapper
       category="Applications"
       title="Symbolic AI"
-      description="Explore the 400+ symbol database featuring Jungian archetypes, Tarot, I-Ching, and cross-cultural resonance analysis from tinyaleph 1.3.0"
+      description="Explore the 400+ symbol database featuring Jungian archetypes, Tarot, I-Ching, and cross-cultural resonance analysis"
       examples={examples}
       exampleComponents={exampleComponents}
       previousSection={{ title: 'DNA Computer', path: '/dna-computer' }}
