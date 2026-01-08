@@ -1,9 +1,85 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Plus, RotateCcw, Trash2, GripVertical, Zap, Circle, BarChart3, ArrowLeft } from 'lucide-react';
+import { Play, Plus, RotateCcw, GripVertical, Zap, Circle, BarChart3, ArrowLeft, Sparkles, Target } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SedenionVisualizer from '@/components/SedenionVisualizer';
 
+// Seeded random for deterministic behavior
+const seededRandom = (seed: number) => {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+};
+
+// Algorithm presets
+interface AlgorithmPreset {
+  name: string;
+  description: string;
+  numQubits: number;
+  gates: Array<{ type: string; wireIndex: number; position: number; controlWire?: number }>;
+}
+
+const ALGORITHM_PRESETS: AlgorithmPreset[] = [
+  {
+    name: 'Bell State',
+    description: 'Creates maximally entangled |Φ⁺⟩ = (|00⟩ + |11⟩)/√2',
+    numQubits: 2,
+    gates: [
+      { type: 'H', wireIndex: 0, position: 0 },
+      { type: 'CNOT', wireIndex: 1, position: 1, controlWire: 0 },
+    ],
+  },
+  {
+    name: 'GHZ State',
+    description: '3-qubit entangled state (|000⟩ + |111⟩)/√2',
+    numQubits: 3,
+    gates: [
+      { type: 'H', wireIndex: 0, position: 0 },
+      { type: 'CNOT', wireIndex: 1, position: 1, controlWire: 0 },
+      { type: 'CNOT', wireIndex: 2, position: 2, controlWire: 1 },
+    ],
+  },
+  {
+    name: "Grover's (2-qubit)",
+    description: 'Quantum search amplifying |11⟩ state',
+    numQubits: 2,
+    gates: [
+      // Initialize superposition
+      { type: 'H', wireIndex: 0, position: 0 },
+      { type: 'H', wireIndex: 1, position: 0 },
+      // Oracle (marks |11⟩)
+      { type: 'Z', wireIndex: 0, position: 1 },
+      { type: 'Z', wireIndex: 1, position: 1 },
+      // Diffusion operator
+      { type: 'H', wireIndex: 0, position: 2 },
+      { type: 'H', wireIndex: 1, position: 2 },
+      { type: 'X', wireIndex: 0, position: 3 },
+      { type: 'X', wireIndex: 1, position: 3 },
+      { type: 'H', wireIndex: 1, position: 4 },
+      { type: 'CNOT', wireIndex: 1, position: 5, controlWire: 0 },
+      { type: 'H', wireIndex: 1, position: 6 },
+      { type: 'X', wireIndex: 0, position: 7 },
+      { type: 'X', wireIndex: 1, position: 7 },
+      { type: 'H', wireIndex: 0, position: 8 },
+      { type: 'H', wireIndex: 1, position: 8 },
+    ],
+  },
+  {
+    name: 'Superposition',
+    description: 'Equal superposition of all basis states',
+    numQubits: 3,
+    gates: [
+      { type: 'H', wireIndex: 0, position: 0 },
+      { type: 'H', wireIndex: 1, position: 0 },
+      { type: 'H', wireIndex: 2, position: 0 },
+    ],
+  },
+];
+
+interface MeasurementResult {
+  shots: number;
+  counts: Record<string, number>;
+  collapsed: string;
+}
 // Gate definitions with colors and descriptions
 const GATE_DEFINITIONS = {
   H: { name: 'Hadamard', color: 'bg-blue-500', description: 'Creates superposition' },
@@ -366,15 +442,18 @@ const QuantumCircuitRunner = () => {
   const [draggedGate, setDraggedGate] = useState<GateType | null>(null);
   const [executedState, setExecutedState] = useState<ComplexNumber[] | null>(null);
   const [history, setHistory] = useState<string[]>([]);
+  const [measurementResult, setMeasurementResult] = useState<MeasurementResult | null>(null);
+  const [measurementSeed, setMeasurementSeed] = useState(42);
   
   const nextGateId = useRef(1);
 
   const addWire = useCallback(() => {
-    if (wires.length >= 4) return; // Max 4 qubits for visualization
+    if (wires.length >= 4) return;
     const newId = wires.length + 1;
     setWires(prev => [...prev, { id: newId, label: `q[${prev.length}]` }]);
     setHistory(prev => [...prev, `Added qubit q[${wires.length}]`]);
     setExecutedState(null);
+    setMeasurementResult(null);
   }, [wires.length]);
 
   const removeWire = useCallback((wireId: number) => {
@@ -383,6 +462,7 @@ const QuantumCircuitRunner = () => {
     setGates(prev => prev.filter(g => g.wireIndex !== wires.findIndex(w => w.id === wireId)));
     setHistory(prev => [...prev, `Removed qubit`]);
     setExecutedState(null);
+    setMeasurementResult(null);
   }, [wires]);
 
   const handleDragStart = useCallback((gateType: GateType) => {
@@ -392,7 +472,6 @@ const QuantumCircuitRunner = () => {
   const handleDropGate = useCallback((wireIndex: number, position: number) => {
     if (!draggedGate) return;
     
-    // Check if slot is already occupied
     const existing = gates.find(g => g.wireIndex === wireIndex && g.position === position);
     if (existing) return;
     
@@ -408,6 +487,7 @@ const QuantumCircuitRunner = () => {
     setHistory(prev => [...prev, `Added ${draggedGate} gate to q[${wireIndex}] at position ${position}`]);
     setDraggedGate(null);
     setExecutedState(null);
+    setMeasurementResult(null);
   }, [draggedGate, gates]);
 
   const removeGate = useCallback((gateId: string) => {
@@ -417,18 +497,39 @@ const QuantumCircuitRunner = () => {
       setHistory(prev => [...prev, `Removed ${gate.type} gate`]);
     }
     setExecutedState(null);
+    setMeasurementResult(null);
   }, [gates]);
+
+  const loadPreset = useCallback((preset: AlgorithmPreset) => {
+    // Set up wires
+    const newWires = Array.from({ length: preset.numQubits }, (_, i) => ({
+      id: i + 1,
+      label: `q[${i}]`,
+    }));
+    setWires(newWires);
+    
+    // Set up gates
+    const newGates: GateInstance[] = preset.gates.map((g, i) => ({
+      id: `gate-${nextGateId.current++}`,
+      type: g.type as GateType,
+      wireIndex: g.wireIndex,
+      position: g.position,
+      controlWire: g.controlWire,
+    }));
+    setGates(newGates);
+    setExecutedState(null);
+    setMeasurementResult(null);
+    setHistory(prev => [...prev, `Loaded preset: ${preset.name}`]);
+  }, []);
 
   const executeCircuit = useCallback(() => {
     const numWires = wires.length;
     const dimensions = Math.pow(2, numWires);
     
-    // Initialize to |0...0⟩
     let state: ComplexNumber[] = Array.from({ length: dimensions }, (_, i) => 
       i === 0 ? { real: 1, imag: 0 } : { real: 0, imag: 0 }
     );
     
-    // Sort gates by position, then apply
     const sortedGates = [...gates].sort((a, b) => a.position - b.position);
     
     for (const gate of sortedGates) {
@@ -436,12 +537,51 @@ const QuantumCircuitRunner = () => {
     }
     
     setExecutedState(state);
+    setMeasurementResult(null);
     setHistory(prev => [...prev, `Executed circuit with ${gates.length} gates`]);
   }, [wires.length, gates]);
+
+  const measureState = useCallback(() => {
+    if (!executedState) return;
+    
+    const numShots = 1024;
+    const counts: Record<string, number> = {};
+    const probs = executedState.map(s => s.real * s.real + s.imag * s.imag);
+    
+    // Create cumulative distribution
+    const cumulative: number[] = [];
+    let sum = 0;
+    for (const p of probs) {
+      sum += p;
+      cumulative.push(sum);
+    }
+    
+    // Sample with seeded random
+    for (let shot = 0; shot < numShots; shot++) {
+      const r = seededRandom(measurementSeed + shot);
+      let outcome = 0;
+      for (let i = 0; i < cumulative.length; i++) {
+        if (r <= cumulative[i]) {
+          outcome = i;
+          break;
+        }
+      }
+      const binaryLabel = outcome.toString(2).padStart(wires.length, '0');
+      counts[binaryLabel] = (counts[binaryLabel] || 0) + 1;
+    }
+    
+    // Find most likely outcome for "collapsed" state
+    const collapsed = Object.entries(counts).reduce((a, b) => a[1] > b[1] ? a : b)[0];
+    
+    setMeasurementResult({ shots: numShots, counts, collapsed });
+    setMeasurementSeed(prev => prev + numShots); // Advance seed for next measurement
+    setHistory(prev => [...prev, `Measured ${numShots} shots → most likely: |${collapsed}⟩`]);
+  }, [executedState, wires.length, measurementSeed]);
 
   const resetCircuit = useCallback(() => {
     setGates([]);
     setExecutedState(null);
+    setMeasurementResult(null);
     setHistory(prev => [...prev, 'Reset circuit']);
   }, []);
 
@@ -483,6 +623,27 @@ const QuantumCircuitRunner = () => {
             </div>
 
             <div className="p-4 rounded-lg border border-border bg-card">
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Sparkles className="w-5 h-5" /> Presets
+              </h2>
+              <div className="grid grid-cols-2 gap-2">
+                {ALGORITHM_PRESETS.map((preset) => (
+                  <Button
+                    key={preset.name}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-auto py-2 flex flex-col items-start"
+                    onClick={() => loadPreset(preset)}
+                    title={preset.description}
+                  >
+                    <span className="font-semibold">{preset.name}</span>
+                    <span className="text-muted-foreground text-[10px]">{preset.numQubits}q</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg border border-border bg-card">
               <h2 className="text-lg font-semibold mb-4">Controls</h2>
               <div className="flex flex-col gap-2">
                 <Button onClick={addWire} variant="outline" className="w-full" disabled={wires.length >= 4}>
@@ -490,6 +651,14 @@ const QuantumCircuitRunner = () => {
                 </Button>
                 <Button onClick={executeCircuit} className="w-full" disabled={gates.length === 0}>
                   <Play className="w-4 h-4 mr-2" /> Execute
+                </Button>
+                <Button 
+                  onClick={measureState} 
+                  variant="secondary" 
+                  className="w-full" 
+                  disabled={!executedState}
+                >
+                  <Target className="w-4 h-4 mr-2" /> Measure (1024 shots)
                 </Button>
                 <Button onClick={resetCircuit} variant="destructive" className="w-full">
                   <RotateCcw className="w-4 h-4 mr-2" /> Reset
@@ -592,6 +761,40 @@ const QuantumCircuitRunner = () => {
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {measurementResult && (
+              <div className="p-4 rounded-lg border border-border bg-card">
+                <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Target className="w-4 h-4" /> Measurement Results
+                </h2>
+                <div className="space-y-2">
+                  <div className="text-xs text-muted-foreground mb-2">
+                    {measurementResult.shots} shots → collapsed to |{measurementResult.collapsed}⟩
+                  </div>
+                  <div className="space-y-1">
+                    {Object.entries(measurementResult.counts)
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([state, count]) => {
+                        const percentage = (count / measurementResult.shots) * 100;
+                        return (
+                          <div key={state} className="flex items-center gap-2">
+                            <span className="font-mono text-xs text-primary w-12">|{state}⟩</span>
+                            <div className="flex-1 bg-muted rounded-full h-3 overflow-hidden">
+                              <div 
+                                className="h-full bg-primary/70 transition-all duration-300"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-muted-foreground w-16 text-right">
+                              {count} ({percentage.toFixed(1)}%)
+                            </span>
+                          </div>
+                        );
+                      })}
+                  </div>
                 </div>
               </div>
             )}
