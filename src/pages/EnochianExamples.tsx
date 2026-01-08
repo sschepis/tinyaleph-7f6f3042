@@ -598,11 +598,21 @@ const WordTransformation = () => {
   );
 };
 
+type ZeroDivisorResult = { 
+  word1: string; 
+  word2: string; 
+  product: number; 
+  isZero: boolean; 
+  s1: number[]; 
+  s2: number[]; 
+  productVec: number[] 
+};
+
 const ZeroDivisorSearch = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [attempts, setAttempts] = useState(0);
-  const [results, setResults] = useState<{ word1: string; word2: string; product: number; isZero: boolean }[]>([]);
-  const [foundZero, setFoundZero] = useState<{ word1: string; word2: string; product: number; s1: number[]; s2: number[]; productVec: number[] } | null>(null);
+  const [results, setResults] = useState<ZeroDivisorResult[]>([]);
+  const [selectedResult, setSelectedResult] = useState<ZeroDivisorResult | null>(null);
   const [showVisualization, setShowVisualization] = useState(true);
   const searchRef = useRef<number | null>(null);
 
@@ -652,12 +662,12 @@ const ZeroDivisorSearch = () => {
 
   const startSearch = useCallback(() => {
     setIsSearching(true);
-    setFoundZero(null);
+    setSelectedResult(null);
     setResults([]);
     setAttempts(0);
     
     let currentAttempt = 0;
-    const allResults: typeof results = [];
+    let allResults: ZeroDivisorResult[] = [];
     
     const runBatch = () => {
       const batchSize = 100;
@@ -668,14 +678,7 @@ const ZeroDivisorSearch = () => {
         allResults.push(result);
         
         if (result.isZero) {
-          setFoundZero({ 
-            word1: result.word1, 
-            word2: result.word2, 
-            product: result.product,
-            s1: result.s1,
-            s2: result.s2,
-            productVec: result.productVec
-          });
+          setSelectedResult(result);
           setAttempts(currentAttempt);
           allResults.sort((a, b) => a.product - b.product);
           setResults(allResults.slice(0, 10));
@@ -686,12 +689,19 @@ const ZeroDivisorSearch = () => {
       
       setAttempts(currentAttempt);
       allResults.sort((a, b) => a.product - b.product);
-      setResults(allResults.slice(0, 10));
+      const top10 = allResults.slice(0, 10);
+      setResults(top10);
+      // Keep only top results in memory to prevent bloat
+      allResults = top10;
       
       if (currentAttempt < 10000) {
         searchRef.current = requestAnimationFrame(runBatch);
       } else {
         setIsSearching(false);
+        // Auto-select best result if no zero divisor found
+        if (top10.length > 0 && !top10[0].isZero) {
+          setSelectedResult(top10[0]);
+        }
       }
     };
     
@@ -911,41 +921,61 @@ const ZeroDivisorSearch = () => {
         )}
       </div>
 
-      {foundZero && (
-        <>
-          <div className="p-4 rounded-lg bg-green-500/20 border border-green-500/50">
-            <div className="flex items-center gap-2 text-green-400 font-semibold mb-2">
-              <Sparkles className="w-4 h-4" /> Zero Divisor Found!
+      {results.length > 0 && (
+        <div className="space-y-2">
+          <div className="text-xs text-muted-foreground mb-2">
+            Click any pair to visualize its basis vectors:
+          </div>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {results.map((r, i) => {
+              const isSelected = selectedResult?.word1 === r.word1 && selectedResult?.word2 === r.word2;
+              return (
+                <button
+                  key={i}
+                  onClick={() => setSelectedResult(r)}
+                  className={`w-full p-3 rounded-lg flex justify-between items-center transition-all cursor-pointer text-left
+                    ${r.isZero 
+                      ? 'bg-green-500/20 border border-green-500/50 hover:bg-green-500/30' 
+                      : 'bg-muted/50 hover:bg-muted/70 border border-transparent'}
+                    ${isSelected ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}
+                  `}
+                >
+                  <div className="flex items-center gap-2">
+                    {r.isZero && <Sparkles className="w-3 h-3 text-green-400" />}
+                    <span className="font-mono text-sm">{r.word1} × {r.word2}</span>
+                  </div>
+                  <span className={`font-mono text-sm ${r.isZero ? 'text-green-400' : 'text-muted-foreground'}`}>
+                    ratio = {r.product.toFixed(4)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {selectedResult && (
+        <div className="mt-4">
+          <div className={`p-4 rounded-lg ${selectedResult.isZero ? 'bg-green-500/20 border border-green-500/50' : 'bg-primary/10 border border-primary/30'}`}>
+            <div className={`flex items-center gap-2 font-semibold mb-2 ${selectedResult.isZero ? 'text-green-400' : 'text-primary'}`}>
+              {selectedResult.isZero ? <Sparkles className="w-4 h-4" /> : <Scale className="w-4 h-4" />}
+              {selectedResult.isZero ? 'Zero Divisor Found!' : 'Selected Pair'}
             </div>
             <div className="font-mono text-lg">
-              {foundZero.word1} × {foundZero.word2}
+              {selectedResult.word1} × {selectedResult.word2}
             </div>
             <div className="font-mono text-sm text-muted-foreground">
-              ||A×B|| / (||A|| × ||B||) = {foundZero.product.toFixed(6)}
+              ||A×B|| / (||A|| × ||B||) = {selectedResult.product.toFixed(6)}
             </div>
           </div>
           
           <BasisVisualization 
-            s1={foundZero.s1} 
-            s2={foundZero.s2} 
-            productVec={foundZero.productVec}
-            word1={foundZero.word1}
-            word2={foundZero.word2}
+            s1={selectedResult.s1} 
+            s2={selectedResult.s2} 
+            productVec={selectedResult.productVec}
+            word1={selectedResult.word1}
+            word2={selectedResult.word2}
           />
-        </>
-      )}
-
-      {results.length > 0 && (
-        <div className="space-y-2 max-h-64 overflow-y-auto">
-          <div className="text-xs text-muted-foreground mb-2">Closest pairs (lowest product ratio):</div>
-          {results.map((r, i) => (
-            <div key={i} className={`p-3 rounded-lg flex justify-between items-center ${r.isZero ? 'bg-green-500/20 border border-green-500/50' : 'bg-muted/50'}`}>
-              <span className="font-mono text-sm">{r.word1} × {r.word2}</span>
-              <span className={`font-mono text-sm ${r.isZero ? 'text-green-400' : 'text-muted-foreground'}`}>
-                ratio = {r.product.toFixed(4)}
-              </span>
-            </div>
-          ))}
         </div>
       )}
     </div>
