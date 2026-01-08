@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import Hero from '../components/Hero';
-import { Layers, Waves, Database, Cpu, ArrowRight, Play, Server, Atom, MessageSquare, Languages, BookOpen } from 'lucide-react';
+import { Layers, Waves, Database, Cpu, ArrowRight, Play, Server, Atom, MessageSquare, Languages, BookOpen, Sparkles, Bot, Zap } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
@@ -187,6 +187,126 @@ const Index = () => {
               </Link>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Featured Applications */}
+      <section className="py-16 border-t border-border">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <motion.div 
+            className="text-center mb-10"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeInUp}
+          >
+            <Badge variant="outline" className="mb-4">
+              <Sparkles className="w-3 h-3 mr-1" />
+              Interactive Tools
+            </Badge>
+            <h2 className="text-3xl font-display font-bold mb-3">Featured Applications</h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              Explore TinyAleph's capabilities through these interactive applications.
+            </p>
+          </motion.div>
+
+          <motion.div 
+            className="grid md:grid-cols-3 gap-6"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            variants={staggerContainer}
+          >
+            {/* Quantum Circuit Runner */}
+            <motion.div variants={scaleIn}>
+              <Link to="/circuit-runner" className="group block h-full">
+                <Card className="h-full overflow-hidden border-2 border-transparent hover:border-cyan-500/50 transition-all duration-300 bg-gradient-to-br from-cyan-500/5 to-blue-500/5">
+                  <div className="p-6">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Zap className="w-6 h-6 text-cyan-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2 group-hover:text-cyan-400 transition-colors">
+                      Quantum Circuit Runner
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Build and simulate quantum circuits with drag-and-drop gates. Real-time state visualization, noise simulation, and step-through debugging.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Bloch Sphere', 'Noise Sim', 'Debugger'].map(tag => (
+                        <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="px-6 py-3 bg-cyan-500/5 border-t border-cyan-500/10 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Drag & drop interface</span>
+                    <ArrowRight className="w-4 h-4 text-cyan-400 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </Card>
+              </Link>
+            </motion.div>
+
+            {/* Aleph Chat */}
+            <motion.div variants={scaleIn}>
+              <Link to="/chat" className="group block h-full">
+                <Card className="h-full overflow-hidden border-2 border-transparent hover:border-purple-500/50 transition-all duration-300 bg-gradient-to-br from-purple-500/5 to-pink-500/5">
+                  <div className="p-6">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Bot className="w-6 h-6 text-purple-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2 group-hover:text-purple-400 transition-colors">
+                      Aleph Chat
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Semantic AI chat with prime-based hypercomplex algebra. Watch meaning evolve in 16D space with real-time entropy and coherence tracking.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['16D Viz', 'Entropy', 'Cross-Coherence'].map(tag => (
+                        <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="px-6 py-3 bg-purple-500/5 border-t border-purple-500/10 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">LLM + TinyAleph integration</span>
+                    <ArrowRight className="w-4 h-4 text-purple-400 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </Card>
+              </Link>
+            </motion.div>
+
+            {/* Enochian Explorer */}
+            <motion.div variants={scaleIn}>
+              <Link to="/enochian" className="group block h-full">
+                <Card className="h-full overflow-hidden border-2 border-transparent hover:border-amber-500/50 transition-all duration-300 bg-gradient-to-br from-amber-500/5 to-orange-500/5">
+                  <div className="p-6">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Languages className="w-6 h-6 text-amber-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2 group-hover:text-amber-400 transition-colors">
+                      Enochian Explorer
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Map the 21-letter angelic alphabet to prime sedenions. Build invocations, visualize glyph mandalas, and search for zero divisors.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Glyph Mandala', 'Zero Divisors', 'Elements'].map(tag => (
+                        <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="px-6 py-3 bg-amber-500/5 border-t border-amber-500/10 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">21 letters × 16 dimensions</span>
+                    <ArrowRight className="w-4 h-4 text-amber-400 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </Card>
+              </Link>
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
