@@ -7,7 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 const ReferenceGuide = () => {
   return (
-    <div className="space-y-12">
+    <div className="pt-20">
+      <div className="max-w-5xl mx-auto px-4 py-12 space-y-12">
       {/* Hero */}
       <section className="text-center space-y-4">
         <Badge variant="outline" className="mb-4">Documentation</Badge>
@@ -354,6 +355,7 @@ console.log(\`Network is \${(sync * 100).toFixed(1)}% synchronized\`);`}
           Try Examples →
         </Link>
       </section>
+      </div>
     </div>
   );
 };

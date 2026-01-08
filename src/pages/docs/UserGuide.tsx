@@ -7,7 +7,8 @@ import { AlertCircle, CheckCircle, Lightbulb } from "lucide-react";
 
 const UserGuide = () => {
   return (
-    <div className="space-y-12">
+    <div className="pt-20">
+      <div className="max-w-5xl mx-auto px-4 py-12 space-y-12">
       {/* Hero */}
       <section className="text-center space-y-4">
         <Badge variant="outline" className="mb-4">Documentation</Badge>
@@ -344,9 +345,10 @@ const entropy = engine.shannonEntropy(state);
           ← Getting Started
         </Link>
         <Link to="/docs/app-ideas" className="text-primary hover:underline">
-          App Ideas →
+        App Ideas →
         </Link>
       </section>
+      </div>
     </div>
   );
 };
