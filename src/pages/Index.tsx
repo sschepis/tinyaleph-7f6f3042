@@ -158,6 +158,14 @@ const exampleCategories = [
     description: '21-letter angelic alphabet with sedenion encoding',
     examples: ['Prime basis P_E', 'Word encoding', 'Sedenion multiplication', '16D visualization']
   },
+  {
+    id: 'dna-computer',
+    path: '/dna-computer',
+    icon: Atom,
+    title: 'DNA Computer',
+    description: 'Molecular computation with prime-encoded nucleotides',
+    examples: ['Nucleotide encoding', 'Codon translation', 'Hybridization', 'Hamiltonian paths']
+  },
 ];
 
 const Index = () => {

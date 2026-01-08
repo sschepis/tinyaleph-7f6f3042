@@ -51,6 +51,7 @@ const navGroups = [
     items: [
       { id: 'chat', label: 'Chat', path: '/chat' },
       { id: 'enochian', label: 'Enochian', path: '/enochian' },
+      { id: 'dna-computer', label: 'DNA Computer', path: '/dna-computer' },
       { id: 'circuit-runner', label: 'Circuit Runner', path: '/circuit-runner' },
     ],
   },
