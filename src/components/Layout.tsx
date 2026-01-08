@@ -10,7 +10,7 @@ const Layout = ({ children }: LayoutProps) => {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      <main>{children}</main>
+      <main className="pt-16">{children}</main>
       <Footer />
     </div>
   );
