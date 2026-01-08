@@ -602,8 +602,11 @@ const ZeroDivisorSearch = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [attempts, setAttempts] = useState(0);
   const [results, setResults] = useState<{ word1: string; word2: string; product: number; isZero: boolean }[]>([]);
-  const [foundZero, setFoundZero] = useState<{ word1: string; word2: string; product: number } | null>(null);
+  const [foundZero, setFoundZero] = useState<{ word1: string; word2: string; product: number; s1: number[]; s2: number[]; productVec: number[] } | null>(null);
+  const [showVisualization, setShowVisualization] = useState(true);
   const searchRef = useRef<number | null>(null);
+
+  const BASIS_LABELS = ['e₀', 'e₁', 'e₂', 'e₃', 'e₄', 'e₅', 'e₆', 'e₇', 'e₈', 'e₉', 'e₁₀', 'e₁₁', 'e₁₂', 'e₁₃', 'e₁₄', 'e₁₅'];
 
   // Generate a random Enochian word of given length
   const generateWord = useCallback((length: number, seed: number): string => {
@@ -628,8 +631,7 @@ const ZeroDivisorSearch = () => {
     return c; // No normalization!
   }, []);
 
-  const searchOnce = useCallback((seed: number): { word1: string; word2: string; product: number; isZero: boolean } => {
-    // Generate words of varying lengths
+  const searchOnce = useCallback((seed: number): { word1: string; word2: string; product: number; isZero: boolean; s1: number[]; s2: number[]; productVec: number[] } => {
     const len1 = 3 + (seed % 4);
     const len2 = 3 + ((seed * 7) % 4);
     const word1 = generateWord(len1, seed);
@@ -637,16 +639,15 @@ const ZeroDivisorSearch = () => {
     
     const s1 = wordToSedenionRaw(word1);
     const s2 = wordToSedenionRaw(word2);
-    const product = sedenionMulRaw(s1, s2);
-    const magnitude = Math.sqrt(product.reduce((s, v) => s + v * v, 0));
+    const productVec = sedenionMulRaw(s1, s2);
+    const magnitude = Math.sqrt(productVec.reduce((s, v) => s + v * v, 0));
     
-    // Threshold relative to input magnitudes
     const norm1 = Math.sqrt(s1.reduce((s, v) => s + v * v, 0));
     const norm2 = Math.sqrt(s2.reduce((s, v) => s + v * v, 0));
     const expectedMag = norm1 * norm2;
     const ratio = magnitude / expectedMag;
     
-    return { word1, word2, product: ratio, isZero: ratio < 0.15 };
+    return { word1, word2, product: ratio, isZero: ratio < 0.15, s1, s2, productVec };
   }, [generateWord, wordToSedenionRaw]);
 
   const startSearch = useCallback(() => {
@@ -667,7 +668,14 @@ const ZeroDivisorSearch = () => {
         allResults.push(result);
         
         if (result.isZero) {
-          setFoundZero({ word1: result.word1, word2: result.word2, product: result.product });
+          setFoundZero({ 
+            word1: result.word1, 
+            word2: result.word2, 
+            product: result.product,
+            s1: result.s1,
+            s2: result.s2,
+            productVec: result.productVec
+          });
           setAttempts(currentAttempt);
           allResults.sort((a, b) => a.product - b.product);
           setResults(allResults.slice(0, 10));
@@ -703,6 +711,173 @@ const ZeroDivisorSearch = () => {
     };
   }, []);
 
+  // Visualization component for basis vectors
+  const BasisVisualization = ({ s1, s2, productVec, word1, word2 }: { s1: number[]; s2: number[]; productVec: number[]; word1: string; word2: string }) => {
+    const maxVal = Math.max(...s1.map(Math.abs), ...s2.map(Math.abs), 0.01);
+    const maxProduct = Math.max(...productVec.map(Math.abs), 0.01);
+    
+    // Find which basis indices are active (non-zero) in each vector
+    const activeInS1 = s1.map((v, i) => ({ idx: i, val: v })).filter(x => Math.abs(x.val) > 0.01);
+    const activeInS2 = s2.map((v, i) => ({ idx: i, val: v })).filter(x => Math.abs(x.val) > 0.01);
+    
+    // Calculate cancellation contributions
+    const contributions: { i: number; j: number; k: number; contribution: number; sign: number }[] = [];
+    for (let i = 0; i < 16; i++) {
+      if (Math.abs(s1[i]) < 0.001) continue;
+      for (let j = 0; j < 16; j++) {
+        if (Math.abs(s2[j]) < 0.001) continue;
+        const k = (i + j) % 16;
+        const sign = ((i & j) & 8) ? -1 : 1;
+        const contribution = sign * s1[i] * s2[j];
+        contributions.push({ i, j, k, contribution, sign });
+      }
+    }
+    
+    // Group contributions by target index k
+    const contributionsByK: { [k: number]: typeof contributions } = {};
+    contributions.forEach(c => {
+      if (!contributionsByK[c.k]) contributionsByK[c.k] = [];
+      contributionsByK[c.k].push(c);
+    });
+
+    return (
+      <div className="space-y-4 mt-4">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowVisualization(!showVisualization)}
+            className="text-xs text-primary hover:underline"
+          >
+            {showVisualization ? 'Hide' : 'Show'} Basis Analysis
+          </button>
+        </div>
+
+        {showVisualization && (
+          <div className="space-y-6 p-4 rounded-lg bg-background/50 border border-border">
+            {/* Word A basis vectors */}
+            <div>
+              <div className="text-sm font-medium mb-2 text-cyan-400">
+                A = "{word1}" basis components
+              </div>
+              <div className="flex gap-1 items-end h-16">
+                {s1.map((val, i) => {
+                  const height = Math.abs(val) / maxVal * 100;
+                  const isActive = Math.abs(val) > 0.01;
+                  return (
+                    <div key={i} className="flex flex-col items-center flex-1">
+                      <div 
+                        className={`w-full rounded-t transition-all ${isActive ? 'bg-cyan-500' : 'bg-muted/30'}`}
+                        style={{ height: `${Math.max(height, isActive ? 4 : 1)}%` }}
+                        title={`${BASIS_LABELS[i]}: ${val.toFixed(3)}`}
+                      />
+                      <span className="text-[8px] text-muted-foreground mt-1">{i}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                Active: {activeInS1.map(x => BASIS_LABELS[x.idx]).join(', ')}
+              </div>
+            </div>
+
+            {/* Word B basis vectors */}
+            <div>
+              <div className="text-sm font-medium mb-2 text-orange-400">
+                B = "{word2}" basis components
+              </div>
+              <div className="flex gap-1 items-end h-16">
+                {s2.map((val, i) => {
+                  const height = Math.abs(val) / maxVal * 100;
+                  const isActive = Math.abs(val) > 0.01;
+                  return (
+                    <div key={i} className="flex flex-col items-center flex-1">
+                      <div 
+                        className={`w-full rounded-t transition-all ${isActive ? 'bg-orange-500' : 'bg-muted/30'}`}
+                        style={{ height: `${Math.max(height, isActive ? 4 : 1)}%` }}
+                        title={`${BASIS_LABELS[i]}: ${val.toFixed(3)}`}
+                      />
+                      <span className="text-[8px] text-muted-foreground mt-1">{i}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                Active: {activeInS2.map(x => BASIS_LABELS[x.idx]).join(', ')}
+              </div>
+            </div>
+
+            {/* Product result */}
+            <div>
+              <div className="text-sm font-medium mb-2 text-green-400">
+                A × B = Product (near zero!)
+              </div>
+              <div className="flex gap-1 items-end h-16">
+                {productVec.map((val, i) => {
+                  const height = Math.abs(val) / maxProduct * 100;
+                  const isNearZero = Math.abs(val) < 0.05;
+                  return (
+                    <div key={i} className="flex flex-col items-center flex-1">
+                      <div 
+                        className={`w-full rounded-t transition-all ${isNearZero ? 'bg-green-500/30' : val > 0 ? 'bg-green-500' : 'bg-red-500'}`}
+                        style={{ height: `${Math.max(height, 2)}%` }}
+                        title={`${BASIS_LABELS[i]}: ${val.toFixed(4)}`}
+                      />
+                      <span className="text-[8px] text-muted-foreground mt-1">{i}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                ||A×B|| = {Math.sqrt(productVec.reduce((s, v) => s + v * v, 0)).toFixed(6)}
+              </div>
+            </div>
+
+            {/* Cancellation explanation */}
+            <div className="p-3 rounded-lg bg-muted/30 border border-muted">
+              <div className="text-sm font-medium mb-2 flex items-center gap-2">
+                <Scale className="w-4 h-4" /> Why They Cancel
+              </div>
+              <div className="text-xs text-muted-foreground space-y-2">
+                <p>
+                  In sedenion multiplication, each output component e<sub>k</sub> receives contributions 
+                  from pairs (e<sub>i</sub>, e<sub>j</sub>) where i + j ≡ k (mod 16).
+                </p>
+                <p>
+                  Zero divisors occur when positive and negative contributions cancel:
+                </p>
+                <div className="max-h-32 overflow-y-auto space-y-1 mt-2">
+                  {Object.entries(contributionsByK)
+                    .filter(([_, contribs]) => contribs.length > 1)
+                    .slice(0, 4)
+                    .map(([k, contribs]) => {
+                      const total = contribs.reduce((s, c) => s + c.contribution, 0);
+                      return (
+                        <div key={k} className="font-mono text-[10px] p-2 bg-background/50 rounded">
+                          <span className="text-primary">{BASIS_LABELS[parseInt(k)]}</span>: {' '}
+                          {contribs.map((c, i) => (
+                            <span key={i}>
+                              {i > 0 && ' + '}
+                              <span className={c.sign > 0 ? 'text-green-400' : 'text-red-400'}>
+                                ({c.sign > 0 ? '+' : '-'}{Math.abs(c.contribution).toFixed(2)})
+                              </span>
+                            </span>
+                          ))}
+                          {' = '}
+                          <span className={Math.abs(total) < 0.1 ? 'text-yellow-400' : ''}>
+                            {total.toFixed(3)}
+                          </span>
+                          {Math.abs(total) < 0.1 && ' ≈ 0 ✓'}
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-4">
@@ -737,17 +912,27 @@ const ZeroDivisorSearch = () => {
       </div>
 
       {foundZero && (
-        <div className="p-4 rounded-lg bg-green-500/20 border border-green-500/50">
-          <div className="flex items-center gap-2 text-green-400 font-semibold mb-2">
-            <Sparkles className="w-4 h-4" /> Zero Divisor Found!
+        <>
+          <div className="p-4 rounded-lg bg-green-500/20 border border-green-500/50">
+            <div className="flex items-center gap-2 text-green-400 font-semibold mb-2">
+              <Sparkles className="w-4 h-4" /> Zero Divisor Found!
+            </div>
+            <div className="font-mono text-lg">
+              {foundZero.word1} × {foundZero.word2}
+            </div>
+            <div className="font-mono text-sm text-muted-foreground">
+              ||A×B|| / (||A|| × ||B||) = {foundZero.product.toFixed(6)}
+            </div>
           </div>
-          <div className="font-mono text-lg">
-            {foundZero.word1} × {foundZero.word2}
-          </div>
-          <div className="font-mono text-sm text-muted-foreground">
-            ||A×B|| / (||A|| × ||B||) = {foundZero.product.toFixed(6)}
-          </div>
-        </div>
+          
+          <BasisVisualization 
+            s1={foundZero.s1} 
+            s2={foundZero.s2} 
+            productVec={foundZero.productVec}
+            word1={foundZero.word1}
+            word2={foundZero.word2}
+          />
+        </>
       )}
 
       {results.length > 0 && (
