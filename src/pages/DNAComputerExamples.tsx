@@ -12,7 +12,25 @@ import {
   NUCLEOTIDE_COLORS,
   GENETIC_CODE,
   PROPERTY_COLORS,
+  RESTRICTION_ENZYMES,
 } from '@/lib/dna-computer/types';
+import {
+  strandToPrimes,
+  strandToSedenion,
+  getComplement,
+  calculateGCContent,
+  calculateMeltingTemp,
+  calculateHybridization,
+  isValidSequence,
+  generateRandomSequence,
+  findRestrictionSites,
+  designPrimers,
+  simulatePCR,
+  findCRISPRTargets,
+  calculateHydrophobicityProfile,
+  findORFs,
+  calculateSequenceComplexity,
+} from '@/lib/dna-computer/encoding';
 
 // Import BioinformaticsBackend from tinyaleph
 let BioinformaticsBackend: any = null;

@@ -1,17 +1,20 @@
 // DNA Computer Types and Constants
 
 export const DNA_ALPHABET = [
-  { nucleotide: 'A', prime: 2, complement: 'T', type: 'purine', color: '#22c55e' },
-  { nucleotide: 'T', prime: 3, complement: 'A', type: 'pyrimidine', color: '#ef4444' },
-  { nucleotide: 'G', prime: 5, complement: 'C', type: 'purine', color: '#eab308' },
-  { nucleotide: 'C', prime: 7, complement: 'G', type: 'pyrimidine', color: '#3b82f6' },
+  { nucleotide: 'A', prime: 7, complement: 'T', type: 'purine', color: '#22c55e' },
+  { nucleotide: 'T', prime: 2, complement: 'A', type: 'pyrimidine', color: '#ef4444' },
+  { nucleotide: 'G', prime: 11, complement: 'C', type: 'purine', color: '#eab308' },
+  { nucleotide: 'C', prime: 3, complement: 'G', type: 'pyrimidine', color: '#3b82f6' },
+  { nucleotide: 'U', prime: 5, complement: 'A', type: 'pyrimidine', color: '#a855f7' },
 ] as const;
 
+// Updated to match tinyaleph BioinformaticsBackend primes
 export const NUCLEOTIDE_PRIMES: Record<string, number> = {
-  A: 2,
-  T: 3,
-  G: 5,
-  C: 7,
+  A: 7,
+  T: 2,
+  G: 11,
+  C: 3,
+  U: 5,
 };
 
 export const COMPLEMENT_MAP: Record<string, string> = {
@@ -19,6 +22,7 @@ export const COMPLEMENT_MAP: Record<string, string> = {
   T: 'A',
   G: 'C',
   C: 'G',
+  U: 'A',
 };
 
 export const NUCLEOTIDE_COLORS: Record<string, string> = {
@@ -26,6 +30,16 @@ export const NUCLEOTIDE_COLORS: Record<string, string> = {
   T: '#ef4444', // Red
   G: '#eab308', // Yellow
   C: '#3b82f6', // Blue
+  U: '#a855f7', // Purple
+};
+
+// Amino acid single-letter codes
+export const AMINO_ACID_CODES: Record<string, string> = {
+  'Ala': 'A', 'Arg': 'R', 'Asn': 'N', 'Asp': 'D', 'Cys': 'C',
+  'Gln': 'Q', 'Glu': 'E', 'Gly': 'G', 'His': 'H', 'Ile': 'I',
+  'Leu': 'L', 'Lys': 'K', 'Met': 'M', 'Phe': 'F', 'Pro': 'P',
+  'Ser': 'S', 'Thr': 'T', 'Trp': 'W', 'Tyr': 'Y', 'Val': 'V',
+  'Stop': '*',
 };
 
 // Standard genetic code: codon -> amino acid
@@ -126,6 +140,13 @@ export const PROPERTY_COLORS: Record<string, string> = {
   stop: '#6b7280',        // gray
 };
 
+// Amino acid hydrophobicity scale (Kyte-Doolittle)
+export const HYDROPHOBICITY: Record<string, number> = {
+  'I': 4.5, 'V': 4.2, 'L': 3.8, 'F': 2.8, 'C': 2.5, 'M': 1.9, 'A': 1.8,
+  'G': -0.4, 'T': -0.7, 'S': -0.8, 'W': -0.9, 'Y': -1.3, 'P': -1.6,
+  'H': -3.2, 'E': -3.5, 'Q': -3.5, 'D': -3.5, 'N': -3.5, 'K': -3.9, 'R': -4.5
+};
+
 export interface DNAStrand {
   sequence: string;
   sedenion: number[];
@@ -145,4 +166,37 @@ export interface GraphEdge {
   from: string;
   to: string;
   linker: string;
+}
+
+export interface RestrictionEnzyme {
+  name: string;
+  recognition: string;
+  cutSite: number; // Position relative to recognition sequence
+  bluntEnd: boolean;
+}
+
+// Common restriction enzymes
+export const RESTRICTION_ENZYMES: RestrictionEnzyme[] = [
+  { name: 'EcoRI', recognition: 'GAATTC', cutSite: 1, bluntEnd: false },
+  { name: 'BamHI', recognition: 'GGATCC', cutSite: 1, bluntEnd: false },
+  { name: 'HindIII', recognition: 'AAGCTT', cutSite: 1, bluntEnd: false },
+  { name: 'NotI', recognition: 'GCGGCCGC', cutSite: 2, bluntEnd: false },
+  { name: 'XhoI', recognition: 'CTCGAG', cutSite: 1, bluntEnd: false },
+  { name: 'SmaI', recognition: 'CCCGGG', cutSite: 3, bluntEnd: true },
+  { name: 'PstI', recognition: 'CTGCAG', cutSite: 5, bluntEnd: false },
+  { name: 'SalI', recognition: 'GTCGAC', cutSite: 1, bluntEnd: false },
+];
+
+export interface PCRPrimer {
+  sequence: string;
+  tm: number;
+  gcContent: number;
+  direction: 'forward' | 'reverse';
+}
+
+export interface CRISPRGuide {
+  sequence: string;
+  pam: string;
+  position: number;
+  score: number;
 }
