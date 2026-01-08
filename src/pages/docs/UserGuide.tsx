@@ -4,11 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import CodeBlock from "@/components/CodeBlock";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertCircle, CheckCircle, Lightbulb } from "lucide-react";
+import DocsLayout from "@/components/docs/DocsLayout";
 
 const UserGuide = () => {
   return (
-    <div className="pt-20">
-      <div className="max-w-5xl mx-auto px-4 py-12 space-y-12">
+    <DocsLayout>
       {/* Hero */}
       <section className="text-center space-y-4">
         <Badge variant="outline" className="mb-4">Documentation</Badge>
@@ -21,7 +21,7 @@ const UserGuide = () => {
       </section>
 
       {/* Working with Backends */}
-      <section className="space-y-6">
+      <section id="backends" className="space-y-6 scroll-mt-24">
         <h2 className="text-2xl font-bold">Working with Backends</h2>
         <p className="text-muted-foreground">
           TinyAleph supports multiple computational backends. Choose based on your performance needs.
@@ -118,7 +118,7 @@ const states = backend.batchPrimesToState(primeArrays);`}
       </section>
 
       {/* Semantic Operations */}
-      <section className="space-y-6">
+      <section id="semantic-ops" className="space-y-6 scroll-mt-24">
         <h2 className="text-2xl font-bold">Semantic Operations</h2>
 
         <div className="grid gap-6">
@@ -199,7 +199,7 @@ const similarity = engine.coherence(result, queen);`}
       </section>
 
       {/* Oscillator Networks */}
-      <section className="space-y-6">
+      <section id="oscillators" className="space-y-6 scroll-mt-24">
         <h2 className="text-2xl font-bold">Oscillator Networks</h2>
         
         <Card className="border-l-4 border-l-primary">
@@ -243,7 +243,7 @@ console.log('Synchronization:', orderParam);
       </section>
 
       {/* Entropy & Energy */}
-      <section className="space-y-6">
+      <section id="entropy" className="space-y-6 scroll-mt-24">
         <h2 className="text-2xl font-bold">Entropy & Energy</h2>
         
         <p className="text-muted-foreground">
@@ -291,7 +291,7 @@ const entropy = engine.shannonEntropy(state);
       </section>
 
       {/* Best Practices */}
-      <section className="space-y-6">
+      <section id="best-practices" className="space-y-6 scroll-mt-24">
         <h2 className="text-2xl font-bold">Best Practices</h2>
         
         <div className="grid gap-4">
@@ -345,11 +345,10 @@ const entropy = engine.shannonEntropy(state);
           ← Getting Started
         </Link>
         <Link to="/docs/app-ideas" className="text-primary hover:underline">
-        App Ideas →
+          App Ideas →
         </Link>
       </section>
-      </div>
-    </div>
+    </DocsLayout>
   );
 };
 
