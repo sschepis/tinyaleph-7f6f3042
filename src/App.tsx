@@ -11,6 +11,7 @@ import BackendsExamples from "./pages/BackendsExamples";
 import EngineExamples from "./pages/EngineExamples";
 import ApiExamples from "./pages/ApiExamples";
 import QuantumExamples from "./pages/QuantumExamples";
+import QuantumCircuitRunner from "./pages/QuantumCircuitRunner";
 import KuramotoExamples from "./pages/KuramotoExamples";
 import QuickstartExamples from "./pages/QuickstartExamples";
 import SemanticExamples from "./pages/SemanticExamples";
@@ -51,6 +52,7 @@ const App = () => (
             <Route path="/engine" element={<EngineExamples />} />
             <Route path="/api" element={<ApiExamples />} />
             <Route path="/quantum" element={<QuantumExamples />} />
+            <Route path="/quantum/circuit" element={<QuantumCircuitRunner />} />
             <Route path="/kuramoto" element={<KuramotoExamples />} />
             <Route path="/quickstart" element={<QuickstartExamples />} />
             <Route path="/semantic" element={<SemanticExamples />} />

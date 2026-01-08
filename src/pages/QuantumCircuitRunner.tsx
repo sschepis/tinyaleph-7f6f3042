@@ -1,0 +1,614 @@
+import { useState, useCallback, useMemo, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Play, Plus, RotateCcw, Trash2, GripVertical, Zap, Circle, BarChart3, ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import SedenionVisualizer from '@/components/SedenionVisualizer';
+
+// Gate definitions with colors and descriptions
+const GATE_DEFINITIONS = {
+  H: { name: 'Hadamard', color: 'bg-blue-500', description: 'Creates superposition' },
+  X: { name: 'Pauli-X', color: 'bg-red-500', description: 'Bit flip (NOT)' },
+  Y: { name: 'Pauli-Y', color: 'bg-green-500', description: 'Bit & phase flip' },
+  Z: { name: 'Pauli-Z', color: 'bg-purple-500', description: 'Phase flip' },
+  S: { name: 'S Gate', color: 'bg-cyan-500', description: 'π/2 phase' },
+  T: { name: 'T Gate', color: 'bg-orange-500', description: 'π/4 phase' },
+  CNOT: { name: 'CNOT', color: 'bg-pink-500', description: 'Controlled NOT' },
+  SWAP: { name: 'SWAP', color: 'bg-yellow-500', description: 'Swap qubits' },
+};
+
+type GateType = keyof typeof GATE_DEFINITIONS;
+
+interface GateInstance {
+  id: string;
+  type: GateType;
+  wireIndex: number;
+  position: number;
+  controlWire?: number; // For controlled gates
+}
+
+interface Wire {
+  id: number;
+  label: string;
+}
+
+interface ComplexNumber {
+  real: number;
+  imag: number;
+}
+
+// Quantum state simulation using tinyaleph-inspired sedenion encoding
+const applyGateToState = (
+  state: ComplexNumber[],
+  gateType: GateType,
+  wireIndex: number,
+  numWires: number,
+  controlWire?: number
+): ComplexNumber[] => {
+  const newState = state.map(s => ({ ...s }));
+  const wirePositionMask = 1 << (numWires - 1 - wireIndex);
+  
+  switch (gateType) {
+    case 'H':
+      for (let i = 0; i < state.length; i++) {
+        if ((i & wirePositionMask) === 0) {
+          const j = i | wirePositionMask;
+          const temp = {
+            real: (state[i].real + state[j].real) / Math.SQRT2,
+            imag: (state[i].imag + state[j].imag) / Math.SQRT2,
+          };
+          newState[j] = {
+            real: (state[i].real - state[j].real) / Math.SQRT2,
+            imag: (state[i].imag - state[j].imag) / Math.SQRT2,
+          };
+          newState[i] = temp;
+        }
+      }
+      break;
+      
+    case 'X':
+      for (let i = 0; i < state.length; i++) {
+        if ((i & wirePositionMask) === 0) {
+          const j = i | wirePositionMask;
+          [newState[i], newState[j]] = [{ ...state[j] }, { ...state[i] }];
+        }
+      }
+      break;
+      
+    case 'Y':
+      for (let i = 0; i < state.length; i++) {
+        if ((i & wirePositionMask) === 0) {
+          const j = i | wirePositionMask;
+          newState[i] = { real: state[j].imag, imag: -state[j].real };
+          newState[j] = { real: -state[i].imag, imag: state[i].real };
+        }
+      }
+      break;
+      
+    case 'Z':
+      for (let i = 0; i < state.length; i++) {
+        if ((i & wirePositionMask) !== 0) {
+          newState[i] = { real: -state[i].real, imag: -state[i].imag };
+        }
+      }
+      break;
+      
+    case 'S':
+      for (let i = 0; i < state.length; i++) {
+        if ((i & wirePositionMask) !== 0) {
+          newState[i] = { real: -state[i].imag, imag: state[i].real };
+        }
+      }
+      break;
+      
+    case 'T':
+      for (let i = 0; i < state.length; i++) {
+        if ((i & wirePositionMask) !== 0) {
+          const cos = Math.cos(Math.PI / 4);
+          const sin = Math.sin(Math.PI / 4);
+          newState[i] = {
+            real: state[i].real * cos - state[i].imag * sin,
+            imag: state[i].real * sin + state[i].imag * cos,
+          };
+        }
+      }
+      break;
+      
+    case 'CNOT':
+      if (controlWire !== undefined) {
+        const controlMask = 1 << (numWires - 1 - controlWire);
+        for (let i = 0; i < state.length; i++) {
+          if ((i & controlMask) !== 0 && (i & wirePositionMask) === 0) {
+            const j = i | wirePositionMask;
+            [newState[i], newState[j]] = [{ ...state[j] }, { ...state[i] }];
+          }
+        }
+      }
+      break;
+      
+    case 'SWAP':
+      if (wireIndex < numWires - 1) {
+        const otherWireMask = 1 << (numWires - 2 - wireIndex);
+        for (let i = 0; i < state.length; i++) {
+          const bit1 = (i & wirePositionMask) !== 0;
+          const bit2 = (i & otherWireMask) !== 0;
+          if (bit1 !== bit2) {
+            const j = i ^ wirePositionMask ^ otherWireMask;
+            if (i < j) {
+              [newState[i], newState[j]] = [{ ...state[j] }, { ...state[i] }];
+            }
+          }
+        }
+      }
+      break;
+  }
+  
+  return newState;
+};
+
+// Convert state to sedenion for visualization
+const stateToSedenion = (state: ComplexNumber[]): number[] => {
+  const components = new Array(16).fill(0);
+  state.forEach((s, i) => {
+    const amplitude = Math.sqrt(s.real * s.real + s.imag * s.imag);
+    components[i % 16] += amplitude;
+  });
+  const norm = Math.sqrt(components.reduce((sum, v) => sum + v * v, 0)) || 1;
+  return components.map(v => v / norm);
+};
+
+// Compute entropy from state
+const computeEntropy = (state: ComplexNumber[]): number => {
+  const probs = state.map(s => s.real * s.real + s.imag * s.imag);
+  const total = probs.reduce((a, b) => a + b, 0) || 1;
+  return -probs.reduce((h, p) => {
+    const normalized = p / total;
+    return normalized > 0 ? h + normalized * Math.log2(normalized) : h;
+  }, 0);
+};
+
+// Generate code example
+const generateCodeExample = (numQubits: number, gates: GateInstance[], entropy: number): string => {
+  const gateList = gates.map(g => g.type).join(' → ') || 'none';
+  const gateCode = gates.length > 0 
+    ? gates.map(g => `applyGate(stateVector, '${g.type}', ${g.wireIndex});`).join('\n')
+    : '// Add gates to the circuit above';
+  
+  return `// Build quantum circuit with tinyaleph
+import { Hypercomplex, PrimeState } from '@aleph-ai/tinyaleph';
+
+// Initialize quantum state as sedenion
+const numQubits = ${numQubits};
+const stateVector = new Hypercomplex(16);
+
+// Apply gates: ${gateList}
+${gateCode}
+
+// Measure entropy and coherence
+const entropy = stateVector.entropy();    // ${entropy.toFixed(3)} bits
+const coherence = stateVector.coherence();`;
+};
+
+const GatePalette = ({ onDragStart }: { onDragStart: (gate: GateType) => void }) => {
+  return (
+    <div className="grid grid-cols-4 gap-2">
+      {(Object.keys(GATE_DEFINITIONS) as GateType[]).map((gateType) => {
+        const gate = GATE_DEFINITIONS[gateType];
+        return (
+          <div
+            key={gateType}
+            draggable
+            onDragStart={() => onDragStart(gateType)}
+            className={`${gate.color} text-white p-3 rounded-lg text-center cursor-grab hover:opacity-90 transition-all hover:-translate-y-0.5 select-none`}
+            title={gate.description}
+          >
+            <div className="font-bold text-lg">{gateType}</div>
+            <div className="text-[10px] opacity-80">{gate.name}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const WireDisplay = ({
+  wire,
+  gates,
+  onDropGate,
+  onRemoveGate,
+  isActive,
+  numWires,
+  wireIndex,
+}: {
+  wire: Wire;
+  gates: GateInstance[];
+  onDropGate: (position: number) => void;
+  onRemoveGate: (gateId: string) => void;
+  isActive: boolean;
+  numWires: number;
+  wireIndex: number;
+}) => {
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent, position: number) => {
+    e.preventDefault();
+    onDropGate(position);
+  };
+
+  const slots = 10; // Number of gate slots per wire
+  
+  return (
+    <div className={`relative flex items-center gap-2 p-3 rounded-lg border ${isActive ? 'border-primary bg-primary/5' : 'border-border bg-muted/30'}`}>
+      {/* Wire label */}
+      <div className="w-16 px-2 py-1 bg-primary text-primary-foreground rounded text-center text-sm font-mono">
+        q[{wireIndex}]
+      </div>
+      
+      {/* Wire line */}
+      <div className="absolute left-20 right-4 h-0.5 bg-primary/30 top-1/2 -translate-y-1/2 pointer-events-none" />
+      
+      {/* Gate slots */}
+      <div className="flex gap-1 flex-1 relative z-10">
+        {Array.from({ length: slots }).map((_, slotIdx) => {
+          const gateAtSlot = gates.find(g => g.position === slotIdx);
+          
+          return (
+            <div
+              key={slotIdx}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, slotIdx)}
+              className={`w-12 h-12 rounded border-2 border-dashed flex items-center justify-center transition-all ${
+                gateAtSlot 
+                  ? 'border-transparent' 
+                  : 'border-border/50 hover:border-primary/50 hover:bg-primary/10'
+              }`}
+            >
+              {gateAtSlot ? (
+                <div
+                  className={`${GATE_DEFINITIONS[gateAtSlot.type].color} text-white w-10 h-10 rounded flex items-center justify-center font-bold cursor-pointer hover:scale-105 transition-transform relative group`}
+                  onClick={() => onRemoveGate(gateAtSlot.id)}
+                >
+                  {gateAtSlot.type}
+                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    ×
+                  </div>
+                </div>
+              ) : (
+                <span className="text-muted-foreground/30 text-xs">{slotIdx}</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const BlochSphere = ({ state }: { state: ComplexNumber[] }) => {
+  // Calculate Bloch sphere coordinates from first qubit
+  const alpha = state[0] || { real: 1, imag: 0 };
+  const beta = state[1] || { real: 0, imag: 0 };
+  
+  const alphaAbs = Math.sqrt(alpha.real * alpha.real + alpha.imag * alpha.imag);
+  const betaAbs = Math.sqrt(beta.real * beta.real + beta.imag * beta.imag);
+  
+  const theta = 2 * Math.acos(Math.min(1, alphaAbs));
+  const phi = Math.atan2(beta.imag, beta.real) - Math.atan2(alpha.imag, alpha.real);
+  
+  const x = Math.sin(theta) * Math.cos(phi);
+  const y = Math.sin(theta) * Math.sin(phi);
+  const z = Math.cos(theta);
+  
+  return (
+    <div className="aspect-square bg-muted/30 rounded-lg border border-border p-4">
+      <svg viewBox="-1.5 -1.5 3 3" className="w-full h-full">
+        {/* Sphere outline */}
+        <circle cx="0" cy="0" r="1" fill="none" stroke="currentColor" strokeOpacity="0.2" strokeWidth="0.02" />
+        <ellipse cx="0" cy="0" rx="1" ry="0.3" fill="none" stroke="currentColor" strokeOpacity="0.15" strokeWidth="0.015" />
+        
+        {/* Axes */}
+        <line x1="-1.2" y1="0" x2="1.2" y2="0" stroke="currentColor" strokeOpacity="0.2" strokeWidth="0.01" />
+        <line x1="0" y1="-1.2" x2="0" y2="1.2" stroke="currentColor" strokeOpacity="0.2" strokeWidth="0.01" />
+        
+        {/* Axis labels */}
+        <text x="0" y="-1.1" textAnchor="middle" fontSize="0.12" fill="currentColor" opacity="0.5">|0⟩</text>
+        <text x="0" y="1.18" textAnchor="middle" fontSize="0.12" fill="currentColor" opacity="0.5">|1⟩</text>
+        <text x="1.1" y="0.04" textAnchor="start" fontSize="0.1" fill="currentColor" opacity="0.5">|+⟩</text>
+        <text x="-1.1" y="0.04" textAnchor="end" fontSize="0.1" fill="currentColor" opacity="0.5">|-⟩</text>
+        
+        {/* State vector */}
+        <line x1="0" y1="0" x2={x} y2={-z} stroke="hsl(var(--primary))" strokeWidth="0.03" />
+        <circle cx={x} cy={-z} r="0.06" fill="hsl(var(--primary))" />
+      </svg>
+    </div>
+  );
+};
+
+const AmplitudePlot = ({ state }: { state: ComplexNumber[] }) => {
+  const maxAmp = Math.max(...state.map(s => Math.sqrt(s.real * s.real + s.imag * s.imag)), 0.01);
+  
+  return (
+    <div className="bg-muted/30 rounded-lg border border-border p-4">
+      <div className="flex items-end gap-1 h-24">
+        {state.slice(0, 8).map((s, i) => {
+          const amplitude = Math.sqrt(s.real * s.real + s.imag * s.imag);
+          const heightPercent = (amplitude / maxAmp) * 100;
+          const phase = Math.atan2(s.imag, s.real);
+          const hue = ((phase + Math.PI) / (2 * Math.PI)) * 360;
+          
+          return (
+            <div key={i} className="flex-1 flex flex-col items-center gap-1">
+              <div 
+                className="w-full rounded-t transition-all duration-300"
+                style={{ 
+                  height: `${Math.max(4, heightPercent)}%`,
+                  backgroundColor: `hsl(${hue}, 70%, 50%)`,
+                }}
+                title={`|${i.toString(2).padStart(Math.ceil(Math.log2(state.length)), '0')}⟩: ${amplitude.toFixed(3)}`}
+              />
+              <span className="text-[8px] text-muted-foreground font-mono">|{i}⟩</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="text-center text-xs text-muted-foreground mt-2">Amplitude (color = phase)</div>
+    </div>
+  );
+};
+
+const QuantumCircuitRunner = () => {
+  const [wires, setWires] = useState<Wire[]>([
+    { id: 1, label: 'q[0]' },
+    { id: 2, label: 'q[1]' },
+  ]);
+  const [gates, setGates] = useState<GateInstance[]>([]);
+  const [draggedGate, setDraggedGate] = useState<GateType | null>(null);
+  const [executedState, setExecutedState] = useState<ComplexNumber[] | null>(null);
+  const [history, setHistory] = useState<string[]>([]);
+  
+  const nextGateId = useRef(1);
+
+  const addWire = useCallback(() => {
+    if (wires.length >= 4) return; // Max 4 qubits for visualization
+    const newId = wires.length + 1;
+    setWires(prev => [...prev, { id: newId, label: `q[${prev.length}]` }]);
+    setHistory(prev => [...prev, `Added qubit q[${wires.length}]`]);
+    setExecutedState(null);
+  }, [wires.length]);
+
+  const removeWire = useCallback((wireId: number) => {
+    if (wires.length <= 1) return;
+    setWires(prev => prev.filter(w => w.id !== wireId));
+    setGates(prev => prev.filter(g => g.wireIndex !== wires.findIndex(w => w.id === wireId)));
+    setHistory(prev => [...prev, `Removed qubit`]);
+    setExecutedState(null);
+  }, [wires]);
+
+  const handleDragStart = useCallback((gateType: GateType) => {
+    setDraggedGate(gateType);
+  }, []);
+
+  const handleDropGate = useCallback((wireIndex: number, position: number) => {
+    if (!draggedGate) return;
+    
+    // Check if slot is already occupied
+    const existing = gates.find(g => g.wireIndex === wireIndex && g.position === position);
+    if (existing) return;
+    
+    const newGate: GateInstance = {
+      id: `gate-${nextGateId.current++}`,
+      type: draggedGate,
+      wireIndex,
+      position,
+      controlWire: draggedGate === 'CNOT' && wireIndex > 0 ? wireIndex - 1 : undefined,
+    };
+    
+    setGates(prev => [...prev, newGate]);
+    setHistory(prev => [...prev, `Added ${draggedGate} gate to q[${wireIndex}] at position ${position}`]);
+    setDraggedGate(null);
+    setExecutedState(null);
+  }, [draggedGate, gates]);
+
+  const removeGate = useCallback((gateId: string) => {
+    const gate = gates.find(g => g.id === gateId);
+    setGates(prev => prev.filter(g => g.id !== gateId));
+    if (gate) {
+      setHistory(prev => [...prev, `Removed ${gate.type} gate`]);
+    }
+    setExecutedState(null);
+  }, [gates]);
+
+  const executeCircuit = useCallback(() => {
+    const numWires = wires.length;
+    const dimensions = Math.pow(2, numWires);
+    
+    // Initialize to |0...0⟩
+    let state: ComplexNumber[] = Array.from({ length: dimensions }, (_, i) => 
+      i === 0 ? { real: 1, imag: 0 } : { real: 0, imag: 0 }
+    );
+    
+    // Sort gates by position, then apply
+    const sortedGates = [...gates].sort((a, b) => a.position - b.position);
+    
+    for (const gate of sortedGates) {
+      state = applyGateToState(state, gate.type, gate.wireIndex, numWires, gate.controlWire);
+    }
+    
+    setExecutedState(state);
+    setHistory(prev => [...prev, `Executed circuit with ${gates.length} gates`]);
+  }, [wires.length, gates]);
+
+  const resetCircuit = useCallback(() => {
+    setGates([]);
+    setExecutedState(null);
+    setHistory(prev => [...prev, 'Reset circuit']);
+  }, []);
+
+  const sedenionState = useMemo(() => {
+    if (!executedState) return Array(16).fill(0);
+    return stateToSedenion(executedState);
+  }, [executedState]);
+
+  const entropy = useMemo(() => {
+    if (!executedState) return 0;
+    return computeEntropy(executedState);
+  }, [executedState]);
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto py-8 px-4">
+        {/* Header */}
+        <div className="mb-8">
+          <Link to="/quantum" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary mb-4">
+            <ArrowLeft className="w-4 h-4" /> Back to Quantum Examples
+          </Link>
+          <div className="text-center">
+            <h1 className="text-4xl font-bold text-primary mb-2">Quantum Circuit Runner</h1>
+            <p className="text-muted-foreground">
+              Build and simulate quantum circuits with tinyaleph's hypercomplex state representation
+            </p>
+          </div>
+        </div>
+
+        <div className="grid lg:grid-cols-[300px_1fr_280px] gap-6">
+          {/* Left Panel - Gates & Controls */}
+          <div className="space-y-6">
+            <div className="p-4 rounded-lg border border-border bg-card">
+              <h2 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
+                <Zap className="w-5 h-5" /> Quantum Gates
+              </h2>
+              <GatePalette onDragStart={handleDragStart} />
+              <p className="text-xs text-muted-foreground mt-3">Drag gates onto the circuit wires</p>
+            </div>
+
+            <div className="p-4 rounded-lg border border-border bg-card">
+              <h2 className="text-lg font-semibold mb-4">Controls</h2>
+              <div className="flex flex-col gap-2">
+                <Button onClick={addWire} variant="outline" className="w-full" disabled={wires.length >= 4}>
+                  <Plus className="w-4 h-4 mr-2" /> Add Qubit
+                </Button>
+                <Button onClick={executeCircuit} className="w-full" disabled={gates.length === 0}>
+                  <Play className="w-4 h-4 mr-2" /> Execute
+                  </Button>
+                  <Button onClick={resetCircuit} variant="destructive" className="w-full">
+                    <RotateCcw className="w-4 h-4 mr-2" /> Reset
+                  </Button>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-lg border border-border bg-card max-h-48 overflow-y-auto">
+                <h2 className="text-lg font-semibold mb-2">History</h2>
+                {history.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No actions yet</p>
+                ) : (
+                  <div className="space-y-1">
+                    {history.slice(-8).map((item, i) => (
+                      <div key={i} className="text-xs text-muted-foreground py-1 border-b border-border/50 last:border-0">
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Center - Circuit Builder */}
+            <div className="p-4 rounded-lg border border-border bg-card">
+              <h2 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
+                <GripVertical className="w-5 h-5" /> Circuit
+              </h2>
+              <div className="space-y-3 min-h-[300px]">
+                {wires.map((wire, idx) => (
+                  <WireDisplay
+                    key={wire.id}
+                    wire={wire}
+                    wireIndex={idx}
+                    gates={gates.filter(g => g.wireIndex === idx)}
+                    onDropGate={(pos) => handleDropGate(idx, pos)}
+                    onRemoveGate={removeGate}
+                    isActive={draggedGate !== null}
+                    numWires={wires.length}
+                  />
+                ))}
+              </div>
+              
+              {gates.length === 0 && (
+                <div className="text-center text-muted-foreground py-8">
+                  <p className="text-sm">Drag gates from the left panel onto the wires</p>
+                </div>
+              )}
+            </div>
+
+            {/* Right Panel - Results */}
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg border border-border bg-card">
+                <h2 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
+                  <Circle className="w-5 h-5" /> Bloch Sphere
+                </h2>
+                {executedState ? (
+                  <BlochSphere state={executedState} />
+                ) : (
+                  <div className="aspect-square bg-muted/30 rounded-lg flex items-center justify-center text-muted-foreground text-sm">
+                    Execute to see
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 rounded-lg border border-border bg-card">
+                <h2 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5" /> Amplitudes
+                </h2>
+                {executedState ? (
+                  <AmplitudePlot state={executedState} />
+                ) : (
+                  <div className="h-32 bg-muted/30 rounded-lg flex items-center justify-center text-muted-foreground text-sm">
+                    Execute to see
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 rounded-lg border border-border bg-card">
+                <h2 className="text-lg font-semibold text-primary mb-4">Sedenion State</h2>
+                <SedenionVisualizer components={sedenionState} animated={!!executedState} size="lg" />
+                <div className="mt-3 text-center">
+                  <p className="text-sm text-muted-foreground">Entropy</p>
+                  <p className="text-2xl font-mono text-primary">{entropy.toFixed(3)} bits</p>
+                </div>
+              </div>
+
+              {executedState && (
+                <div className="p-4 rounded-lg border border-border bg-card">
+                  <h2 className="text-sm font-semibold mb-2">State Vector</h2>
+                  <div className="font-mono text-xs space-y-1 max-h-32 overflow-y-auto">
+                    {executedState.map((s, i) => {
+                      const amp = Math.sqrt(s.real * s.real + s.imag * s.imag);
+                      if (amp < 0.001) return null;
+                      const binaryLabel = i.toString(2).padStart(wires.length, '0');
+                      return (
+                        <div key={i} className="flex justify-between text-muted-foreground">
+                          <span className="text-primary">|{binaryLabel}⟩</span>
+                          <span>{s.real >= 0 ? '+' : ''}{s.real.toFixed(3)}{s.imag >= 0 ? '+' : ''}{s.imag.toFixed(3)}i</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Code Example */}
+          <div className="mt-8 p-4 rounded-lg border border-border bg-card">
+            <h2 className="text-lg font-semibold text-primary mb-4">TinyAleph Integration</h2>
+            <pre className="bg-muted/50 p-4 rounded-lg overflow-x-auto text-sm font-mono">
+              <code>{generateCodeExample(wires.length, gates, entropy)}</code>
+            </pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default QuantumCircuitRunner;
