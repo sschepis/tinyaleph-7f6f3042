@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Plus, RotateCcw, GripVertical, Zap, Circle, BarChart3, ArrowLeft, Sparkles, Target, Download, Upload } from 'lucide-react';
+import { Play, Plus, RotateCcw, GripVertical, Zap, Circle, BarChart3, ArrowLeft, Sparkles, Target, Download, Upload, Wand2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SedenionVisualizer from '@/components/SedenionVisualizer';
 import {
@@ -95,6 +95,41 @@ const ALGORITHM_PRESETS: AlgorithmPreset[] = [
       { type: 'H', wireIndex: 0, position: 0 },
       { type: 'H', wireIndex: 1, position: 0 },
       { type: 'H', wireIndex: 2, position: 0 },
+    ],
+  },
+  {
+    name: 'QFT (3-qubit)',
+    description: 'Quantum Fourier Transform: basis for phase estimation',
+    numQubits: 3,
+    gates: [
+      // QFT on 3 qubits
+      { type: 'H', wireIndex: 0, position: 0 },
+      { type: 'S', wireIndex: 0, position: 1 },
+      { type: 'T', wireIndex: 0, position: 2 },
+      { type: 'H', wireIndex: 1, position: 3 },
+      { type: 'S', wireIndex: 1, position: 4 },
+      { type: 'H', wireIndex: 2, position: 5 },
+      // SWAP for bit-reversal
+      { type: 'SWAP', wireIndex: 0, position: 6 },
+    ],
+  },
+  {
+    name: 'Phase Estimation',
+    description: 'Estimates eigenvalue phase of a unitary operator',
+    numQubits: 3,
+    gates: [
+      // Initialize counting qubits in superposition
+      { type: 'H', wireIndex: 0, position: 0 },
+      { type: 'H', wireIndex: 1, position: 0 },
+      // Apply controlled-U operations (simulated with controlled phase)
+      { type: 'CNOT', wireIndex: 2, position: 1, controlWire: 1 },
+      { type: 'S', wireIndex: 2, position: 2 },
+      { type: 'CNOT', wireIndex: 2, position: 3, controlWire: 0 },
+      { type: 'T', wireIndex: 2, position: 4 },
+      // Inverse QFT on counting qubits
+      { type: 'H', wireIndex: 1, position: 5 },
+      { type: 'S', wireIndex: 0, position: 6 },
+      { type: 'H', wireIndex: 0, position: 7 },
     ],
   },
 ];
@@ -726,6 +761,104 @@ const QuantumCircuitRunner = () => {
     event.target.value = ''; // Reset file input
   }, []);
 
+  // Optimize circuit by simplifying gate sequences
+  const optimizeCircuit = useCallback(() => {
+    if (gates.length < 2) return;
+    
+    let optimized = [...gates];
+    let removedCount = 0;
+    let changed = true;
+    
+    while (changed) {
+      changed = false;
+      const toRemove = new Set<string>();
+      
+      // Group gates by wire and position
+      const gatesByWirePos = new Map<string, GateInstance[]>();
+      for (const gate of optimized) {
+        const key = `${gate.wireIndex}`;
+        if (!gatesByWirePos.has(key)) gatesByWirePos.set(key, []);
+        gatesByWirePos.get(key)!.push(gate);
+      }
+      
+      // Check each wire for optimizable sequences
+      for (const [, wireGates] of gatesByWirePos) {
+        // Sort by position
+        const sorted = wireGates.sort((a, b) => a.position - b.position);
+        
+        for (let i = 0; i < sorted.length - 1; i++) {
+          const g1 = sorted[i];
+          const g2 = sorted[i + 1];
+          
+          // Check if gates are adjacent (consecutive positions)
+          if (g2.position - g1.position !== 1) continue;
+          
+          // Skip controlled gates for now
+          if (g1.controlWire !== undefined || g2.controlWire !== undefined) continue;
+          
+          // H·H = I (identity)
+          if (g1.type === 'H' && g2.type === 'H') {
+            toRemove.add(g1.id);
+            toRemove.add(g2.id);
+            changed = true;
+          }
+          // X·X = I
+          else if (g1.type === 'X' && g2.type === 'X') {
+            toRemove.add(g1.id);
+            toRemove.add(g2.id);
+            changed = true;
+          }
+          // Y·Y = I
+          else if (g1.type === 'Y' && g2.type === 'Y') {
+            toRemove.add(g1.id);
+            toRemove.add(g2.id);
+            changed = true;
+          }
+          // Z·Z = I
+          else if (g1.type === 'Z' && g2.type === 'Z') {
+            toRemove.add(g1.id);
+            toRemove.add(g2.id);
+            changed = true;
+          }
+          // S·S = Z (replace both with Z)
+          else if (g1.type === 'S' && g2.type === 'S') {
+            // Replace g1 with Z, remove g2
+            g1.type = 'Z';
+            toRemove.add(g2.id);
+            changed = true;
+          }
+        }
+      }
+      
+      if (toRemove.size > 0) {
+        removedCount += toRemove.size;
+        optimized = optimized.filter(g => !toRemove.has(g.id));
+      }
+    }
+    
+    // Compact positions (remove gaps)
+    const byWire = new Map<number, GateInstance[]>();
+    for (const gate of optimized) {
+      if (!byWire.has(gate.wireIndex)) byWire.set(gate.wireIndex, []);
+      byWire.get(gate.wireIndex)!.push(gate);
+    }
+    
+    for (const [, wireGates] of byWire) {
+      wireGates.sort((a, b) => a.position - b.position);
+      wireGates.forEach((g, idx) => { g.position = idx; });
+    }
+    
+    setGates(optimized);
+    setExecutedState(null);
+    setMeasurementResult(null);
+    
+    if (removedCount > 0) {
+      setHistory(prev => [...prev, `Optimized: removed ${removedCount} gate(s) (identity cancellations)`]);
+    } else {
+      setHistory(prev => [...prev, 'Optimization: no simplifications found']);
+    }
+  }, [gates]);
+
   const sedenionState = useMemo(() => {
     if (!executedState) return Array(16).fill(0);
     return stateToSedenion(executedState);
@@ -800,6 +933,9 @@ const QuantumCircuitRunner = () => {
                   disabled={!executedState}
                 >
                   <Target className="w-4 h-4 mr-2" /> Measure (1024 shots)
+                </Button>
+                <Button onClick={optimizeCircuit} variant="outline" className="w-full" disabled={gates.length < 2}>
+                  <Wand2 className="w-4 h-4 mr-2" /> Optimize
                 </Button>
                 <Button onClick={resetCircuit} variant="destructive" className="w-full">
                   <RotateCcw className="w-4 h-4 mr-2" /> Reset
