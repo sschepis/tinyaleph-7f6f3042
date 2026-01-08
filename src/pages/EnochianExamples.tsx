@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { Plus, X } from 'lucide-react';
 import { Play, Languages, Grid3X3, Wand2, RotateCcw, Zap, Sparkles, Scale, Layers, Circle } from 'lucide-react';
 import ExamplePageWrapper, { ExampleConfig } from '../components/ExamplePageWrapper';
 import SedenionVisualizer from '../components/SedenionVisualizer';
@@ -77,6 +78,18 @@ const sedenionMul = (a: number[], b: number[]): number[] => {
   }
   const norm = Math.sqrt(result.reduce((s, v) => s + v * v, 0)) || 1;
   return result.map(v => v / norm);
+};
+
+// Sedenion conjugate (negate indices 1-15)
+const sedenionConj = (a: number[]): number[] => {
+  return a.map((v, i) => i === 0 ? v : -v);
+};
+
+// Sedenion inverse (conjugate / norm^2)
+const sedenionInverse = (a: number[]): number[] => {
+  const normSq = a.reduce((s, v) => s + v * v, 0) || 1;
+  const conj = sedenionConj(a);
+  return conj.map(v => v / normSq);
 };
 
 // Compute entropy of sedenion state
@@ -853,6 +866,277 @@ const GlyphMandala = () => {
   );
 };
 
+const SandwichProduct = () => {
+  const [rotator, setRotator] = useState('FIRE');
+  const [target, setTarget] = useState('WATER');
+  const [result, setResult] = useState<{
+    a: number[];
+    b: number[];
+    rotated: number[];
+    normB: number;
+    normRotated: number;
+    angleDiff: number;
+  } | null>(null);
+
+  const compute = useCallback(() => {
+    const a = primesToSedenion(rotator.toUpperCase().split('').map(letterToPrime));
+    const b = primesToSedenion(target.toUpperCase().split('').map(letterToPrime));
+    
+    // Compute A⁻¹
+    const aInv = sedenionInverse(a);
+    
+    // Sandwich product: A × B × A⁻¹
+    const ab = sedenionMul(a, b);
+    const rotated = sedenionMul(ab, aInv);
+    
+    // Norms
+    const normB = Math.sqrt(b.reduce((s, v) => s + v * v, 0));
+    const normRotated = Math.sqrt(rotated.reduce((s, v) => s + v * v, 0));
+    
+    // Angle between original and rotated (via dot product)
+    const dot = b.reduce((s, v, i) => s + v * rotated[i], 0);
+    const angleDiff = Math.acos(Math.min(1, Math.max(-1, dot / (normB * normRotated)))) * (180 / Math.PI);
+    
+    setResult({ a, b, rotated, normB, normRotated, angleDiff });
+  }, [rotator, target]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-4">
+        <RotateCcw className="w-5 h-5 text-primary" />
+        <h3 className="font-semibold">Sandwich Product</h3>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        The formula A × B × A⁻¹ rotates B's semantic direction while preserving its norm.
+      </p>
+      
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs text-muted-foreground block mb-1">Rotator (A)</label>
+          <input 
+            type="text" 
+            value={rotator} 
+            onChange={(e) => setRotator(e.target.value.toUpperCase())} 
+            className="w-full px-4 py-2 rounded-lg bg-secondary border border-border font-mono" 
+            maxLength={8} 
+          />
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground block mb-1">Target (B)</label>
+          <input 
+            type="text" 
+            value={target} 
+            onChange={(e) => setTarget(e.target.value.toUpperCase())} 
+            className="w-full px-4 py-2 rounded-lg bg-secondary border border-border font-mono" 
+            maxLength={8} 
+          />
+        </div>
+      </div>
+      
+      <button onClick={compute} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground">
+        <RotateCcw className="w-4 h-4" /> Compute Rotation
+      </button>
+      
+      {result && (
+        <div className="space-y-4">
+          <div className="p-4 rounded-lg bg-muted/50">
+            <p className="text-xs text-muted-foreground mb-2">Formula: {rotator} × {target} × {rotator}⁻¹</p>
+            <div className="flex items-center gap-2 font-mono text-sm flex-wrap">
+              <span className="text-primary">{rotator}</span>
+              <span>×</span>
+              <span className="text-cyan-400">{target}</span>
+              <span>×</span>
+              <span className="text-primary">{rotator}⁻¹</span>
+              <span>=</span>
+              <span className="text-green-400">Rotated</span>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-3 rounded-lg bg-cyan-500/10 border border-cyan-500/30">
+              <p className="text-xs text-muted-foreground mb-2">Original B</p>
+              <SedenionVisualizer components={result.b} animated={false} size="md" />
+            </div>
+            <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+              <p className="text-xs text-muted-foreground mb-2">Rotated (A×B×A⁻¹)</p>
+              <SedenionVisualizer components={result.rotated} animated={false} size="md" />
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="p-3 rounded-lg bg-muted/50">
+              <p className="text-xs text-muted-foreground">||B||</p>
+              <p className="text-lg font-mono text-primary">{result.normB.toFixed(4)}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/50">
+              <p className="text-xs text-muted-foreground">||Rotated||</p>
+              <p className="text-lg font-mono text-green-400">{result.normRotated.toFixed(4)}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/50">
+              <p className="text-xs text-muted-foreground">Angle Δ</p>
+              <p className="text-lg font-mono text-yellow-400">{result.angleDiff.toFixed(1)}°</p>
+            </div>
+          </div>
+          
+          <p className="text-xs text-muted-foreground text-center">
+            Norm preserved: {Math.abs(result.normB - result.normRotated) < 0.01 ? '✓ Yes' : '≈ Approximately'}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const PhraseBuilder = () => {
+  const [words, setWords] = useState<string[]>(['LIGHT', 'OF', 'FIRE']);
+  const [newWord, setNewWord] = useState('');
+  const [result, setResult] = useState<{
+    states: number[][];
+    combined: number[];
+    entropy: number;
+    elements: Record<string, number>;
+  } | null>(null);
+
+  const addWord = useCallback(() => {
+    if (newWord.trim() && words.length < 8) {
+      setWords([...words, newWord.toUpperCase().trim()]);
+      setNewWord('');
+    }
+  }, [newWord, words]);
+
+  const removeWord = (idx: number) => {
+    setWords(words.filter((_, i) => i !== idx));
+  };
+
+  const build = useCallback(() => {
+    if (words.length === 0) return;
+    
+    const states = words.map(w => 
+      primesToSedenion(w.toUpperCase().split('').map(letterToPrime))
+    );
+    
+    // Multiply all word states together
+    let combined = states[0];
+    for (let i = 1; i < states.length; i++) {
+      combined = sedenionMul(combined, states[i]);
+    }
+    
+    // Entropy
+    const entropy = sedenionEntropy(combined);
+    
+    // Element count across all words
+    const elements: Record<string, number> = { Air: 0, Earth: 0, Fire: 0, Water: 0, Spirit: 0 };
+    words.forEach(w => {
+      w.toUpperCase().split('').forEach(l => {
+        const el = letterToElement(l);
+        elements[el] = (elements[el] || 0) + 1;
+      });
+    });
+    
+    setResult({ states, combined, entropy, elements });
+  }, [words]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-4">
+        <Layers className="w-5 h-5 text-primary" />
+        <h3 className="font-semibold">Phrase Builder</h3>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Build multi-word invocations. Each word's state is multiplied with the previous to form a unified semantic phrase.
+      </p>
+      
+      {/* Current phrase */}
+      <div className="p-4 rounded-lg bg-muted/50 min-h-[60px] flex flex-wrap gap-2 items-center">
+        {words.length === 0 ? (
+          <span className="text-muted-foreground text-sm">Add words to build a phrase...</span>
+        ) : (
+          words.map((w, i) => (
+            <div key={i} className="flex items-center gap-1 px-3 py-1 rounded-lg bg-primary/20 border border-primary/30">
+              <span className="font-mono text-sm">{w}</span>
+              <button onClick={() => removeWord(i)} className="text-muted-foreground hover:text-destructive ml-1">
+                <X className="w-3 h-3" />
+              </button>
+              {i < words.length - 1 && <span className="ml-2 text-muted-foreground">×</span>}
+            </div>
+          ))
+        )}
+      </div>
+      
+      {/* Add word input */}
+      <div className="flex gap-2">
+        <input 
+          type="text" 
+          value={newWord} 
+          onChange={(e) => setNewWord(e.target.value.toUpperCase())} 
+          onKeyDown={(e) => e.key === 'Enter' && addWord()}
+          className="flex-1 px-4 py-2 rounded-lg bg-secondary border border-border font-mono" 
+          maxLength={12}
+          placeholder="Enter word..."
+        />
+        <button onClick={addWord} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary border border-border hover:border-primary">
+          <Plus className="w-4 h-4" /> Add
+        </button>
+      </div>
+      
+      {/* Quick word buttons */}
+      <div className="flex flex-wrap gap-1">
+        {['LIGHT', 'DARK', 'FIRE', 'WATER', 'SPIRIT', 'OF', 'AND', 'THE'].map(w => (
+          <button 
+            key={w}
+            onClick={() => { if (words.length < 8) setWords([...words, w]); }}
+            className="px-2 py-1 rounded text-xs bg-secondary hover:bg-primary/20"
+          >
+            {w}
+          </button>
+        ))}
+      </div>
+      
+      <button onClick={build} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground">
+        <Sparkles className="w-4 h-4" /> Build Phrase
+      </button>
+      
+      {result && (
+        <div className="space-y-4">
+          {/* Individual word states */}
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Word States:</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {result.states.map((s, i) => (
+                <div key={i} className="p-2 rounded-lg bg-muted/30 text-center">
+                  <p className="text-xs font-mono text-primary mb-1">{words[i]}</p>
+                  <SedenionVisualizer components={s} animated={false} size="sm" />
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Combined result */}
+          <div className="p-4 rounded-lg bg-primary/10 border border-primary/30">
+            <p className="text-xs text-muted-foreground mb-2">Combined Phrase State:</p>
+            <SedenionVisualizer components={result.combined} animated={false} size="lg" />
+          </div>
+          
+          {/* Element balance */}
+          <div className="grid grid-cols-5 gap-2">
+            {['Air', 'Earth', 'Fire', 'Water', 'Spirit'].map(el => (
+              <div key={el} className={`p-2 rounded text-center ${ELEMENT_BG[el]}`}>
+                <p className={`text-xs ${ELEMENT_COLORS[el]}`}>{el}</p>
+                <p className="text-lg font-bold">{result.elements[el] || 0}</p>
+              </div>
+            ))}
+          </div>
+          
+          <div className="p-3 rounded-lg bg-muted/50 text-center">
+            <p className="text-xs text-muted-foreground">Phrase Entropy</p>
+            <p className="text-xl font-mono text-primary">{result.entropy.toFixed(3)} bits</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const examples: ExampleConfig[] = [
   { 
     id: 'alphabet', 
@@ -1031,6 +1315,51 @@ const radius = baseRadius * (0.3 + primeScale * 0.7);
 // and between twin primes (primes differing by 2)`, 
     codeTitle: 'enochian/09-mandala.js' 
   },
+  { 
+    id: 'sandwich', 
+    number: '10', 
+    title: 'Sandwich Product', 
+    subtitle: 'Sedenion rotations', 
+    description: 'Use the sandwich product A × B × A⁻¹ to rotate one semantic state by another. This preserves the norm of B while transforming its direction.', 
+    concepts: ['Rotation', 'Conjugation', 'Sandwich Product'], 
+    code: `const a = primesToSedenion(encode('FIRE'));
+const b = primesToSedenion(encode('WATER'));
+
+// Compute A⁻¹ (inverse)
+const aInv = sedenionInverse(a);
+
+// Sandwich product: A × B × A⁻¹
+const ab = sedenionMul(a, b);
+const rotated = sedenionMul(ab, aInv);
+
+// The result has same norm as B but rotated direction
+console.log('Original norm:', norm(b));
+console.log('Rotated norm:', norm(rotated));`, 
+    codeTitle: 'enochian/10-sandwich.js' 
+  },
+  { 
+    id: 'phrasebuilder', 
+    number: '11', 
+    title: 'Phrase Builder', 
+    subtitle: 'Multi-word composition', 
+    description: 'Compose multi-word invocations and see how each word combines via sedenion multiplication to form a unified semantic state.', 
+    concepts: ['Composition', 'Multi-Word', 'State Accumulation'], 
+    code: `const phrase = ['LIGHT', 'OF', 'FIRE'];
+
+// Start with identity-like state
+let state = primesToSedenion(encode(phrase[0]));
+
+// Multiply each subsequent word
+for (let i = 1; i < phrase.length; i++) {
+  const wordState = primesToSedenion(encode(phrase[i]));
+  state = sedenionMul(state, wordState);
+}
+
+// Final composed state
+console.log('Phrase state:', state);
+console.log('Total entropy:', entropy(state));`, 
+    codeTitle: 'enochian/11-phrasebuilder.js' 
+  },
 ];
 
 const exampleComponents: Record<string, React.FC> = { 
@@ -1043,6 +1372,8 @@ const exampleComponents: Record<string, React.FC> = {
   'transformations': WordTransformation,
   'zerodivisors': ZeroDivisorSearch,
   'mandala': GlyphMandala,
+  'sandwich': SandwichProduct,
+  'phrasebuilder': PhraseBuilder,
 };
 
 export default function EnochianExamplesPage() {
