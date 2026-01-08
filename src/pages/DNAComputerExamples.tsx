@@ -1542,6 +1542,561 @@ const SequenceAnalysisDemo = () => {
   );
 };
 
+// ============================================
+// MOLECULAR DYNAMICS DEMO
+// ============================================
+const MolecularDynamicsDemo = () => {
+  const [proteinSeq, setProteinSeq] = useState('MWLKFVEIRLLQ');
+  const [dnaSeq, setDnaSeq] = useState('ATGCGATCGAATGC');
+  const [coupling, setCoupling] = useState(0.5);
+  const [isRunning, setIsRunning] = useState(false);
+  const [time, setTime] = useState(0);
+  const [bindingState, setBindingState] = useState<{
+    proteinPhases: number[];
+    dnaPhases: number[];
+    orderParameter: number;
+    bindingEnergy: number;
+    contacts: { proteinIdx: number; dnaIdx: number; strength: number }[];
+  } | null>(null);
+  const animationRef = useRef<number>();
+
+  // Initialize phases
+  const initializeSystem = useCallback(() => {
+    const proteinPhases = proteinSeq.split('').map((_, i) => (i * 2 * Math.PI) / proteinSeq.length);
+    const dnaPhases = dnaSeq.split('').map((_, i) => (i * 2 * Math.PI) / dnaSeq.length + Math.PI);
+    
+    // Calculate initial contacts based on sequence compatibility
+    const contacts: { proteinIdx: number; dnaIdx: number; strength: number }[] = [];
+    for (let i = 0; i < Math.min(proteinSeq.length, dnaSeq.length); i++) {
+      const strength = Math.abs(Math.sin(proteinPhases[i] - dnaPhases[i]));
+      if (strength > 0.3) {
+        contacts.push({ proteinIdx: i, dnaIdx: i, strength });
+      }
+    }
+
+    setBindingState({
+      proteinPhases,
+      dnaPhases,
+      orderParameter: 0,
+      bindingEnergy: 0,
+      contacts,
+    });
+    setTime(0);
+  }, [proteinSeq, dnaSeq]);
+
+  useEffect(() => {
+    initializeSystem();
+  }, [initializeSystem]);
+
+  // Kuramoto evolution
+  useEffect(() => {
+    if (!isRunning || !bindingState) return;
+
+    const dt = 0.05;
+    let lastTime = performance.now();
+
+    const evolve = (currentTime: number) => {
+      const elapsed = (currentTime - lastTime) / 1000;
+      if (elapsed < 0.016) {
+        animationRef.current = requestAnimationFrame(evolve);
+        return;
+      }
+      lastTime = currentTime;
+
+      setBindingState(prev => {
+        if (!prev) return prev;
+
+        const newProteinPhases = [...prev.proteinPhases];
+        const newDnaPhases = [...prev.dnaPhases];
+
+        // Protein-DNA coupling (attractive when complementary)
+        for (let i = 0; i < newProteinPhases.length; i++) {
+          let dTheta = 0;
+          // Intra-protein coupling
+          for (let j = 0; j < newProteinPhases.length; j++) {
+            if (i !== j) {
+              dTheta += coupling * 0.3 * Math.sin(newProteinPhases[j] - newProteinPhases[i]);
+            }
+          }
+          // Protein-DNA coupling
+          for (let j = 0; j < newDnaPhases.length; j++) {
+            const dist = Math.abs(i - j);
+            const k = coupling * Math.exp(-dist * 0.2);
+            dTheta += k * Math.sin(newDnaPhases[j] - newProteinPhases[i]);
+          }
+          newProteinPhases[i] += (0.5 + dTheta) * dt;
+        }
+
+        // DNA phase evolution
+        for (let i = 0; i < newDnaPhases.length; i++) {
+          let dTheta = 0;
+          // Intra-DNA coupling
+          for (let j = 0; j < newDnaPhases.length; j++) {
+            if (i !== j) {
+              dTheta += coupling * 0.5 * Math.sin(newDnaPhases[j] - newDnaPhases[i]);
+            }
+          }
+          // DNA-protein coupling
+          for (let j = 0; j < newProteinPhases.length; j++) {
+            const dist = Math.abs(i - j);
+            const k = coupling * Math.exp(-dist * 0.2);
+            dTheta += k * Math.sin(newProteinPhases[j] - newDnaPhases[i]);
+          }
+          newDnaPhases[i] += (0.3 + dTheta) * dt;
+        }
+
+        // Calculate order parameter (combined system)
+        const allPhases = [...newProteinPhases, ...newDnaPhases];
+        const cosSum = allPhases.reduce((s, p) => s + Math.cos(p), 0);
+        const sinSum = allPhases.reduce((s, p) => s + Math.sin(p), 0);
+        const orderParameter = Math.sqrt(cosSum * cosSum + sinSum * sinSum) / allPhases.length;
+
+        // Calculate binding energy based on phase coherence
+        let bindingEnergy = 0;
+        const newContacts: { proteinIdx: number; dnaIdx: number; strength: number }[] = [];
+        for (let i = 0; i < newProteinPhases.length; i++) {
+          for (let j = 0; j < newDnaPhases.length; j++) {
+            const phaseDiff = Math.abs(Math.cos(newProteinPhases[i] - newDnaPhases[j]));
+            if (phaseDiff > 0.7) {
+              const strength = phaseDiff;
+              bindingEnergy += strength;
+              newContacts.push({ proteinIdx: i, dnaIdx: j, strength });
+            }
+          }
+        }
+
+        return {
+          proteinPhases: newProteinPhases,
+          dnaPhases: newDnaPhases,
+          orderParameter,
+          bindingEnergy: bindingEnergy / (newProteinPhases.length * newDnaPhases.length),
+          contacts: newContacts.slice(0, 10), // Keep top contacts
+        };
+      });
+
+      setTime(t => t + dt);
+      animationRef.current = requestAnimationFrame(evolve);
+    };
+
+    animationRef.current = requestAnimationFrame(evolve);
+    return () => {
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    };
+  }, [isRunning, coupling, bindingState]);
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-medium mb-2 block">Protein Sequence</label>
+          <Input
+            value={proteinSeq}
+            onChange={(e) => setProteinSeq(e.target.value.toUpperCase().replace(/[^ACDEFGHIKLMNPQRSTVWY]/g, ''))}
+            className="font-mono"
+            placeholder="Enter protein sequence"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium mb-2 block">DNA Binding Site</label>
+          <Input
+            value={dnaSeq}
+            onChange={(e) => setDnaSeq(e.target.value.toUpperCase().replace(/[^ATGC]/g, ''))}
+            className="font-mono"
+            placeholder="Enter DNA sequence"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="text-sm font-medium mb-2 block">
+          Coupling Strength: {coupling.toFixed(2)}
+        </label>
+        <Slider
+          value={[coupling]}
+          onValueChange={([v]) => setCoupling(v)}
+          min={0.1}
+          max={2}
+          step={0.05}
+        />
+      </div>
+
+      <div className="flex gap-2">
+        <Button onClick={() => setIsRunning(!isRunning)} variant={isRunning ? "destructive" : "default"}>
+          {isRunning ? 'Pause' : 'Start'} Simulation
+        </Button>
+        <Button variant="outline" onClick={initializeSystem}>Reset</Button>
+      </div>
+
+      {/* Phase Visualization */}
+      {bindingState && (
+        <Card className="p-4">
+          <h4 className="text-sm font-medium mb-4">Molecular Phase Dynamics (t = {time.toFixed(1)})</h4>
+          
+          <svg viewBox="0 0 400 200" className="w-full h-48 bg-muted/20 rounded">
+            {/* Protein phases (top row) */}
+            <text x="10" y="30" className="fill-current text-xs">Protein</text>
+            {bindingState.proteinPhases.map((phase, i) => {
+              const x = 80 + (i * 25);
+              const y = 40;
+              return (
+                <g key={`p-${i}`}>
+                  <circle cx={x} cy={y} r={10} className="fill-primary/30 stroke-primary" strokeWidth={2} />
+                  <line
+                    x1={x}
+                    y1={y}
+                    x2={x + 8 * Math.cos(phase)}
+                    y2={y + 8 * Math.sin(phase)}
+                    className="stroke-primary"
+                    strokeWidth={2}
+                  />
+                  <text x={x} y={y + 25} className="fill-current text-xs" textAnchor="middle">
+                    {proteinSeq[i]}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* DNA phases (bottom row) */}
+            <text x="10" y="130" className="fill-current text-xs">DNA</text>
+            {bindingState.dnaPhases.map((phase, i) => {
+              const x = 80 + (i * 25);
+              const y = 140;
+              return (
+                <g key={`d-${i}`}>
+                  <circle cx={x} cy={y} r={10} className="fill-cyan-500/30 stroke-cyan-500" strokeWidth={2} />
+                  <line
+                    x1={x}
+                    y1={y}
+                    x2={x + 8 * Math.cos(phase)}
+                    y2={y + 8 * Math.sin(phase)}
+                    className="stroke-cyan-500"
+                    strokeWidth={2}
+                  />
+                  <text x={x} y={y + 25} className="fill-current text-xs" textAnchor="middle">
+                    {dnaSeq[i]}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* Contact lines */}
+            {bindingState.contacts.slice(0, 5).map((contact, i) => {
+              const x1 = 80 + (contact.proteinIdx * 25);
+              const x2 = 80 + (contact.dnaIdx * 25);
+              return (
+                <line
+                  key={`c-${i}`}
+                  x1={x1}
+                  y1={60}
+                  x2={x2}
+                  y2={120}
+                  stroke={`rgba(255, 200, 100, ${contact.strength})`}
+                  strokeWidth={2}
+                  strokeDasharray="4,2"
+                />
+              );
+            })}
+          </svg>
+
+          {/* Metrics */}
+          <div className="grid grid-cols-3 gap-4 mt-4">
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">Order Parameter</p>
+              <p className="text-2xl font-bold text-primary">{bindingState.orderParameter.toFixed(3)}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">Binding Energy</p>
+              <p className="text-2xl font-bold text-amber-400">{bindingState.bindingEnergy.toFixed(3)}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">Active Contacts</p>
+              <p className="text-2xl font-bold text-cyan-400">{bindingState.contacts.length}</p>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Binding Interpretation */}
+      {bindingState && (
+        <Card className="p-4">
+          <h4 className="text-sm font-medium mb-2">Binding Analysis</h4>
+          <div className="text-sm text-muted-foreground space-y-1">
+            <p>
+              <Badge variant={bindingState.orderParameter > 0.6 ? "default" : "secondary"}>
+                {bindingState.orderParameter > 0.6 ? 'Strong Binding' : bindingState.orderParameter > 0.3 ? 'Moderate Binding' : 'Weak Binding'}
+              </Badge>
+            </p>
+            <p className="mt-2">
+              Phase coherence between protein and DNA indicates binding affinity. 
+              High order parameter suggests stable protein-DNA complex formation.
+            </p>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+// ============================================
+// GENE EXPRESSION CALCULATOR DEMO
+// ============================================
+const GeneExpressionCalculatorDemo = () => {
+  const [geneSequence, setGeneSequence] = useState('ATGAAACCCGGGTTTATGCGATCGATCGATCGATCGTAA');
+  
+  // Codon Adaptation Index (CAI) - E. coli optimal codons
+  const optimalCodons: Record<string, string> = {
+    'A': 'GCG', 'R': 'CGT', 'N': 'AAC', 'D': 'GAT', 'C': 'TGC',
+    'Q': 'CAG', 'E': 'GAA', 'G': 'GGT', 'H': 'CAC', 'I': 'ATC',
+    'L': 'CTG', 'K': 'AAA', 'M': 'ATG', 'F': 'TTC', 'P': 'CCG',
+    'S': 'AGC', 'T': 'ACC', 'W': 'TGG', 'Y': 'TAC', 'V': 'GTG',
+  };
+
+  // Relative Synonymous Codon Usage (RSCU) weights for E. coli
+  const codonWeights: Record<string, number> = {
+    'TTT': 0.58, 'TTC': 1.42, 'TTA': 0.14, 'TTG': 0.13, 'CTT': 0.12, 'CTC': 0.10,
+    'CTA': 0.04, 'CTG': 5.47, 'ATT': 0.51, 'ATC': 2.35, 'ATA': 0.13, 'ATG': 1.00,
+    'GTT': 1.09, 'GTC': 0.15, 'GTA': 0.76, 'GTG': 2.00, 'TCT': 0.86, 'TCC': 0.88,
+    'TCA': 0.12, 'TCG': 0.15, 'AGT': 0.16, 'AGC': 2.83, 'CCT': 0.16, 'CCC': 0.12,
+    'CCA': 0.20, 'CCG': 3.52, 'ACT': 0.17, 'ACC': 2.69, 'ACA': 0.14, 'ACG': 1.00,
+    'GCT': 0.19, 'GCC': 0.26, 'GCA': 0.22, 'GCG': 3.33, 'TAT': 0.59, 'TAC': 1.41,
+    'CAT': 0.57, 'CAC': 1.43, 'CAA': 0.15, 'CAG': 1.85, 'AAT': 0.49, 'AAC': 1.51,
+    'AAA': 1.74, 'AAG': 0.26, 'GAT': 0.63, 'GAC': 1.37, 'GAA': 1.69, 'GAG': 0.31,
+    'TGT': 0.46, 'TGC': 1.54, 'TGG': 1.00, 'CGT': 3.80, 'CGC': 1.98, 'CGA': 0.06,
+    'CGG': 0.10, 'AGA': 0.04, 'AGG': 0.02, 'GGT': 2.22, 'GGC': 1.66, 'GGA': 0.11,
+    'GGG': 0.02, 'TAA': 1.50, 'TAG': 0.30, 'TGA': 1.20,
+  };
+
+  const analysis = useMemo(() => {
+    if (geneSequence.length < 6) {
+      return null;
+    }
+
+    // Extract codons
+    const codons: string[] = [];
+    for (let i = 0; i + 2 < geneSequence.length; i += 3) {
+      codons.push(geneSequence.slice(i, i + 3));
+    }
+
+    // Calculate GC content
+    const gc = (geneSequence.match(/[GC]/g)?.length || 0) / geneSequence.length;
+
+    // Calculate GC at each codon position
+    const gc1 = codons.filter(c => 'GC'.includes(c[0])).length / codons.length;
+    const gc2 = codons.filter(c => 'GC'.includes(c[1])).length / codons.length;
+    const gc3 = codons.filter(c => 'GC'.includes(c[2])).length / codons.length;
+
+    // Calculate Codon Adaptation Index (geometric mean of weights)
+    const weights = codons.map(c => codonWeights[c] || 0.5);
+    const cai = Math.exp(weights.reduce((s, w) => s + Math.log(Math.max(w, 0.01)), 0) / weights.length);
+
+    // Calculate tRNA availability score
+    const rareCodons = codons.filter(c => (codonWeights[c] || 0.5) < 0.3);
+    const rareCodonRatio = rareCodons.length / codons.length;
+
+    // mRNA stability estimation (based on GC content and structure)
+    const mRNAHalfLife = 5 + (gc * 10) + (gc3 * 5); // minutes
+
+    // Protein expression level estimation (relative units)
+    const expressionScore = cai * (1 - rareCodonRatio) * (mRNAHalfLife / 20);
+    
+    // Translation elongation rate
+    const elongationRate = 15 * (1 - rareCodonRatio * 0.5); // codons per second
+
+    // Protein folding efficiency (based on codon harmony)
+    const codonHarmony = 1 - Math.abs(gc3 - 0.5); // optimal around 50% GC3
+    
+    // Final protein yield estimation (arbitrary units normalized to 100)
+    const proteinYield = Math.min(100, expressionScore * codonHarmony * 100);
+
+    // Get protein sequence
+    let protein = '';
+    for (const codon of codons) {
+      const aaData = GENETIC_CODE[codon as keyof typeof GENETIC_CODE];
+      if (!aaData) continue;
+      const aa = typeof aaData === 'string' ? aaData : aaData.abbrev;
+      if (aa === '*' || aa === 'Stop') break;
+      if (aa) protein += aa;
+    }
+
+    // Identify limiting factors
+    const limitingFactors: string[] = [];
+    if (cai < 0.5) limitingFactors.push('Low codon optimization');
+    if (rareCodonRatio > 0.2) limitingFactors.push('High rare codon content');
+    if (gc < 0.35 || gc > 0.65) limitingFactors.push('Suboptimal GC content');
+    if (mRNAHalfLife < 8) limitingFactors.push('Predicted low mRNA stability');
+
+    return {
+      codons,
+      gc,
+      gc1,
+      gc2,
+      gc3,
+      cai,
+      rareCodonRatio,
+      rareCodons,
+      mRNAHalfLife,
+      expressionScore,
+      elongationRate,
+      codonHarmony,
+      proteinYield,
+      protein,
+      limitingFactors,
+    };
+  }, [geneSequence]);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <label className="text-sm font-medium mb-2 block">Gene Sequence (DNA)</label>
+        <Input
+          value={geneSequence}
+          onChange={(e) => {
+            const val = e.target.value.toUpperCase().replace(/[^ATGC]/g, '');
+            setGeneSequence(val);
+          }}
+          className="font-mono"
+          placeholder="Enter gene sequence (start with ATG)"
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Length: {geneSequence.length} bp | Codons: {Math.floor(geneSequence.length / 3)}
+        </p>
+      </div>
+
+      {analysis && (
+        <>
+          {/* Primary Metrics */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card className="p-4 text-center">
+              <p className="text-xs text-muted-foreground">Protein Yield</p>
+              <p className="text-3xl font-bold" style={{ color: `hsl(${analysis.proteinYield * 1.2}, 70%, 50%)` }}>
+                {analysis.proteinYield.toFixed(0)}%
+              </p>
+            </Card>
+            <Card className="p-4 text-center">
+              <p className="text-xs text-muted-foreground">CAI Score</p>
+              <p className="text-3xl font-bold text-primary">{analysis.cai.toFixed(2)}</p>
+            </Card>
+            <Card className="p-4 text-center">
+              <p className="text-xs text-muted-foreground">GC Content</p>
+              <p className="text-3xl font-bold text-cyan-400">{(analysis.gc * 100).toFixed(1)}%</p>
+            </Card>
+            <Card className="p-4 text-center">
+              <p className="text-xs text-muted-foreground">mRNA t½</p>
+              <p className="text-3xl font-bold text-amber-400">{analysis.mRNAHalfLife.toFixed(1)} min</p>
+            </Card>
+          </div>
+
+          {/* Detailed Metrics */}
+          <Card className="p-4">
+            <h4 className="text-sm font-medium mb-4">Expression Parameters</h4>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">GC Position 1:</span>
+                  <span>{(analysis.gc1 * 100).toFixed(1)}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">GC Position 2:</span>
+                  <span>{(analysis.gc2 * 100).toFixed(1)}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">GC Position 3:</span>
+                  <span>{(analysis.gc3 * 100).toFixed(1)}%</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Rare Codons:</span>
+                  <span>{(analysis.rareCodonRatio * 100).toFixed(1)}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Elongation Rate:</span>
+                  <span>{analysis.elongationRate.toFixed(1)} aa/s</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Codon Harmony:</span>
+                  <span>{(analysis.codonHarmony * 100).toFixed(0)}%</span>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Codon Usage Visualization */}
+          <Card className="p-4">
+            <h4 className="text-sm font-medium mb-4">Codon Optimization Profile</h4>
+            <div className="flex flex-wrap gap-1">
+              {analysis.codons.map((codon, i) => {
+                const weight = codonWeights[codon] || 0.5;
+                const isRare = weight < 0.3;
+                const color = isRare ? 'bg-red-500/50' : weight > 1 ? 'bg-green-500/50' : 'bg-yellow-500/50';
+                return (
+                  <div
+                    key={i}
+                    className={`px-2 py-1 rounded font-mono text-xs ${color}`}
+                    title={`${codon} (weight: ${weight.toFixed(2)})`}
+                  >
+                    {codon}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex gap-4 mt-3 text-xs">
+              <span className="flex items-center gap-1"><span className="w-3 h-3 bg-green-500/50 rounded" /> Optimal</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 bg-yellow-500/50 rounded" /> Moderate</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 bg-red-500/50 rounded" /> Rare</span>
+            </div>
+          </Card>
+
+          {/* Protein Output */}
+          <Card className="p-4">
+            <h4 className="text-sm font-medium mb-2">Predicted Protein</h4>
+            <p className="font-mono text-lg bg-muted/30 p-2 rounded break-all text-amber-400">
+              {analysis.protein || '[No valid ORF]'}
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Length: {analysis.protein.length} amino acids | MW: ~{(analysis.protein.length * 110 / 1000).toFixed(1)} kDa
+            </p>
+          </Card>
+
+          {/* Limiting Factors */}
+          {analysis.limitingFactors.length > 0 && (
+            <Card className="p-4 border-amber-500/30">
+              <h4 className="text-sm font-medium mb-2 text-amber-400">⚠️ Expression Limiting Factors</h4>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                {analysis.limitingFactors.map((factor, i) => (
+                  <li key={i}>• {factor}</li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          {/* Yield Meter */}
+          <Card className="p-4">
+            <h4 className="text-sm font-medium mb-4">Expected Yield Gauge</h4>
+            <div className="relative h-8 bg-muted/30 rounded-full overflow-hidden">
+              <div
+                className="absolute h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${analysis.proteinYield}%`,
+                  background: `linear-gradient(90deg, hsl(0, 70%, 50%), hsl(60, 70%, 50%), hsl(120, 70%, 50%))`,
+                }}
+              />
+              <div className="absolute inset-0 flex items-center justify-center text-sm font-bold">
+                {analysis.proteinYield.toFixed(0)}% Yield
+              </div>
+            </div>
+            <div className="flex justify-between text-xs text-muted-foreground mt-1">
+              <span>Low</span>
+              <span>Moderate</span>
+              <span>High</span>
+            </div>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+};
+
 // Example configurations
 const examples: ExampleConfig[] = [
   {
@@ -1713,6 +2268,40 @@ const complexity = calculateSequenceComplexity(sequence);
 console.log('ORFs found:', orfs.length);
 console.log('Complexity:', complexity);`,
   },
+  {
+    id: 'molecular-dynamics',
+    number: '11',
+    title: 'Molecular Dynamics',
+    subtitle: 'Protein-DNA Binding',
+    description: 'Simulate protein-DNA binding using Kuramoto-coupled oscillators. Watch phase synchronization drive molecular recognition.',
+    concepts: ['Kuramoto Model', 'Binding Dynamics', 'Phase Coherence', 'Molecular Recognition'],
+    code: `// Protein-DNA binding as coupled oscillator dynamics
+const proteinPhases = protein.split('').map((_, i) => i * 2 * Math.PI / n);
+const dnaPhases = dna.split('').map((_, i) => i * 2 * Math.PI / n);
+
+// Kuramoto coupling evolution
+dTheta_i = sum_j { K * sin(theta_j - theta_i) }
+
+// Order parameter indicates binding strength
+r = |1/N * sum(e^(i*theta))| // 0=unbound, 1=tight complex`,
+  },
+  {
+    id: 'gene-expression',
+    number: '12',
+    title: 'Gene Expression Calculator',
+    subtitle: 'Protein Yield Estimation',
+    description: 'Predict protein expression levels from DNA sequences using codon adaptation index, GC content, and mRNA stability.',
+    concepts: ['CAI Score', 'Codon Bias', 'mRNA Stability', 'Translation Rate'],
+    code: `// Codon Adaptation Index calculation
+const weights = codons.map(c => codonWeights[c]);
+const cai = Math.exp(sum(log(weights)) / n);
+
+// mRNA half-life estimation
+const halfLife = 5 + gc * 10 + gc3 * 5; // minutes
+
+// Protein yield
+const yield = cai * (1 - rareCodonRatio) * stability;`,
+  },
 ];
 
 const exampleComponents: Record<string, React.FC> = {
@@ -1726,6 +2315,8 @@ const exampleComponents: Record<string, React.FC> = {
   'crispr-editor': CRISPREditorDemo,
   'restriction-digest': RestrictionDigestDemo,
   'sequence-analysis': SequenceAnalysisDemo,
+  'molecular-dynamics': MolecularDynamicsDemo,
+  'gene-expression': GeneExpressionCalculatorDemo,
 };
 
 const DNAComputerExamples = () => {
