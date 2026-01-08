@@ -490,112 +490,111 @@ const QuantumCircuitRunner = () => {
                 </Button>
                 <Button onClick={executeCircuit} className="w-full" disabled={gates.length === 0}>
                   <Play className="w-4 h-4 mr-2" /> Execute
-                  </Button>
-                  <Button onClick={resetCircuit} variant="destructive" className="w-full">
-                    <RotateCcw className="w-4 h-4 mr-2" /> Reset
-                  </Button>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-lg border border-border bg-card max-h-48 overflow-y-auto">
-                <h2 className="text-lg font-semibold mb-2">History</h2>
-                {history.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No actions yet</p>
-                ) : (
-                  <div className="space-y-1">
-                    {history.slice(-8).map((item, i) => (
-                      <div key={i} className="text-xs text-muted-foreground py-1 border-b border-border/50 last:border-0">
-                        {item}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                </Button>
+                <Button onClick={resetCircuit} variant="destructive" className="w-full">
+                  <RotateCcw className="w-4 h-4 mr-2" /> Reset
+                </Button>
               </div>
             </div>
 
-            {/* Center - Circuit Builder */}
+            <div className="p-4 rounded-lg border border-border bg-card max-h-48 overflow-y-auto">
+              <h2 className="text-lg font-semibold mb-2">History</h2>
+              {history.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No actions yet</p>
+              ) : (
+                <div className="space-y-1">
+                  {history.slice(-8).map((item, i) => (
+                    <div key={i} className="text-xs text-muted-foreground py-1 border-b border-border/50 last:border-0">
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Center - Circuit Builder */}
+          <div className="p-4 rounded-lg border border-border bg-card">
+            <h2 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
+              <GripVertical className="w-5 h-5" /> Circuit
+            </h2>
+            <div className="space-y-3 min-h-[300px]">
+              {wires.map((wire, idx) => (
+                <WireDisplay
+                  key={wire.id}
+                  wire={wire}
+                  wireIndex={idx}
+                  gates={gates.filter(g => g.wireIndex === idx)}
+                  onDropGate={(pos) => handleDropGate(idx, pos)}
+                  onRemoveGate={removeGate}
+                  isActive={draggedGate !== null}
+                  numWires={wires.length}
+                />
+              ))}
+            </div>
+            
+            {gates.length === 0 && (
+              <div className="text-center text-muted-foreground py-8">
+                <p className="text-sm">Drag gates from the left panel onto the wires</p>
+              </div>
+            )}
+          </div>
+
+          {/* Right Panel - Results */}
+          <div className="space-y-4">
             <div className="p-4 rounded-lg border border-border bg-card">
               <h2 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
-                <GripVertical className="w-5 h-5" /> Circuit
+                <Circle className="w-5 h-5" /> Bloch Sphere
               </h2>
-              <div className="space-y-3 min-h-[300px]">
-                {wires.map((wire, idx) => (
-                  <WireDisplay
-                    key={wire.id}
-                    wire={wire}
-                    wireIndex={idx}
-                    gates={gates.filter(g => g.wireIndex === idx)}
-                    onDropGate={(pos) => handleDropGate(idx, pos)}
-                    onRemoveGate={removeGate}
-                    isActive={draggedGate !== null}
-                    numWires={wires.length}
-                  />
-                ))}
-              </div>
-              
-              {gates.length === 0 && (
-                <div className="text-center text-muted-foreground py-8">
-                  <p className="text-sm">Drag gates from the left panel onto the wires</p>
+              {executedState ? (
+                <BlochSphere state={executedState} />
+              ) : (
+                <div className="aspect-square bg-muted/30 rounded-lg flex items-center justify-center text-muted-foreground text-sm">
+                  Execute to see
                 </div>
               )}
             </div>
 
-            {/* Right Panel - Results */}
-            <div className="space-y-4">
-              <div className="p-4 rounded-lg border border-border bg-card">
-                <h2 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
-                  <Circle className="w-5 h-5" /> Bloch Sphere
-                </h2>
-                {executedState ? (
-                  <BlochSphere state={executedState} />
-                ) : (
-                  <div className="aspect-square bg-muted/30 rounded-lg flex items-center justify-center text-muted-foreground text-sm">
-                    Execute to see
-                  </div>
-                )}
-              </div>
-
-              <div className="p-4 rounded-lg border border-border bg-card">
-                <h2 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5" /> Amplitudes
-                </h2>
-                {executedState ? (
-                  <AmplitudePlot state={executedState} />
-                ) : (
-                  <div className="h-32 bg-muted/30 rounded-lg flex items-center justify-center text-muted-foreground text-sm">
-                    Execute to see
-                  </div>
-                )}
-              </div>
-
-              <div className="p-4 rounded-lg border border-border bg-card">
-                <h2 className="text-lg font-semibold text-primary mb-4">Sedenion State</h2>
-                <SedenionVisualizer components={sedenionState} animated={!!executedState} size="lg" />
-                <div className="mt-3 text-center">
-                  <p className="text-sm text-muted-foreground">Entropy</p>
-                  <p className="text-2xl font-mono text-primary">{entropy.toFixed(3)} bits</p>
-                </div>
-              </div>
-
-              {executedState && (
-                <div className="p-4 rounded-lg border border-border bg-card">
-                  <h2 className="text-sm font-semibold mb-2">State Vector</h2>
-                  <div className="font-mono text-xs space-y-1 max-h-32 overflow-y-auto">
-                    {executedState.map((s, i) => {
-                      const amp = Math.sqrt(s.real * s.real + s.imag * s.imag);
-                      if (amp < 0.001) return null;
-                      const binaryLabel = i.toString(2).padStart(wires.length, '0');
-                      return (
-                        <div key={i} className="flex justify-between text-muted-foreground">
-                          <span className="text-primary">|{binaryLabel}⟩</span>
-                          <span>{s.real >= 0 ? '+' : ''}{s.real.toFixed(3)}{s.imag >= 0 ? '+' : ''}{s.imag.toFixed(3)}i</span>
-                        </div>
-                      );
-                    })}
-                  </div>
+            <div className="p-4 rounded-lg border border-border bg-card">
+              <h2 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5" /> Amplitudes
+              </h2>
+              {executedState ? (
+                <AmplitudePlot state={executedState} />
+              ) : (
+                <div className="h-32 bg-muted/30 rounded-lg flex items-center justify-center text-muted-foreground text-sm">
+                  Execute to see
                 </div>
               )}
             </div>
+
+            <div className="p-4 rounded-lg border border-border bg-card">
+              <h2 className="text-lg font-semibold text-primary mb-4">Sedenion State</h2>
+              <SedenionVisualizer components={sedenionState} animated={!!executedState} size="lg" />
+              <div className="mt-3 text-center">
+                <p className="text-sm text-muted-foreground">Entropy</p>
+                <p className="text-2xl font-mono text-primary">{entropy.toFixed(3)} bits</p>
+              </div>
+            </div>
+
+            {executedState && (
+              <div className="p-4 rounded-lg border border-border bg-card">
+                <h2 className="text-sm font-semibold mb-2">State Vector</h2>
+                <div className="font-mono text-xs space-y-1 max-h-32 overflow-y-auto">
+                  {executedState.map((s, i) => {
+                    const amp = Math.sqrt(s.real * s.real + s.imag * s.imag);
+                    if (amp < 0.001) return null;
+                    const binaryLabel = i.toString(2).padStart(wires.length, '0');
+                    return (
+                      <div key={i} className="flex justify-between text-muted-foreground">
+                        <span className="text-primary">|{binaryLabel}⟩</span>
+                        <span>{s.real >= 0 ? '+' : ''}{s.real.toFixed(3)}{s.imag >= 0 ? '+' : ''}{s.imag.toFixed(3)}i</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Code Example */}
