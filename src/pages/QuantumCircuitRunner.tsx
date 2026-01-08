@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Play, Plus, RotateCcw, GripVertical, Zap, Circle, BarChart3, ArrowLeft, Sparkles, Target, Download, Upload, Wand2, Layers, GitBranch, ShieldCheck, Activity, GitCompare, Bug, HelpCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SedenionVisualizer from '@/components/SedenionVisualizer';
+import CodeBlock from '@/components/CodeBlock';
 import {
   Tooltip,
   TooltipContent,
@@ -506,9 +507,10 @@ const QuantumCircuitRunner = () => {
                 </div>
                 TinyAleph Integration
               </h2>
-              <pre className="bg-muted/30 p-4 rounded-lg overflow-x-auto text-sm font-mono border border-border">
-                <code className="text-foreground/80">{generateCodeExample(wires.length, gates, entropy)}</code>
-              </pre>
+              <CodeBlock 
+                code={generateCodeExample(wires.length, gates, entropy)} 
+                language="typescript"
+              />
             </div>
 
             {/* Analysis Tools */}
