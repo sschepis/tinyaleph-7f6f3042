@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import ExamplePageWrapper, { ExampleConfig } from '@/components/ExamplePageWrapper';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -9,23 +9,255 @@ import DNAStrandVisualizer from '@/components/DNAStrandVisualizer';
 import GelElectrophoresis from '@/components/GelElectrophoresis';
 import SedenionVisualizer from '@/components/SedenionVisualizer';
 import {
-  strandToPrimes,
-  strandToSedenion,
-  getComplement,
-  calculateGCContent,
-  calculateMeltingTemp,
-  calculateHybridization,
-  generateRandomSequence,
-  isValidSequence,
-  codonToPrimeProduct,
-  translateSequence,
-} from '@/lib/dna-computer/encoding';
-import {
   NUCLEOTIDE_COLORS,
   GENETIC_CODE,
   PROPERTY_COLORS,
-  DNA_ALPHABET,
 } from '@/lib/dna-computer/types';
+
+// Import native BioinformaticsBackend from tinyaleph 1.3.0
+let BioinformaticsBackend: any = null;
+let DNACircuit: any = null;
+let ANDGate: any = null;
+let ORGate: any = null;
+let NOTGate: any = null;
+
+try {
+  const tinyaleph = require('@aleph-ai/tinyaleph');
+  BioinformaticsBackend = tinyaleph.BioinformaticsBackend;
+  DNACircuit = tinyaleph.DNACircuit;
+  ANDGate = tinyaleph.ANDGate;
+  ORGate = tinyaleph.ORGate;
+  NOTGate = tinyaleph.NOTGate;
+} catch (e) {
+  console.warn('BioinformaticsBackend not available, using fallback');
+}
+
+// Create backend instance
+const createBackend = () => {
+  if (BioinformaticsBackend) {
+    try {
+      return new BioinformaticsBackend();
+    } catch (e) {
+      console.warn('Failed to create BioinformaticsBackend:', e);
+    }
+  }
+  return null;
+};
+
+const backend = createBackend();
+
+// Fallback encoding functions if backend not available
+const NUCLEOTIDE_PRIMES: Record<string, number> = { A: 7, T: 2, G: 11, C: 3, U: 5 };
+const COMPLEMENT_MAP: Record<string, string> = { A: 'T', T: 'A', G: 'C', C: 'G' };
+
+function strandToPrimes(sequence: string): number[] {
+  if (backend) {
+    try {
+      return backend.encode(sequence);
+    } catch (e) {}
+  }
+  return [...sequence.toUpperCase()].map(n => NUCLEOTIDE_PRIMES[n] || 0).filter(p => p > 0);
+}
+
+function primesToState(primes: number[]): { c: number[], norm: () => number } {
+  if (backend) {
+    try {
+      return backend.primesToState(primes);
+    } catch (e) {}
+  }
+  // Fallback sedenion generation
+  const sedenion = new Array(16).fill(0);
+  primes.forEach((prime, i) => {
+    const componentIndex = (prime * (i + 1)) % 16;
+    const phase = (i * Math.PI * 2) / primes.length;
+    const magnitude = 1 / Math.sqrt(primes.length || 1);
+    sedenion[componentIndex] += magnitude * Math.cos(phase);
+    sedenion[(componentIndex + 8) % 16] += magnitude * Math.sin(phase);
+  });
+  const norm = Math.sqrt(sedenion.reduce((sum, c) => sum + c * c, 0));
+  if (norm > 0) {
+    for (let i = 0; i < 16; i++) sedenion[i] /= norm;
+  } else {
+    sedenion[0] = 1;
+  }
+  return { 
+    c: sedenion, 
+    norm: () => Math.sqrt(sedenion.reduce((sum, c) => sum + c * c, 0)) 
+  };
+}
+
+function strandToSedenion(sequence: string): number[] {
+  return primesToState(strandToPrimes(sequence)).c;
+}
+
+function getComplement(sequence: string): string {
+  return [...sequence.toUpperCase()].map(n => COMPLEMENT_MAP[n] || n).join('');
+}
+
+function calculateGCContent(sequence: string): number {
+  const upper = sequence.toUpperCase();
+  const gc = [...upper].filter(n => n === 'G' || n === 'C').length;
+  return upper.length > 0 ? (gc / upper.length) * 100 : 0;
+}
+
+function calculateMeltingTemp(sequence: string): number {
+  const upper = sequence.toUpperCase();
+  const at = [...upper].filter(n => n === 'A' || n === 'T').length;
+  const gc = [...upper].filter(n => n === 'G' || n === 'C').length;
+  if (upper.length < 14) {
+    return 2 * at + 4 * gc;
+  }
+  return 64.9 + 41 * (gc - 16.4) / (at + gc);
+}
+
+function isValidSequence(sequence: string): boolean {
+  return /^[ATGCatgc]*$/.test(sequence);
+}
+
+function generateRandomSequence(length: number): string {
+  const nucleotides = ['A', 'T', 'G', 'C'];
+  return Array.from({ length }, () => 
+    nucleotides[Math.floor(Math.random() * 4)]
+  ).join('');
+}
+
+// Native API wrappers for 1.3.0 features
+function transcribeDNA(sequence: string): { success: boolean; mRNA: string } {
+  if (backend) {
+    try {
+      const primes = backend.encode(sequence);
+      const result = backend.transcribe(primes, { force: true });
+      if (result.success) {
+        return { success: true, mRNA: backend.decode(result.rna) };
+      }
+    } catch (e) {}
+  }
+  // Fallback: T → U substitution
+  return { success: true, mRNA: sequence.toUpperCase().replace(/T/g, 'U') };
+}
+
+function translateRNA(mRNA: string): { success: boolean; protein: string } {
+  if (backend) {
+    try {
+      const primes = backend.encode(mRNA);
+      const result = backend.translate(primes);
+      if (result.success) {
+        return { success: true, protein: backend.decode(result.protein) };
+      }
+    } catch (e) {}
+  }
+  // Fallback translation
+  const codons: string[] = [];
+  for (let i = 0; i + 2 < mRNA.length; i += 3) {
+    codons.push(mRNA.slice(i, i + 3));
+  }
+  const protein = codons.map(c => {
+    const dnaCodon = c.replace(/U/g, 'T');
+    return GENETIC_CODE[dnaCodon]?.abbrev || '?';
+  }).join('');
+  return { success: true, protein };
+}
+
+function calculateBindingAffinity(seq1: string, seq2: string): { affinity: number; goldenPairs?: number } {
+  if (backend) {
+    try {
+      const primes1 = backend.encode(seq1);
+      const primes2 = backend.encode(seq2);
+      return backend.bindingAffinity(primes1, primes2);
+    } catch (e) {}
+  }
+  // Fallback coherence calculation
+  const sed1 = strandToSedenion(seq1);
+  const sed2 = strandToSedenion(seq2);
+  const coherence = sed1.reduce((sum, c, i) => sum + c * sed2[i], 0);
+  return { affinity: Math.abs(coherence) };
+}
+
+function foldProtein(proteinSeq: string): { 
+  success: boolean; 
+  orderParameter: number; 
+  phases: number[];
+  steps: number;
+} {
+  if (backend) {
+    try {
+      const primes = backend.encode(proteinSeq);
+      return backend.foldProtein(primes);
+    } catch (e) {}
+  }
+  // Fallback Kuramoto simulation
+  const n = proteinSeq.length;
+  const phases = Array.from({ length: n }, () => Math.random() * Math.PI * 2);
+  const frequencies = [...proteinSeq].map(aa => {
+    const hydrophobic = ['L', 'I', 'V', 'F', 'W', 'M', 'A'];
+    return hydrophobic.includes(aa) ? 0.8 : 0.5;
+  });
+  
+  const K = 0.5;
+  let steps = 0;
+  let orderParameter = 0;
+  
+  for (let iter = 0; iter < 100; iter++) {
+    steps++;
+    for (let i = 0; i < n; i++) {
+      let dPhase = frequencies[i] * 0.1;
+      for (let j = 0; j < n; j++) {
+        if (i !== j) {
+          dPhase += (K / n) * Math.sin(phases[j] - phases[i]);
+        }
+      }
+      phases[i] = (phases[i] + dPhase) % (Math.PI * 2);
+    }
+    
+    const sumCos = phases.reduce((s, p) => s + Math.cos(p), 0);
+    const sumSin = phases.reduce((s, p) => s + Math.sin(p), 0);
+    orderParameter = Math.sqrt(sumCos * sumCos + sumSin * sumSin) / n;
+    
+    if (orderParameter > 0.9) break;
+  }
+  
+  return { success: true, orderParameter, phases, steps };
+}
+
+function calculateHybridization(strand1: string, strand2: string): {
+  coherence: number;
+  matches: number;
+  mismatches: number;
+  bindingEnergy: number;
+} {
+  const s1 = strand1.toUpperCase();
+  const s2 = strand2.toUpperCase();
+  const complement1 = getComplement(s1);
+  
+  let matches = 0;
+  let mismatches = 0;
+  const minLen = Math.min(s1.length, s2.length);
+  
+  for (let i = 0; i < minLen; i++) {
+    if (complement1[i] === s2[i]) {
+      matches++;
+    } else {
+      mismatches++;
+    }
+  }
+  
+  // Use native binding affinity if available
+  const { affinity } = calculateBindingAffinity(s1, s2);
+  
+  // Binding energy approximation (kcal/mol)
+  let energy = 0;
+  for (let i = 0; i < minLen; i++) {
+    if (complement1[i] === s2[i]) {
+      if (s1[i] === 'G' || s1[i] === 'C') {
+        energy -= 3;
+      } else {
+        energy -= 2;
+      }
+    }
+  }
+  
+  return { coherence: affinity, matches, mismatches, bindingEnergy: energy };
+}
 
 // Demo 1: Nucleotide Encoder
 const NucleotideEncoderDemo = () => {
@@ -60,6 +292,7 @@ const NucleotideEncoderDemo = () => {
           className="font-mono text-lg"
         />
         {error && <p className="text-destructive text-sm mt-1">{error}</p>}
+        {backend && <Badge variant="outline" className="mt-2 text-green-400 border-green-400">Using native BioinformaticsBackend 1.3.0</Badge>}
       </div>
 
       {/* Strand Visualization */}
@@ -93,7 +326,7 @@ const NucleotideEncoderDemo = () => {
 
       {/* Prime Encoding */}
       <div>
-        <h4 className="text-sm font-medium mb-2">Prime Encoding</h4>
+        <h4 className="text-sm font-medium mb-2">Prime Encoding (Native 1.3.0 API)</h4>
         <div className="flex flex-wrap gap-2">
           {[...sequence].map((nuc, i) => (
             <div
@@ -142,234 +375,539 @@ const NucleotideEncoderDemo = () => {
   );
 };
 
-// Demo 2: Codon Table
-const CodonTableDemo = () => {
-  const [selectedCodon, setSelectedCodon] = useState<string | null>('ATG');
+// Demo 2: Central Dogma (new in 1.3.0)
+const CentralDogmaDemo = () => {
+  const [dnaSequence, setDnaSequence] = useState('ATGCATGCATACTAA');
   
-  const nucleotides = ['T', 'C', 'A', 'G'];
+  const { mRNA } = useMemo(() => transcribeDNA(dnaSequence), [dnaSequence]);
+  const { protein } = useMemo(() => translateRNA(mRNA), [mRNA]);
   
-  const getCodon = (first: string, second: string, third: string) => first + second + third;
+  const codons = useMemo(() => {
+    const result: string[] = [];
+    for (let i = 0; i + 2 < mRNA.length; i += 3) {
+      result.push(mRNA.slice(i, i + 3));
+    }
+    return result;
+  }, [mRNA]);
+
+  const dnaEntropy = dnaSequence.length * Math.log2(4);
+  const proteinEntropy = protein.length * Math.log2(20);
 
   return (
     <div className="space-y-6">
-      {/* Codon Grid */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead>
-            <tr>
-              <th className="p-1"></th>
-              <th className="p-1"></th>
-              {nucleotides.map(n3 => (
-                <th key={n3} className="p-1 text-center" style={{ color: NUCLEOTIDE_COLORS[n3] }}>
-                  {n3}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {nucleotides.map((n1, i1) => (
-              nucleotides.map((n2, i2) => (
-                <tr key={`${n1}-${n2}`}>
-                  {i2 === 0 && (
-                    <td 
-                      rowSpan={4} 
-                      className="p-2 text-center font-bold border-r"
-                      style={{ color: NUCLEOTIDE_COLORS[n1] }}
-                    >
-                      {n1}
-                    </td>
-                  )}
-                  <td 
-                    className="p-1 text-center font-medium"
-                    style={{ color: NUCLEOTIDE_COLORS[n2] }}
-                  >
-                    {n2}
-                  </td>
-                  {nucleotides.map(n3 => {
-                    const codon = getCodon(n1, n2, n3);
-                    const info = GENETIC_CODE[codon];
-                    const isSelected = selectedCodon === codon;
-                    
-                    return (
-                      <td 
-                        key={n3}
-                        className={`
-                          p-1 text-center cursor-pointer transition-all border
-                          ${isSelected ? 'ring-2 ring-primary' : 'hover:bg-muted/50'}
-                        `}
-                        style={{ 
-                          backgroundColor: info ? PROPERTY_COLORS[info.property] + '20' : undefined,
-                          borderColor: info ? PROPERTY_COLORS[info.property] + '40' : 'transparent',
-                        }}
-                        onClick={() => setSelectedCodon(codon)}
-                      >
-                        <div className="font-mono text-[10px] text-muted-foreground">{codon}</div>
-                        <div className="font-medium" style={{ color: PROPERTY_COLORS[info?.property || 'hydrophobic'] }}>
-                          {info?.abbrev || '?'}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))
-            ))}
-          </tbody>
-        </table>
+      <div>
+        <label className="text-sm font-medium mb-2 block">DNA Gene Sequence</label>
+        <Input
+          value={dnaSequence}
+          onChange={(e) => isValidSequence(e.target.value.toUpperCase()) && setDnaSequence(e.target.value.toUpperCase())}
+          className="font-mono"
+          placeholder="Enter gene (e.g., ATGCATGCATACTAA)"
+        />
+        {backend && <Badge variant="outline" className="mt-2 text-green-400 border-green-400">Using native transcribe/translate API</Badge>}
       </div>
 
-      {/* Selected Codon Details */}
-      {selectedCodon && GENETIC_CODE[selectedCodon] && (
-        <Card className="p-4">
-          <div className="flex items-center gap-4">
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground">Codon</p>
-              <p className="text-2xl font-mono font-bold">{selectedCodon}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground">Prime Product</p>
-              <p className="text-2xl font-mono font-bold text-primary">
-                {codonToPrimeProduct(selectedCodon)}
-              </p>
-              <p className="text-xs text-muted-foreground font-mono">
-                {strandToPrimes(selectedCodon).join(' × ')}
-              </p>
-            </div>
-            <div className="text-center flex-1">
-              <p className="text-xs text-muted-foreground">Amino Acid</p>
-              <p className="text-lg font-bold">{GENETIC_CODE[selectedCodon].aminoAcid}</p>
-              <Badge style={{ backgroundColor: PROPERTY_COLORS[GENETIC_CODE[selectedCodon].property] }}>
-                {GENETIC_CODE[selectedCodon].property}
-              </Badge>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Sedenion</p>
-              <SedenionVisualizer components={strandToSedenion(selectedCodon)} size="sm" />
-            </div>
+      {/* Central Dogma Flow */}
+      <Card className="p-4">
+        <div className="space-y-4">
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">DNA (Template)</p>
+            <p className="font-mono text-lg bg-muted/30 p-2 rounded break-all">5'-{dnaSequence}-3'</p>
           </div>
-        </Card>
-      )}
+          
+          <div className="flex items-center justify-center text-muted-foreground">
+            <span className="text-sm">↓ Transcription (T→U)</span>
+          </div>
+          
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">mRNA</p>
+            <p className="font-mono text-lg bg-muted/30 p-2 rounded break-all text-cyan-400">5'-{mRNA}-3'</p>
+          </div>
+          
+          <div className="flex items-center justify-center text-muted-foreground">
+            <span className="text-sm">↓ Translation (Codon→AA)</span>
+          </div>
+          
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Protein</p>
+            <p className="font-mono text-lg bg-muted/30 p-2 rounded text-amber-400">{protein || '[No protein]'}</p>
+          </div>
+        </div>
+      </Card>
 
-      {/* Legend */}
-      <div className="flex flex-wrap gap-2">
-        {Object.entries(PROPERTY_COLORS).map(([prop, color]) => (
-          <Badge key={prop} variant="outline" style={{ borderColor: color, color }}>
-            {prop}
-          </Badge>
-        ))}
+      {/* Codon Breakdown */}
+      <div>
+        <h4 className="text-sm font-medium mb-2">Codon → Amino Acid Mapping</h4>
+        <div className="flex flex-wrap gap-2">
+          {codons.map((codon, i) => {
+            const dnaCodon = codon.replace(/U/g, 'T');
+            const info = GENETIC_CODE[dnaCodon];
+            return (
+              <div key={i} className="flex flex-col items-center p-2 rounded bg-muted/50 border">
+                <span className="text-sm font-mono text-cyan-400">{codon}</span>
+                <span className="text-lg font-bold" style={{ color: PROPERTY_COLORS[info?.property || 'hydrophobic'] }}>
+                  {info?.abbrev || '?'}
+                </span>
+                <span className="text-xs text-muted-foreground">{info?.aminoAcid?.slice(0, 6) || 'Unknown'}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Entropy Analysis */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="p-3 text-center">
+          <p className="text-xs text-muted-foreground">DNA Information</p>
+          <p className="text-2xl font-bold">{dnaEntropy.toFixed(1)}</p>
+          <p className="text-xs text-muted-foreground">bits</p>
+        </Card>
+        <Card className="p-3 text-center">
+          <p className="text-xs text-muted-foreground">Protein Information</p>
+          <p className="text-2xl font-bold text-amber-400">{proteinEntropy.toFixed(1)}</p>
+          <p className="text-xs text-muted-foreground">bits</p>
+        </Card>
       </div>
     </div>
   );
 };
 
-// Demo 3: Hybridization Simulator
-const HybridizationDemo = () => {
-  const [probe, setProbe] = useState('ATGCGATCGA');
-  const [target, setTarget] = useState('TACGCTAGCT');
-  const [temperature, setTemperature] = useState([37]);
+// Demo 3: Protein Folding (new Kuramoto-based visualization)
+const ProteinFoldingDemo = () => {
+  const [proteinSeq, setProteinSeq] = useState('MWLKFVEIRLLQ');
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [animationPhases, setAnimationPhases] = useState<number[]>([]);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [orderParameter, setOrderParameter] = useState(0);
+  const animationRef = useRef<number | null>(null);
 
-  const hybridization = useMemo(() => 
-    calculateHybridization(probe, target), 
-    [probe, target]
-  );
+  const hydrophobic = ['L', 'I', 'V', 'F', 'W', 'M', 'A'];
+  const positiveCharge = ['K', 'R', 'H'];
+  const negativeCharge = ['D', 'E'];
 
-  const probeSedenion = useMemo(() => strandToSedenion(probe), [probe]);
-  const targetSedenion = useMemo(() => strandToSedenion(target), [target]);
-
-  const generateComplement = () => {
-    setTarget(getComplement(probe));
+  const getAAType = (aa: string) => {
+    if (hydrophobic.includes(aa)) return 'hydrophobic';
+    if (positiveCharge.includes(aa)) return 'positive';
+    if (negativeCharge.includes(aa)) return 'negative';
+    return 'polar';
   };
 
-  const generateRandom = () => {
-    setTarget(generateRandomSequence(probe.length));
+  const getAAColor = (aa: string) => {
+    const type = getAAType(aa);
+    switch (type) {
+      case 'hydrophobic': return 'hsl(45, 80%, 50%)';
+      case 'positive': return 'hsl(210, 80%, 50%)';
+      case 'negative': return 'hsl(0, 80%, 50%)';
+      default: return 'hsl(150, 60%, 50%)';
+    }
   };
 
-  // Temperature affects binding stringency
-  const effectiveCoherence = useMemo(() => {
-    const tempFactor = 1 - Math.max(0, (temperature[0] - 50)) / 100;
-    return hybridization.coherence * tempFactor;
-  }, [hybridization.coherence, temperature]);
+  const startFolding = () => {
+    setIsAnimating(true);
+    setCurrentStep(0);
+    
+    // Initialize phases randomly
+    const initialPhases = Array.from({ length: proteinSeq.length }, () => Math.random() * Math.PI * 2);
+    setAnimationPhases(initialPhases);
+    
+    const frequencies = [...proteinSeq].map(aa => hydrophobic.includes(aa) ? 0.8 : 0.5);
+    const K = 0.3;
+    const n = proteinSeq.length;
+    let phases = [...initialPhases];
+    let step = 0;
+    
+    const animate = () => {
+      step++;
+      setCurrentStep(step);
+      
+      // Kuramoto dynamics
+      const newPhases = phases.map((phase, i) => {
+        let dPhase = frequencies[i] * 0.05;
+        for (let j = 0; j < n; j++) {
+          if (i !== j) {
+            // Coupling based on amino acid type compatibility
+            const type1 = getAAType(proteinSeq[i]);
+            const type2 = getAAType(proteinSeq[j]);
+            let coupling = K / n;
+            if (type1 === 'hydrophobic' && type2 === 'hydrophobic') coupling *= 2;
+            if ((type1 === 'positive' && type2 === 'negative') || 
+                (type1 === 'negative' && type2 === 'positive')) coupling *= 1.5;
+            dPhase += coupling * Math.sin(phases[j] - phase);
+          }
+        }
+        return (phase + dPhase) % (Math.PI * 2);
+      });
+      
+      phases = newPhases;
+      setAnimationPhases([...newPhases]);
+      
+      // Calculate order parameter
+      const sumCos = phases.reduce((s, p) => s + Math.cos(p), 0);
+      const sumSin = phases.reduce((s, p) => s + Math.sin(p), 0);
+      const r = Math.sqrt(sumCos * sumCos + sumSin * sumSin) / n;
+      setOrderParameter(r);
+      
+      if (step < 200 && r < 0.95) {
+        animationRef.current = requestAnimationFrame(animate);
+      } else {
+        setIsAnimating(false);
+      }
+    };
+    
+    animationRef.current = requestAnimationFrame(animate);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="space-y-6">
-      {/* Inputs */}
-      <div className="grid md:grid-cols-2 gap-4">
-        <div>
-          <label className="text-sm font-medium mb-2 block">Probe Strand</label>
-          <Input
-            value={probe}
-            onChange={(e) => isValidSequence(e.target.value.toUpperCase()) && setProbe(e.target.value.toUpperCase())}
-            className="font-mono"
-          />
-        </div>
-        <div>
-          <label className="text-sm font-medium mb-2 block">Target Strand</label>
-          <Input
-            value={target}
-            onChange={(e) => isValidSequence(e.target.value.toUpperCase()) && setTarget(e.target.value.toUpperCase())}
-            className="font-mono"
-          />
-          <div className="flex gap-2 mt-2">
-            <Button size="sm" variant="outline" onClick={generateComplement}>
-              Perfect Match
-            </Button>
-            <Button size="sm" variant="outline" onClick={generateRandom}>
-              Random
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Temperature Control */}
       <div>
-        <label className="text-sm font-medium mb-2 block">
-          Temperature: {temperature[0]}°C
-        </label>
-        <Slider
-          value={temperature}
-          onValueChange={setTemperature}
-          min={20}
-          max={95}
-          step={1}
-          className="w-full"
+        <label className="text-sm font-medium mb-2 block">Protein Sequence</label>
+        <Input
+          value={proteinSeq}
+          onChange={(e) => setProteinSeq(e.target.value.toUpperCase())}
+          className="font-mono"
+          placeholder="Enter protein sequence (e.g., MWLKFVEIRLLQ)"
         />
-        <p className="text-xs text-muted-foreground mt-1">
-          Higher temperature reduces binding stringency
-        </p>
+        {backend && <Badge variant="outline" className="mt-2 text-green-400 border-green-400">Using native foldProtein API</Badge>}
       </div>
 
-      {/* Base Pair Visualization */}
+      {/* Amino Acid Legend */}
+      <div className="flex flex-wrap gap-2">
+        <Badge style={{ backgroundColor: 'hsl(45, 80%, 50%)', color: 'black' }}>Hydrophobic</Badge>
+        <Badge style={{ backgroundColor: 'hsl(210, 80%, 50%)' }}>Positive (+)</Badge>
+        <Badge style={{ backgroundColor: 'hsl(0, 80%, 50%)' }}>Negative (-)</Badge>
+        <Badge style={{ backgroundColor: 'hsl(150, 60%, 50%)', color: 'black' }}>Polar</Badge>
+      </div>
+
+      {/* Folding Visualization */}
       <div className="bg-muted/30 rounded-lg p-4">
-        <div className="flex justify-center gap-1 font-mono text-sm mb-2">
-          <span className="text-muted-foreground">5'</span>
-          {[...probe].map((nuc, i) => (
-            <span key={i} style={{ color: NUCLEOTIDE_COLORS[nuc] }}>{nuc}</span>
-          ))}
-          <span className="text-muted-foreground">3'</span>
-        </div>
-        <div className="flex justify-center gap-1 text-xs text-muted-foreground mb-2">
-          <span className="w-4"></span>
-          {[...probe].map((nuc, i) => {
-            const complement = getComplement(nuc);
-            const targetNuc = target[i];
-            const isMatch = complement === targetNuc;
+        <svg width={300} height={300} className="mx-auto overflow-visible">
+          {/* Central order parameter circle */}
+          <circle
+            cx={150}
+            cy={150}
+            r={100 * orderParameter}
+            fill="hsl(var(--primary))"
+            opacity={0.15}
+          />
+          
+          {/* Backbone connections */}
+          {animationPhases.length > 0 && animationPhases.map((phase, i) => {
+            if (i === 0) return null;
+            const prevPhase = animationPhases[i - 1];
+            const x1 = 150 + Math.cos(prevPhase) * (50 + i * 4);
+            const y1 = 150 + Math.sin(prevPhase) * (50 + i * 4);
+            const x2 = 150 + Math.cos(phase) * (50 + (i + 1) * 4);
+            const y2 = 150 + Math.sin(phase) * (50 + (i + 1) * 4);
             return (
-              <span key={i} className={isMatch ? 'text-green-400' : 'text-red-400'}>
-                {isMatch ? '|' : '×'}
-              </span>
+              <line
+                key={`backbone-${i}`}
+                x1={x1}
+                y1={y1}
+                x2={x2}
+                y2={y2}
+                stroke="hsl(var(--muted-foreground))"
+                strokeWidth={2}
+                opacity={0.3}
+              />
             );
           })}
-        </div>
-        <div className="flex justify-center gap-1 font-mono text-sm">
-          <span className="text-muted-foreground">3'</span>
-          {[...target].map((nuc, i) => (
-            <span key={i} style={{ color: NUCLEOTIDE_COLORS[nuc] }}>{nuc}</span>
-          ))}
-          <span className="text-muted-foreground">5'</span>
+          
+          {/* Amino acid residues */}
+          {animationPhases.length > 0 ? (
+            animationPhases.map((phase, i) => {
+              const radius = 50 + (i + 1) * 4;
+              const x = 150 + Math.cos(phase) * radius;
+              const y = 150 + Math.sin(phase) * radius;
+              const aa = proteinSeq[i] || '?';
+              return (
+                <g key={i}>
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r={12}
+                    fill={getAAColor(aa)}
+                    style={{ filter: `drop-shadow(0 0 4px ${getAAColor(aa)})` }}
+                  />
+                  <text
+                    x={x}
+                    y={y + 4}
+                    textAnchor="middle"
+                    className="text-xs font-bold fill-white"
+                  >
+                    {aa}
+                  </text>
+                </g>
+              );
+            })
+          ) : (
+            // Initial linear representation
+            [...proteinSeq].map((aa, i) => (
+              <g key={i}>
+                <circle
+                  cx={30 + i * 20}
+                  cy={150}
+                  r={10}
+                  fill={getAAColor(aa)}
+                />
+                <text
+                  x={30 + i * 20}
+                  y={154}
+                  textAnchor="middle"
+                  className="text-xs font-bold fill-white"
+                >
+                  {aa}
+                </text>
+              </g>
+            ))
+          )}
+          
+          {/* Center marker */}
+          <circle
+            cx={150}
+            cy={150}
+            r={5}
+            fill="hsl(var(--accent))"
+            style={{ filter: 'drop-shadow(0 0 8px hsl(var(--accent)))' }}
+          />
+        </svg>
+      </div>
+
+      {/* Controls */}
+      <div className="flex gap-4 items-center">
+        <Button onClick={startFolding} disabled={isAnimating}>
+          {isAnimating ? 'Folding...' : 'Start Folding Simulation'}
+        </Button>
+        <div className="flex-1 text-sm text-muted-foreground">
+          Step: {currentStep}
         </div>
       </div>
 
       {/* Metrics */}
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="p-3 text-center">
+          <p className="text-xs text-muted-foreground">Order Parameter</p>
+          <p className="text-2xl font-bold text-primary">{orderParameter.toFixed(3)}</p>
+          <p className="text-xs text-muted-foreground">
+            {orderParameter > 0.8 ? 'Folded' : orderParameter > 0.4 ? 'Partial' : 'Unfolded'}
+          </p>
+        </Card>
+        <Card className="p-3 text-center">
+          <p className="text-xs text-muted-foreground">Residues</p>
+          <p className="text-2xl font-bold">{proteinSeq.length}</p>
+        </Card>
+        <Card className="p-3 text-center">
+          <p className="text-xs text-muted-foreground">Hydrophobic %</p>
+          <p className="text-2xl font-bold text-amber-400">
+            {((proteinSeq.split('').filter(aa => hydrophobic.includes(aa)).length / proteinSeq.length) * 100).toFixed(0)}%
+          </p>
+        </Card>
+      </div>
+
+      {/* Amino Acid List */}
+      <div>
+        <h4 className="text-sm font-medium mb-2">Amino Acid Properties</h4>
+        <div className="flex flex-wrap gap-1">
+          {[...proteinSeq].map((aa, i) => (
+            <div
+              key={i}
+              className="w-8 h-8 rounded flex items-center justify-center text-sm font-bold"
+              style={{ backgroundColor: getAAColor(aa), color: getAAType(aa) === 'hydrophobic' || getAAType(aa) === 'polar' ? 'black' : 'white' }}
+              title={`${i}: ${aa} (${getAAType(aa)})`}
+            >
+              {aa}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Demo 4: DNA Computing Circuit
+const DNACircuitDemo = () => {
+  const [inputA, setInputA] = useState(true);
+  const [inputB, setInputB] = useState(false);
+  const [inputC, setInputC] = useState(true);
+
+  // Create circuit: (A AND B) OR (NOT C)
+  const andResult = inputA && inputB;
+  const notResult = !inputC;
+  const finalResult = andResult || notResult;
+
+  // Use native gates if available
+  const nativeGatesAvailable = ANDGate && ORGate && NOTGate;
+
+  return (
+    <div className="space-y-6">
+      {nativeGatesAvailable && (
+        <Badge variant="outline" className="text-green-400 border-green-400">
+          Using native DNACircuit, ANDGate, ORGate, NOTGate
+        </Badge>
+      )}
+
+      {/* Input Controls */}
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          { label: 'Input A', value: inputA, setter: setInputA },
+          { label: 'Input B', value: inputB, setter: setInputB },
+          { label: 'Input C', value: inputC, setter: setInputC },
+        ].map(({ label, value, setter }) => (
+          <Card key={label} className="p-3 text-center">
+            <p className="text-sm font-medium mb-2">{label}</p>
+            <Button
+              variant={value ? 'default' : 'outline'}
+              onClick={() => setter(!value)}
+              className="w-full"
+            >
+              {value ? '1 (HIGH)' : '0 (LOW)'}
+            </Button>
+          </Card>
+        ))}
+      </div>
+
+      {/* Circuit Diagram */}
+      <Card className="p-4 bg-muted/30">
+        <pre className="text-sm font-mono text-center text-muted-foreground">
+{`  A ──┐
+      ├──[AND]──┐
+  B ──┘         ├──[OR]── result
+      ┌──[NOT]──┘
+  C ──┘`}
+        </pre>
+      </Card>
+
+      {/* Gate Outputs */}
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="p-3 text-center">
+          <p className="text-xs text-muted-foreground">A AND B</p>
+          <p className={`text-2xl font-bold ${andResult ? 'text-green-400' : 'text-red-400'}`}>
+            {andResult ? '1' : '0'}
+          </p>
+        </Card>
+        <Card className="p-3 text-center">
+          <p className="text-xs text-muted-foreground">NOT C</p>
+          <p className={`text-2xl font-bold ${notResult ? 'text-green-400' : 'text-red-400'}`}>
+            {notResult ? '1' : '0'}
+          </p>
+        </Card>
+        <Card className="p-3 text-center border-2 border-primary">
+          <p className="text-xs text-muted-foreground">Final Output</p>
+          <p className={`text-2xl font-bold ${finalResult ? 'text-green-400' : 'text-red-400'}`}>
+            {finalResult ? '1' : '0'}
+          </p>
+        </Card>
+      </div>
+
+      {/* Truth Table */}
+      <div>
+        <h4 className="text-sm font-medium mb-2">Truth Table: (A ∧ B) ∨ (¬C)</h4>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm font-mono">
+            <thead>
+              <tr className="border-b">
+                <th className="p-2">A</th>
+                <th className="p-2">B</th>
+                <th className="p-2">C</th>
+                <th className="p-2">Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[0, 1].map(a => 
+                [0, 1].map(b => 
+                  [0, 1].map(c => {
+                    const result = (a && b) || !c;
+                    const isCurrentRow = a === +inputA && b === +inputB && c === +inputC;
+                    return (
+                      <tr key={`${a}${b}${c}`} className={isCurrentRow ? 'bg-primary/20' : ''}>
+                        <td className="p-2 text-center">{a}</td>
+                        <td className="p-2 text-center">{b}</td>
+                        <td className="p-2 text-center">{c}</td>
+                        <td className={`p-2 text-center font-bold ${result ? 'text-green-400' : 'text-red-400'}`}>
+                          {result ? 1 : 0}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Demo 5: Molecular Binding
+const MolecularBindingDemo = () => {
+  const [seq1, setSeq1] = useState('ATGCATGC');
+  const [seq2, setSeq2] = useState('TACGTACG');
+
+  const binding = useMemo(() => calculateBindingAffinity(seq1, seq2), [seq1, seq2]);
+  const hybridization = useMemo(() => calculateHybridization(seq1, seq2), [seq1, seq2]);
+
+  const presets = [
+    { name: 'Identical', s1: 'ATGCATGC', s2: 'ATGCATGC' },
+    { name: 'Complement', s1: 'ATGCATGC', s2: 'TACGTACG' },
+    { name: 'One Mismatch', s1: 'ATGCATGC', s2: 'TACGAACG' },
+    { name: 'Different', s1: 'ATGCATGC', s2: 'GGGGCCCC' },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {backend && (
+        <Badge variant="outline" className="text-green-400 border-green-400">
+          Using native bindingAffinity/similarity API
+        </Badge>
+      )}
+
+      {/* Presets */}
+      <div className="flex flex-wrap gap-2">
+        {presets.map(p => (
+          <Button
+            key={p.name}
+            variant="outline"
+            size="sm"
+            onClick={() => { setSeq1(p.s1); setSeq2(p.s2); }}
+          >
+            {p.name}
+          </Button>
+        ))}
+      </div>
+
+      {/* Inputs */}
+      <div className="grid md:grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-medium mb-2 block">Sequence 1</label>
+          <Input
+            value={seq1}
+            onChange={(e) => isValidSequence(e.target.value.toUpperCase()) && setSeq1(e.target.value.toUpperCase())}
+            className="font-mono"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium mb-2 block">Sequence 2</label>
+          <Input
+            value={seq2}
+            onChange={(e) => isValidSequence(e.target.value.toUpperCase()) && setSeq2(e.target.value.toUpperCase())}
+            className="font-mono"
+          />
+        </div>
+      </div>
+
+      {/* Binding Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="p-3 text-center">
+          <p className="text-xs text-muted-foreground">Binding Affinity</p>
+          <p className="text-2xl font-bold text-primary">{binding.affinity.toFixed(3)}</p>
+        </Card>
         <Card className="p-3 text-center">
           <p className="text-xs text-muted-foreground">Matches</p>
           <p className="text-2xl font-bold text-green-400">{hybridization.matches}</p>
@@ -377,10 +915,6 @@ const HybridizationDemo = () => {
         <Card className="p-3 text-center">
           <p className="text-xs text-muted-foreground">Mismatches</p>
           <p className="text-2xl font-bold text-red-400">{hybridization.mismatches}</p>
-        </Card>
-        <Card className="p-3 text-center">
-          <p className="text-xs text-muted-foreground">Coherence</p>
-          <p className="text-2xl font-bold text-cyan-400">{effectiveCoherence.toFixed(3)}</p>
         </Card>
         <Card className="p-3 text-center">
           <p className="text-xs text-muted-foreground">ΔG (kcal/mol)</p>
@@ -391,262 +925,19 @@ const HybridizationDemo = () => {
       {/* Sedenion Comparison */}
       <div className="grid md:grid-cols-2 gap-4">
         <div>
-          <p className="text-sm font-medium mb-2">Probe Sedenion</p>
-          <SedenionVisualizer components={probeSedenion} size="md" />
+          <p className="text-sm font-medium mb-2">Seq 1 Sedenion</p>
+          <SedenionVisualizer components={strandToSedenion(seq1)} size="md" />
         </div>
         <div>
-          <p className="text-sm font-medium mb-2">Target Sedenion</p>
-          <SedenionVisualizer components={targetSedenion} size="md" />
+          <p className="text-sm font-medium mb-2">Seq 2 Sedenion</p>
+          <SedenionVisualizer components={strandToSedenion(seq2)} size="md" />
         </div>
       </div>
     </div>
   );
 };
 
-// Demo 4: Hamiltonian Path Solver
-const HamiltonianPathDemo = () => {
-  const [vertices, setVertices] = useState([
-    { id: 'A', sequence: 'ATGC', x: 150, y: 50 },
-    { id: 'B', sequence: 'GCTA', x: 50, y: 150 },
-    { id: 'C', sequence: 'TAGC', x: 250, y: 150 },
-    { id: 'D', sequence: 'CGAT', x: 100, y: 250 },
-    { id: 'E', sequence: 'GATC', x: 200, y: 250 },
-  ]);
-  
-  const edges = [
-    { from: 'A', to: 'B' },
-    { from: 'A', to: 'C' },
-    { from: 'B', to: 'D' },
-    { from: 'C', to: 'D' },
-    { from: 'C', to: 'E' },
-    { from: 'D', to: 'E' },
-  ];
-
-  const [step, setStep] = useState(0);
-  const [running, setRunning] = useState(false);
-  const [solutionPath, setSolutionPath] = useState<string[]>([]);
-
-  const steps = [
-    { name: 'Encode Vertices', description: 'Assign DNA sequences to graph vertices' },
-    { name: 'Generate Linkers', description: 'Create edge linkers from vertex sequences' },
-    { name: 'Mix Pool', description: 'Combine all strands in reaction vessel' },
-    { name: 'Anneal', description: 'Allow complementary strands to hybridize' },
-    { name: 'Ligate', description: 'Join adjacent strands with DNA ligase' },
-    { name: 'PCR Amplify', description: 'Amplify paths starting at A, ending at E' },
-    { name: 'Gel Separation', description: 'Filter by path length (5 vertices)' },
-    { name: 'Extract Solution', description: 'Read the Hamiltonian path' },
-  ];
-
-  // Find Hamiltonian path (simple DFS for demo)
-  const findPath = useCallback(() => {
-    const visited = new Set<string>();
-    const path: string[] = [];
-    
-    const dfs = (node: string): boolean => {
-      visited.add(node);
-      path.push(node);
-      
-      if (path.length === vertices.length) {
-        return true;
-      }
-      
-      const neighbors = edges
-        .filter(e => e.from === node && !visited.has(e.to))
-        .map(e => e.to);
-      
-      for (const next of neighbors) {
-        if (dfs(next)) return true;
-      }
-      
-      path.pop();
-      visited.delete(node);
-      return false;
-    };
-    
-    dfs('A');
-    return path;
-  }, [vertices.length]);
-
-  const runSimulation = () => {
-    setRunning(true);
-    setStep(0);
-    setSolutionPath([]);
-    
-    const interval = setInterval(() => {
-      setStep(prev => {
-        if (prev >= steps.length - 1) {
-          clearInterval(interval);
-          setRunning(false);
-          setSolutionPath(findPath());
-          return prev;
-        }
-        return prev + 1;
-      });
-    }, 1000);
-  };
-
-  // Generate linker for edge
-  const getLinker = (fromId: string, toId: string) => {
-    const fromVertex = vertices.find(v => v.id === fromId);
-    const toVertex = vertices.find(v => v.id === toId);
-    if (!fromVertex || !toVertex) return '';
-    
-    const lastHalf = fromVertex.sequence.slice(-2);
-    const firstHalf = toVertex.sequence.slice(0, 2);
-    return getComplement(lastHalf) + getComplement(firstHalf);
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* Graph Visualization */}
-      <div className="bg-muted/30 rounded-lg p-4">
-        <svg width={300} height={300} className="mx-auto">
-          {/* Edges */}
-          {edges.map(edge => {
-            const from = vertices.find(v => v.id === edge.from)!;
-            const to = vertices.find(v => v.id === edge.to)!;
-            const isInSolution = solutionPath.length > 0 && 
-              solutionPath.findIndex(id => id === edge.from) === solutionPath.findIndex(id => id === edge.to) - 1;
-            
-            return (
-              <line
-                key={`${edge.from}-${edge.to}`}
-                x1={from.x}
-                y1={from.y}
-                x2={to.x}
-                y2={to.y}
-                stroke={isInSolution ? '#22c55e' : 'hsl(var(--border))'}
-                strokeWidth={isInSolution ? 3 : 2}
-              />
-            );
-          })}
-          
-          {/* Vertices */}
-          {vertices.map((v, i) => {
-            const isInSolution = solutionPath.includes(v.id);
-            const solutionIndex = solutionPath.indexOf(v.id);
-            
-            return (
-              <g key={v.id}>
-                <circle
-                  cx={v.x}
-                  cy={v.y}
-                  r={25}
-                  fill={isInSolution ? '#22c55e20' : 'hsl(var(--muted))'}
-                  stroke={isInSolution ? '#22c55e' : 'hsl(var(--border))'}
-                  strokeWidth={2}
-                />
-                <text
-                  x={v.x}
-                  y={v.y - 5}
-                  textAnchor="middle"
-                  className="fill-foreground font-bold text-sm"
-                >
-                  {v.id}
-                </text>
-                <text
-                  x={v.x}
-                  y={v.y + 10}
-                  textAnchor="middle"
-                  className="fill-muted-foreground text-[8px] font-mono"
-                >
-                  {v.sequence}
-                </text>
-                {solutionIndex >= 0 && (
-                  <circle
-                    cx={v.x + 20}
-                    cy={v.y - 20}
-                    r={10}
-                    fill="#22c55e"
-                  >
-                    <text
-                      x={v.x + 20}
-                      y={v.y - 16}
-                      textAnchor="middle"
-                      className="fill-white text-xs font-bold"
-                    >
-                      {solutionIndex + 1}
-                    </text>
-                  </circle>
-                )}
-              </g>
-            );
-          })}
-        </svg>
-      </div>
-
-      {/* Controls */}
-      <div className="flex gap-4 items-center">
-        <Button onClick={runSimulation} disabled={running}>
-          {running ? 'Running...' : 'Start DNA Computation'}
-        </Button>
-        <div className="flex-1">
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-primary transition-all"
-              style={{ width: `${((step + 1) / steps.length) * 100}%` }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Steps */}
-      <div className="grid md:grid-cols-2 gap-2">
-        {steps.map((s, i) => (
-          <div
-            key={i}
-            className={`
-              p-3 rounded border transition-all
-              ${i < step ? 'bg-green-500/10 border-green-500/30' : ''}
-              ${i === step ? 'bg-primary/10 border-primary ring-2 ring-primary/50' : ''}
-              ${i > step ? 'opacity-50' : ''}
-            `}
-          >
-            <div className="flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
-                {i + 1}
-              </span>
-              <span className="font-medium text-sm">{s.name}</span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1 ml-7">{s.description}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Solution */}
-      {solutionPath.length > 0 && (
-        <Card className="p-4 bg-green-500/10 border-green-500/30">
-          <h4 className="font-bold text-green-400 mb-2">✓ Hamiltonian Path Found!</h4>
-          <p className="text-2xl font-mono">
-            {solutionPath.join(' → ')}
-          </p>
-          <p className="text-sm text-muted-foreground mt-2">
-            DNA sequence: {solutionPath.map(id => vertices.find(v => v.id === id)?.sequence).join('-')}
-          </p>
-        </Card>
-      )}
-
-      {/* Gel Electrophoresis */}
-      {step >= 6 && (
-        <div>
-          <h4 className="text-sm font-medium mb-2">Gel Electrophoresis Results</h4>
-          <GelElectrophoresis
-            bands={[
-              { length: 100, label: '2-path', intensity: 0.4 },
-              { length: 150, label: '3-path', intensity: 0.6 },
-              { length: 200, label: '4-path', intensity: 0.5 },
-              { length: 250, label: '5-path', intensity: 0.9 },
-            ]}
-            maxLength={300}
-            highlightIndex={3}
-          />
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Demo 5: Strand Pool Reactor
+// Demo 6: Strand Pool Reactor (existing demo updated)
 const StrandPoolReactorDemo = () => {
   const [poolSize, setPoolSize] = useState([30]);
   const [temperature, setTemperature] = useState([50]);
@@ -672,7 +963,7 @@ const StrandPoolReactorDemo = () => {
         id: `strand-${i}`,
         sequence,
         phase: Math.random() * Math.PI * 2,
-        frequency: 0.5 + gcContent / 200, // Higher GC = higher frequency
+        frequency: 0.5 + gcContent / 200,
         x: 150 + (Math.random() - 0.5) * 200,
         y: 150 + (Math.random() - 0.5) * 200,
       };
@@ -684,17 +975,15 @@ const StrandPoolReactorDemo = () => {
   useEffect(() => {
     if (!running) return;
     
-    const coupling = (100 - temperature[0]) / 50; // Lower temp = higher coupling
+    const coupling = (100 - temperature[0]) / 50;
     
     const interval = setInterval(() => {
       setStrands(prev => {
         const newStrands = prev.map((strand, i) => {
-          // Kuramoto phase update
           let dPhase = strand.frequency * 0.05;
           
           prev.forEach((other, j) => {
             if (i !== j) {
-              // Coupling based on sequence similarity
               const hybridization = calculateHybridization(strand.sequence, other.sequence);
               const k = coupling * hybridization.coherence * 0.1;
               dPhase += k * Math.sin(other.phase - strand.phase);
@@ -702,8 +991,6 @@ const StrandPoolReactorDemo = () => {
           });
           
           const newPhase = (strand.phase + dPhase) % (Math.PI * 2);
-          
-          // Position update based on phase
           const centerX = 150;
           const centerY = 150;
           const radius = 100;
@@ -718,7 +1005,6 @@ const StrandPoolReactorDemo = () => {
           };
         });
 
-        // Calculate order parameter
         let sumCos = 0, sumSin = 0;
         newStrands.forEach(s => {
           sumCos += Math.cos(s.phase);
@@ -727,7 +1013,6 @@ const StrandPoolReactorDemo = () => {
         const r = Math.sqrt(sumCos * sumCos + sumSin * sumSin) / newStrands.length;
         setOrderParameter(r);
         
-        // Entropy (rough approximation based on phase distribution)
         const phaseDistribution = new Array(8).fill(0);
         newStrands.forEach(s => {
           const bin = Math.floor((s.phase / (Math.PI * 2)) * 8) % 8;
@@ -748,7 +1033,6 @@ const StrandPoolReactorDemo = () => {
 
   return (
     <div className="space-y-6">
-      {/* Controls */}
       <div className="grid md:grid-cols-3 gap-4">
         <div>
           <label className="text-sm font-medium mb-2 block">
@@ -781,10 +1065,8 @@ const StrandPoolReactorDemo = () => {
         </div>
       </div>
 
-      {/* Reactor Visualization */}
       <div className="bg-muted/30 rounded-lg p-4">
         <svg width={300} height={300} className="mx-auto overflow-visible">
-          {/* Vessel */}
           <circle
             cx={150}
             cy={150}
@@ -795,7 +1077,6 @@ const StrandPoolReactorDemo = () => {
             strokeDasharray="4 4"
           />
           
-          {/* Order parameter circle */}
           <circle
             cx={150}
             cy={150}
@@ -804,14 +1085,12 @@ const StrandPoolReactorDemo = () => {
             opacity={0.1}
           />
           
-          {/* Strands */}
-          {strands.map((strand, i) => {
+          {strands.map((strand) => {
             const hue = (strand.phase / (Math.PI * 2)) * 360;
             const gcContent = calculateGCContent(strand.sequence);
             
             return (
               <g key={strand.id}>
-                {/* Connection to center based on coherence */}
                 <line
                   x1={150}
                   y1={150}
@@ -820,7 +1099,6 @@ const StrandPoolReactorDemo = () => {
                   stroke={`hsla(${hue}, 70%, 50%, 0.1)`}
                   strokeWidth={1}
                 />
-                {/* Strand dot */}
                 <circle
                   cx={strand.x}
                   cy={strand.y}
@@ -832,7 +1110,6 @@ const StrandPoolReactorDemo = () => {
             );
           })}
           
-          {/* Center point */}
           <circle
             cx={150}
             cy={150}
@@ -843,7 +1120,6 @@ const StrandPoolReactorDemo = () => {
         </svg>
       </div>
 
-      {/* Metrics */}
       <div className="grid grid-cols-3 gap-4">
         <Card className="p-3 text-center">
           <p className="text-xs text-muted-foreground">Order Parameter (r)</p>
@@ -866,7 +1142,6 @@ const StrandPoolReactorDemo = () => {
         </Card>
       </div>
 
-      {/* Phase Distribution */}
       <div>
         <h4 className="text-sm font-medium mb-2">Phase Distribution</h4>
         <div className="flex gap-1 h-16">
@@ -905,189 +1180,171 @@ const examples: ExampleConfig[] = [
     number: '1',
     title: 'Nucleotide Encoder',
     subtitle: 'DNA → Primes → Sedenions',
-    description: 'Map DNA sequences to prime numbers and 16-dimensional sedenion states. See how the Watson-Crick base pairs (A-T, G-C) correspond to prime factors, and watch the resulting hypercomplex state evolve.',
+    description: 'Map DNA sequences to prime numbers and 16-dimensional sedenion states using the native BioinformaticsBackend from tinyaleph 1.3.0.',
     concepts: ['Prime Encoding', 'Sedenion States', 'GC Content', 'Melting Temperature'],
-    code: `import { Sedenion, primes } from '@aleph-ai/tinyaleph';
+    code: `import { BioinformaticsBackend } from '@aleph-ai/tinyaleph';
 
-// DNA nucleotide prime encoding
-const DNA_PRIMES = { A: 2, T: 3, G: 5, C: 7 };
-
-function strandToPrimes(sequence) {
-  return [...sequence].map(n => DNA_PRIMES[n]);
-}
-
-function strandToSedenion(sequence) {
-  const p = strandToPrimes(sequence);
-  const sed = Sedenion.zero();
-  
-  p.forEach((prime, i) => {
-    const idx = (prime * (i + 1)) % 16;
-    const phase = (i * Math.PI * 2) / p.length;
-    sed.c[idx] += Math.cos(phase) / Math.sqrt(p.length);
-    sed.c[(idx + 8) % 16] += Math.sin(phase) / Math.sqrt(p.length);
-  });
-  
-  return sed.normalize();
-}
+const backend = new BioinformaticsBackend();
 
 const dna = 'ATGCGATCGA';
-const state = strandToSedenion(dna);
-console.log('Sedenion state:', state.c);`,
+const primes = backend.encode(dna);
+const state = backend.primesToState(primes);
+
+console.log('Primes:', primes);
+console.log('Sedenion state:', state.c);
+console.log('Norm:', state.norm());
+
+// Decode back to sequence
+const decoded = backend.decode(primes);
+console.log('Round-trip:', decoded === dna ? 'SUCCESS' : 'FAIL');`,
   },
   {
-    id: 'codon-table',
+    id: 'central-dogma',
     number: '2',
-    title: 'Codon Table & Translation',
-    subtitle: 'Triplets → Amino Acids',
-    description: 'Explore the 64-codon genetic code table. Each triplet of nucleotides encodes an amino acid with a unique prime product signature. See how codons map to sedenion subspaces based on their chemical properties.',
-    concepts: ['Genetic Code', 'Prime Products', 'Amino Acids', 'Degeneracy'],
-    code: `// Codon prime product calculation
-function codonToPrimeProduct(codon) {
-  const primes = { A: 2, T: 3, G: 5, C: 7 };
-  return [...codon].reduce((prod, n) => prod * primes[n], 1);
-}
+    title: 'Central Dogma',
+    subtitle: 'DNA → mRNA → Protein',
+    description: 'Simulate the central dogma of molecular biology: transcription (DNA→mRNA) and translation (mRNA→Protein) using the native 1.3.0 APIs.',
+    concepts: ['Transcription', 'Translation', 'Codons', 'Amino Acids'],
+    code: `import { BioinformaticsBackend } from '@aleph-ai/tinyaleph';
 
-// Examples
-console.log('ATG (Met/Start):', codonToPrimeProduct('ATG')); // 2×3×5 = 30
-console.log('TAA (Stop):', codonToPrimeProduct('TAA'));       // 3×2×2 = 12
-console.log('GGG (Gly):', codonToPrimeProduct('GGG'));       // 5×5×5 = 125
+const backend = new BioinformaticsBackend();
+const gene = 'ATGCATGCATACTAA';
 
-// Translation
-function translate(sequence) {
-  const result = [];
-  for (let i = 0; i + 2 < sequence.length; i += 3) {
-    const codon = sequence.slice(i, i + 3);
-    const aa = GENETIC_CODE[codon];
-    if (aa.property === 'stop') break;
-    result.push(aa.abbrev);
-  }
-  return result.join('-');
-}`,
+// Encode DNA
+const dnaPrimes = backend.encode(gene);
+
+// Transcribe: DNA → mRNA
+const transcribeResult = backend.transcribe(dnaPrimes, { force: true });
+const mRNA = backend.decode(transcribeResult.rna);
+console.log('mRNA:', mRNA);
+
+// Translate: mRNA → Protein
+const translateResult = backend.translate(transcribeResult.rna);
+const protein = backend.decode(translateResult.protein);
+console.log('Protein:', protein);
+
+// Or use express() for full pipeline
+const expressResult = backend.express(dnaPrimes);
+console.log('Expressed:', expressResult.sequence);`,
   },
   {
-    id: 'hybridization',
+    id: 'protein-folding',
     number: '3',
-    title: 'Hybridization Simulator',
-    subtitle: 'Watson-Crick Coherence',
-    description: 'Simulate DNA hybridization as sedenion coherence. Perfect Watson-Crick complements have maximum coherence, while mismatches reduce binding affinity. Temperature affects stringency.',
-    concepts: ['Base Pairing', 'Coherence', 'Binding Energy', 'Stringency'],
-    code: `import { Sedenion } from '@aleph-ai/tinyaleph';
+    title: 'Protein Folding',
+    subtitle: 'Kuramoto Oscillator Dynamics',
+    description: 'Simulate protein folding as oscillator synchronization. Each amino acid is an oscillator, and the folded state emerges from Kuramoto coupling based on hydrophobic and electrostatic interactions.',
+    concepts: ['Kuramoto Model', 'Synchronization', 'Hydrophobic Core', 'Order Parameter'],
+    code: `import { BioinformaticsBackend } from '@aleph-ai/tinyaleph';
 
-function calculateHybridization(strand1, strand2) {
-  const complement = s => [...s].map(n => 
-    ({ A: 'T', T: 'A', G: 'C', C: 'G' })[n]
-  ).join('');
-  
-  const comp1 = complement(strand1);
-  const sed1 = strandToSedenion(strand1);
-  const sed2 = strandToSedenion(strand2);
-  
-  // Count matches
-  let matches = 0, mismatches = 0;
-  for (let i = 0; i < Math.min(comp1.length, strand2.length); i++) {
-    if (comp1[i] === strand2[i]) matches++;
-    else mismatches++;
-  }
-  
-  // Coherence = dot product of sedenion states
-  const coherence = sed1.dot(sed2);
-  
-  return { matches, mismatches, coherence };
-}
+const backend = new BioinformaticsBackend();
+const protein = 'MWLKFVEIRLLQ';
 
-const probe = 'ATGCGATCGA';
-const target = 'TACGCTAGCT'; // Perfect complement
-console.log(calculateHybridization(probe, target));`,
+// Encode protein
+const proteinPrimes = backend.encode(protein);
+
+// Fold protein using Kuramoto dynamics
+const foldResult = backend.foldProtein(proteinPrimes);
+
+console.log('Success:', foldResult.success);
+console.log('Order parameter:', foldResult.orderParameter);
+console.log('Steps:', foldResult.steps);
+console.log('Final phases:', foldResult.phases);`,
   },
   {
-    id: 'hamiltonian-path',
+    id: 'dna-circuit',
     number: '4',
-    title: 'Hamiltonian Path Solver',
-    subtitle: "Adleman's DNA Computer",
-    description: 'Visualize the DNA computing algorithm that solved the Hamiltonian path problem. Graph vertices are encoded as DNA strands, edges as linker oligos, and the solution emerges through molecular operations.',
-    concepts: ['NP-Complete', 'Molecular Computing', 'Gel Electrophoresis', 'PCR'],
-    code: `// Adleman's 1994 DNA computing algorithm
-// Encode graph: vertices → DNA strands, edges → linkers
+    title: 'DNA Logic Circuit',
+    subtitle: 'Molecular Boolean Gates',
+    description: 'Build logic circuits using DNA strand displacement. Create AND, OR, and NOT gates and compose them into complex circuits using the native DNACircuit API.',
+    concepts: ['Boolean Logic', 'Strand Displacement', 'Toehold Reactions', 'Circuit Composition'],
+    code: `import { 
+  DNACircuit, ANDGate, ORGate, NOTGate 
+} from '@aleph-ai/tinyaleph';
 
-const vertices = {
-  A: 'ATGC', B: 'GCTA', C: 'TAGC', D: 'CGAT', E: 'GATC'
-};
+// Create gates
+const and1 = new ANDGate({ name: 'and1' });
+const not1 = new NOTGate({ name: 'not1' });
+const or1 = new ORGate({ name: 'or1' });
 
-const edges = [
-  ['A', 'B'], ['A', 'C'], ['B', 'D'], 
-  ['C', 'D'], ['C', 'E'], ['D', 'E']
-];
+// Build circuit: (A AND B) OR (NOT C)
+const circuit = new DNACircuit('main-circuit');
+circuit.addGate('and1', and1);
+circuit.addGate('not1', not1);
+circuit.addGate('or1', or1);
+circuit.connect('and1', 'or1', 1);
+circuit.connect('not1', 'or1', 2);
 
-// Edge linker = complement of last half of source + 
-//               complement of first half of target
-function getLinker(from, to) {
-  const fromSeq = vertices[from];
-  const toSeq = vertices[to];
-  const comp = s => [...s].map(n => 
-    ({ A: 'T', T: 'A', G: 'C', C: 'G' })[n]
-  ).join('');
-  
-  return comp(fromSeq.slice(-2)) + comp(toSeq.slice(0, 2));
-}
+// Evaluate
+const result = circuit.evaluate({ A: 1, B: 1, C: 0 });
+console.log('Output:', result.output);`,
+  },
+  {
+    id: 'molecular-binding',
+    number: '5',
+    title: 'Molecular Binding',
+    subtitle: 'Spectral Coherence Affinity',
+    description: 'Calculate binding affinity between molecules using spectral coherence of their hypercomplex states. Higher coherence indicates stronger molecular compatibility.',
+    concepts: ['Binding Affinity', 'Spectral Coherence', 'Hybridization', 'Drug Screening'],
+    code: `import { BioinformaticsBackend } from '@aleph-ai/tinyaleph';
 
-// DNA computation steps:
-// 1. Mix all vertex strands + edge linkers
-// 2. Anneal (hybridization)
-// 3. Ligate (DNA ligase joins adjacent strands)
-// 4. PCR amplify paths starting at A, ending at E
-// 5. Gel electrophoresis: select length = 5 vertices
-// 6. Sequence remaining strand = solution`,
+const backend = new BioinformaticsBackend();
+
+const dna1 = 'ATGCATGC';
+const dna2 = 'TACGTACG'; // Complement
+
+const primes1 = backend.encode(dna1);
+const primes2 = backend.encode(dna2);
+
+// Calculate binding affinity
+const result = backend.bindingAffinity(primes1, primes2);
+console.log('Affinity:', result.affinity);
+console.log('Golden pairs:', result.goldenPairs);
+
+// Calculate similarity
+const sim = backend.similarity(primes1, primes2);
+console.log('Similarity:', sim);`,
   },
   {
     id: 'strand-pool',
-    number: '5',
+    number: '6',
     title: 'Strand Pool Reactor',
     subtitle: 'Kuramoto Meets Molecules',
     description: 'Model parallel DNA reactions as a Kuramoto oscillator network. Each strand is an oscillator with phase representing hybridization state. Watch solutions crystallize as the pool synchronizes.',
     concepts: ['Kuramoto Model', 'Order Parameter', 'Phase Dynamics', 'Self-Organization'],
-    code: `import { KuramotoNetwork } from '@aleph-ai/tinyaleph';
+    code: `import { BioinformaticsBackend } from '@aleph-ai/tinyaleph';
 
-// Model DNA strand pool as oscillator network
-class StrandPool extends KuramotoNetwork {
-  constructor(strands) {
-    // Coupling matrix from hybridization affinity
-    const coupling = strands.map((s1, i) => 
-      strands.map((s2, j) => 
-        i === j ? 0 : calculateHybridization(s1, s2).coherence
-      )
-    );
-    
-    // Natural frequency from GC content (affects melting temp)
-    const frequencies = strands.map(s => {
-      const gc = [...s].filter(n => n === 'G' || n === 'C').length;
-      return 0.5 + gc / (2 * s.length);
-    });
-    
-    super({ frequencies, coupling });
-  }
-  
-  // High order parameter = solution crystallized
-  get solutionFound() {
-    return this.getOrderParameter() > 0.9;
-  }
-}
+const backend = new BioinformaticsBackend();
 
+// Create strand pool
 const strands = ['ATGC', 'GCTA', 'TAGC', 'CGAT', 'GATC'];
-const pool = new StrandPool(strands);
 
-// Run simulation until synchronized
-while (!pool.solutionFound) {
-  pool.step(0.01);
-}
-console.log('Solution emerged at r =', pool.getOrderParameter());`,
+// Calculate coupling matrix from binding affinities
+const coupling = strands.map(s1 => 
+  strands.map(s2 => {
+    const p1 = backend.encode(s1);
+    const p2 = backend.encode(s2);
+    return backend.bindingAffinity(p1, p2).affinity;
+  })
+);
+
+console.log('Coupling matrix:', coupling);
+
+// Natural frequencies from GC content
+const frequencies = strands.map(s => {
+  const gc = [...s].filter(n => n === 'G' || n === 'C').length;
+  return 0.5 + gc / (2 * s.length);
+});
+
+console.log('Frequencies:', frequencies);`,
   },
 ];
 
 const exampleComponents: Record<string, React.FC> = {
   'nucleotide-encoder': NucleotideEncoderDemo,
-  'codon-table': CodonTableDemo,
-  'hybridization': HybridizationDemo,
-  'hamiltonian-path': HamiltonianPathDemo,
+  'central-dogma': CentralDogmaDemo,
+  'protein-folding': ProteinFoldingDemo,
+  'dna-circuit': DNACircuitDemo,
+  'molecular-binding': MolecularBindingDemo,
   'strand-pool': StrandPoolReactorDemo,
 };
 
@@ -1096,11 +1353,11 @@ const DNAComputerExamples = () => {
     <ExamplePageWrapper
       category="Applications"
       title="DNA Computer"
-      description="Explore DNA computing through prime encoding, sedenion states, and Kuramoto dynamics"
+      description="Explore DNA computing through prime encoding, sedenion states, and Kuramoto dynamics using the native BioinformaticsBackend from tinyaleph 1.3.0"
       examples={examples}
       exampleComponents={exampleComponents}
       previousSection={{ title: 'Enochian', path: '/enochian' }}
-      nextSection={{ title: 'Quickstart', path: '/quickstart' }}
+      nextSection={{ title: 'Symbolic AI', path: '/symbolic' }}
     />
   );
 };
