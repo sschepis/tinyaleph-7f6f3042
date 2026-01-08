@@ -15,14 +15,6 @@ import {
   RESTRICTION_ENZYMES,
 } from '@/lib/dna-computer/types';
 import {
-  strandToPrimes,
-  strandToSedenion,
-  getComplement,
-  calculateGCContent,
-  calculateMeltingTemp,
-  calculateHybridization,
-  isValidSequence,
-  generateRandomSequence,
   findRestrictionSites,
   designPrimers,
   simulatePCR,
@@ -31,6 +23,9 @@ import {
   findORFs,
   calculateSequenceComplexity,
 } from '@/lib/dna-computer/encoding';
+import RestrictionMap from '@/components/dna-computer/RestrictionMap';
+import HydrophobicityPlot from '@/components/dna-computer/HydrophobicityPlot';
+import ORFViewer from '@/components/dna-computer/ORFViewer';
 
 // Import BioinformaticsBackend from tinyaleph
 let BioinformaticsBackend: any = null;
@@ -1191,6 +1186,362 @@ const StrandPoolReactorDemo = () => {
   );
 };
 
+// Demo 7: PCR Simulation
+const PCRSimulationDemo = () => {
+  const [template, setTemplate] = useState('ATGCGATCGAATGCTAGCTAGCTAGCTAGCTAGCTGACTGA');
+  const [primerStatus, setPrimerStatus] = useState<string>('');
+  const [pcrResult, setPcrResult] = useState<ReturnType<typeof simulatePCR> | null>(null);
+  const [cycles, setCycles] = useState([25]);
+
+  const primers = useMemo(() => designPrimers(template), [template]);
+
+  useEffect(() => {
+    if (template.length >= 40 && primers) {
+      const result = simulatePCR(template, primers.forward.sequence, primers.reverse.sequence, cycles[0]);
+      setPcrResult(result);
+      setPrimerStatus(result.product.length > 0 ? 'Valid primers designed' : 'Primer design failed');
+    } else {
+      setPrimerStatus('Template too short (min 40bp)');
+      setPcrResult(null);
+    }
+  }, [template, primers, cycles]);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <label className="text-sm font-medium mb-2 block">Template DNA (≥40bp)</label>
+        <Input
+          value={template}
+          onChange={(e) => isValidSequence(e.target.value.toUpperCase()) && setTemplate(e.target.value.toUpperCase())}
+          className="font-mono text-sm"
+          placeholder="Enter template sequence"
+        />
+        <p className="text-xs text-muted-foreground mt-1">{primerStatus}</p>
+      </div>
+
+      <div>
+        <label className="text-sm font-medium mb-2 block">PCR Cycles: {cycles[0]}</label>
+        <Slider value={cycles} onValueChange={setCycles} min={10} max={40} step={1} />
+      </div>
+
+      {primers && primers.forward && primers.reverse && (
+        <Card className="p-4 space-y-3">
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Forward Primer (5'→3')</p>
+            <p className="font-mono text-sm bg-green-500/20 p-2 rounded text-green-400">{primers.forward.sequence}</p>
+            <p className="text-xs text-muted-foreground mt-1">Tm: {primers.forward.tm?.toFixed(1)}°C | GC: {primers.forward.gcContent?.toFixed(1)}%</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Reverse Primer (5'→3')</p>
+            <p className="font-mono text-sm bg-red-500/20 p-2 rounded text-red-400">{primers.reverse.sequence}</p>
+            <p className="text-xs text-muted-foreground mt-1">Tm: {primers.reverse.tm?.toFixed(1)}°C | GC: {primers.reverse.gcContent?.toFixed(1)}%</p>
+          </div>
+        </Card>
+      )}
+
+      {pcrResult && pcrResult.product.length > 0 && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card className="p-3 text-center">
+              <p className="text-xs text-muted-foreground">Product Length</p>
+              <p className="text-2xl font-bold">{pcrResult.length}</p>
+              <p className="text-xs text-muted-foreground">bp</p>
+            </Card>
+            <Card className="p-3 text-center">
+              <p className="text-xs text-muted-foreground">Copies</p>
+              <p className="text-2xl font-bold text-primary">{pcrResult.copies.toExponential(2)}</p>
+              <p className="text-xs text-muted-foreground">molecules</p>
+            </Card>
+            <Card className="p-3 text-center">
+              <p className="text-xs text-muted-foreground">GC Content</p>
+              <p className="text-2xl font-bold text-cyan-400">{calculateGCContent(pcrResult.product).toFixed(1)}%</p>
+            </Card>
+            <Card className="p-3 text-center">
+              <p className="text-xs text-muted-foreground">Yield</p>
+              <p className="text-2xl font-bold text-amber-400">{pcrResult.yield}</p>
+            </Card>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-medium mb-2">PCR Product</h4>
+            <div className="bg-muted/30 rounded-lg p-4 overflow-x-auto">
+              <DNAStrandVisualizer sequence={pcrResult.product} showComplement />
+            </div>
+          </div>
+
+          <GelElectrophoresis 
+            bands={[{ length: pcrResult.length, intensity: 1, label: 'PCR Product' }]} 
+          />
+        </>
+      )}
+    </div>
+  );
+};
+
+// Demo 8: CRISPR Editor
+const CRISPREditorDemo = () => {
+  const [sequence, setSequence] = useState('ATGCGATCGAATGCTAGCTAGCTAGCTAGCTAGCTGACTGAAGG');
+  const [selectedTarget, setSelectedTarget] = useState<number | null>(null);
+  const [insertSequence, setInsertSequence] = useState('AAAA');
+  const [editedSequence, setEditedSequence] = useState('');
+
+  const targets = useMemo(() => findCRISPRTargets(sequence), [sequence]);
+
+  const handleEdit = () => {
+    if (selectedTarget !== null && targets[selectedTarget]) {
+      const target = targets[selectedTarget];
+      const cutPosition = target.position + 17; // Cas9 cuts ~3bp upstream of PAM
+      const edited = sequence.slice(0, cutPosition) + insertSequence + sequence.slice(cutPosition);
+      setEditedSequence(edited);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <label className="text-sm font-medium mb-2 block">Target DNA Sequence</label>
+        <Input
+          value={sequence}
+          onChange={(e) => {
+            const val = e.target.value.toUpperCase();
+            if (isValidSequence(val)) {
+              setSequence(val);
+              setEditedSequence('');
+              setSelectedTarget(null);
+            }
+          }}
+          className="font-mono text-sm"
+        />
+      </div>
+
+      <Card className="p-4">
+        <h4 className="text-sm font-medium mb-3">CRISPR-Cas9 Targets (NGG PAM)</h4>
+        {targets.length === 0 ? (
+          <p className="text-muted-foreground text-sm">No NGG PAM sites found</p>
+        ) : (
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {targets.map((target, i) => (
+              <div
+                key={i}
+                className={`p-3 rounded cursor-pointer transition-colors ${
+                  selectedTarget === i ? 'bg-primary/20 border border-primary' : 'bg-muted/30 hover:bg-muted/50'
+                }`}
+                onClick={() => setSelectedTarget(i)}
+              >
+                <div className="flex justify-between items-center">
+                  <span className="font-mono text-sm">{target.sequence}_{target.pam}</span>
+                  <div className="flex gap-2">
+                    <Badge variant="outline">Pos: {target.position}</Badge>
+                    <Badge variant={target.score > 0.8 ? 'default' : 'destructive'}>
+                      Score: {target.score.toFixed(2)}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {selectedTarget !== null && (
+        <div className="space-y-4">
+          <div className="flex gap-4 items-end">
+            <div className="flex-1">
+              <label className="text-sm font-medium mb-2 block">Insert Sequence</label>
+              <Input
+                value={insertSequence}
+                onChange={(e) => isValidSequence(e.target.value.toUpperCase()) && setInsertSequence(e.target.value.toUpperCase())}
+                className="font-mono"
+                placeholder="Sequence to insert at cut site"
+              />
+            </div>
+            <Button onClick={handleEdit}>Simulate Edit</Button>
+          </div>
+        </div>
+      )}
+
+      {editedSequence && (
+        <div className="space-y-4">
+          <div>
+            <h4 className="text-sm font-medium mb-2">Original Sequence</h4>
+            <p className="font-mono text-sm bg-muted/30 p-2 rounded break-all">{sequence}</p>
+          </div>
+          <div>
+            <h4 className="text-sm font-medium mb-2 text-green-400">Edited Sequence (+{insertSequence.length}bp)</h4>
+            <p className="font-mono text-sm bg-green-500/20 p-2 rounded break-all">{editedSequence}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Card className="p-3 text-center">
+              <p className="text-xs text-muted-foreground">Original Length</p>
+              <p className="text-2xl font-bold">{sequence.length} bp</p>
+            </Card>
+            <Card className="p-3 text-center">
+              <p className="text-xs text-muted-foreground">Edited Length</p>
+              <p className="text-2xl font-bold text-green-400">{editedSequence.length} bp</p>
+            </Card>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Demo 9: Restriction Enzyme Digestion
+const RestrictionDigestDemo = () => {
+  const [sequence, setSequence] = useState('ATGAATTCGATCGGATCCTAGCTCGAGAATGCAAGCTTGATCGA');
+  
+  const restrictionSites = useMemo(() => findRestrictionSites(sequence), [sequence]);
+  
+  const fragments = useMemo(() => {
+    if (restrictionSites.length === 0) return [{ sequence, length: sequence.length }];
+    
+    const sortedSites = [...restrictionSites].sort((a, b) => a.position - b.position);
+    const frags: Array<{ sequence: string; length: number }> = [];
+    let lastPos = 0;
+    
+    sortedSites.forEach(site => {
+      if (site.position > lastPos) {
+        const fragSeq = sequence.slice(lastPos, site.position);
+        frags.push({ sequence: fragSeq, length: fragSeq.length });
+      }
+      lastPos = site.position + site.enzyme.recognition.length;
+    });
+    
+    if (lastPos < sequence.length) {
+      const fragSeq = sequence.slice(lastPos);
+      frags.push({ sequence: fragSeq, length: fragSeq.length });
+    }
+    
+    return frags;
+  }, [sequence, restrictionSites]);
+
+  const gelBands = useMemo(() => 
+    fragments.map((f, i) => ({
+      length: f.length,
+      intensity: 0.8,
+      label: `Fragment ${i + 1}`
+    })).sort((a, b) => b.length - a.length),
+  [fragments]);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <label className="text-sm font-medium mb-2 block">DNA Sequence</label>
+        <Input
+          value={sequence}
+          onChange={(e) => isValidSequence(e.target.value.toUpperCase()) && setSequence(e.target.value.toUpperCase())}
+          className="font-mono text-sm"
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Detects: EcoRI (GAATTC), BamHI (GGATCC), HindIII (AAGCTT), XhoI (CTCGAG), NotI (GCGGCCGC), SalI (GTCGAC)
+        </p>
+      </div>
+
+      <RestrictionMap sequence={sequence} sites={restrictionSites.map(s => ({ enzyme: s.enzyme.name, position: s.position, recognition: s.enzyme.recognition }))} />
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card className="p-4">
+          <h4 className="text-sm font-medium mb-3">Restriction Sites Found</h4>
+          {restrictionSites.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No restriction sites found</p>
+          ) : (
+            <div className="space-y-2">
+              {restrictionSites.map((site, i) => (
+                <div key={i} className="flex justify-between items-center p-2 bg-muted/30 rounded">
+                  <span className="font-bold text-primary">{site.enzyme.name}</span>
+                  <div className="flex gap-2">
+                    <Badge variant="outline">{site.enzyme.recognition}</Badge>
+                    <Badge>@{site.position}</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        <Card className="p-4">
+          <h4 className="text-sm font-medium mb-3">Digest Fragments ({fragments.length})</h4>
+          <div className="space-y-2">
+            {fragments.sort((a, b) => b.length - a.length).map((frag, i) => (
+              <div key={i} className="flex justify-between items-center p-2 bg-muted/30 rounded">
+                <span className="font-mono text-sm truncate max-w-[150px]">{frag.sequence.slice(0, 10)}...</span>
+                <Badge>{frag.length} bp</Badge>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      <div>
+        <h4 className="text-sm font-medium mb-2">Gel Electrophoresis (Virtual)</h4>
+        <GelElectrophoresis bands={gelBands} />
+      </div>
+    </div>
+  );
+};
+
+// Demo 10: Sequence Analysis Suite
+const SequenceAnalysisDemo = () => {
+  const [sequence, setSequence] = useState('ATGAAACCCGGGTTTATGCGATCGAATGCTAGCTAGCTAGCTAGCTAGCTGACTGAAGG');
+  
+  const complexity = useMemo(() => calculateSequenceComplexity(sequence), [sequence]);
+  const hydrophobicity = useMemo(() => {
+    const { mRNA } = transcribeDNA(sequence);
+    const { protein } = translateRNA(mRNA);
+    return calculateHydrophobicityProfile(protein);
+  }, [sequence]);
+  
+  const orfs = useMemo(() => findORFs(sequence), [sequence]);
+  
+  const { mRNA } = useMemo(() => transcribeDNA(sequence), [sequence]);
+  const { protein } = useMemo(() => translateRNA(mRNA), [mRNA]);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <label className="text-sm font-medium mb-2 block">DNA Sequence</label>
+        <Input
+          value={sequence}
+          onChange={(e) => isValidSequence(e.target.value.toUpperCase()) && setSequence(e.target.value.toUpperCase())}
+          className="font-mono text-sm"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="p-3 text-center">
+          <p className="text-xs text-muted-foreground">Length</p>
+          <p className="text-2xl font-bold">{sequence.length}</p>
+          <p className="text-xs text-muted-foreground">bp</p>
+        </Card>
+        <Card className="p-3 text-center">
+          <p className="text-xs text-muted-foreground">GC Content</p>
+          <p className="text-2xl font-bold text-cyan-400">{calculateGCContent(sequence).toFixed(1)}%</p>
+        </Card>
+        <Card className="p-3 text-center">
+          <p className="text-xs text-muted-foreground">Complexity</p>
+          <p className="text-2xl font-bold text-purple-400">{complexity.toFixed(2)}</p>
+        </Card>
+        <Card className="p-3 text-center">
+          <p className="text-xs text-muted-foreground">ORFs Found</p>
+          <p className="text-2xl font-bold text-amber-400">{orfs.length}</p>
+        </Card>
+      </div>
+
+      <div>
+        <h4 className="text-sm font-medium mb-2">Open Reading Frames</h4>
+        <ORFViewer sequence={sequence} orfs={orfs} />
+      </div>
+
+      {protein.length > 0 && (
+        <div>
+          <h4 className="text-sm font-medium mb-2">Hydrophobicity Profile (Kyte-Doolittle)</h4>
+          <HydrophobicityPlot profile={hydrophobicity} proteinSequence={protein} />
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Example configurations
 const examples: ExampleConfig[] = [
   {
@@ -1209,12 +1560,7 @@ const primes = backend.encode(dna);
 const state = backend.primesToState(primes);
 
 console.log('Primes:', primes);
-console.log('Sedenion state:', state.c);
-console.log('Norm:', state.norm());
-
-// Decode back to sequence
-const decoded = backend.decode(primes);
-console.log('Round-trip:', decoded === dna ? 'SUCCESS' : 'FAIL');`,
+console.log('Sedenion state:', state.c);`,
   },
   {
     id: 'central-dogma',
@@ -1228,71 +1574,42 @@ console.log('Round-trip:', decoded === dna ? 'SUCCESS' : 'FAIL');`,
 const backend = new BioinformaticsBackend();
 const gene = 'ATGCATGCATACTAA';
 
-// Encode DNA
 const dnaPrimes = backend.encode(gene);
-
-// Transcribe: DNA → mRNA
 const transcribeResult = backend.transcribe(dnaPrimes, { force: true });
-const mRNA = backend.decode(transcribeResult.rna);
-console.log('mRNA:', mRNA);
-
-// Translate: mRNA → Protein
 const translateResult = backend.translate(transcribeResult.rna);
-const protein = backend.decode(translateResult.protein);
-console.log('Protein:', protein);
 
-// Or use express() for full pipeline
-const expressResult = backend.express(dnaPrimes);
-console.log('Expressed:', expressResult.sequence);`,
+console.log('Protein:', backend.decode(translateResult.protein));`,
   },
   {
     id: 'protein-folding',
     number: '3',
     title: 'Protein Folding',
     subtitle: 'Kuramoto Oscillator Dynamics',
-    description: 'Simulate protein folding as oscillator synchronization. Each amino acid is an oscillator, and the folded state emerges from Kuramoto coupling based on hydrophobic and electrostatic interactions.',
+    description: 'Simulate protein folding as oscillator synchronization using Kuramoto coupling based on hydrophobic and electrostatic interactions.',
     concepts: ['Kuramoto Model', 'Synchronization', 'Hydrophobic Core', 'Order Parameter'],
     code: `import { BioinformaticsBackend } from '@aleph-ai/tinyaleph';
 
 const backend = new BioinformaticsBackend();
 const protein = 'MWLKFVEIRLLQ';
-
-// Encode protein
 const proteinPrimes = backend.encode(protein);
-
-// Fold protein using Kuramoto dynamics
 const foldResult = backend.foldProtein(proteinPrimes);
 
-console.log('Success:', foldResult.success);
-console.log('Order parameter:', foldResult.orderParameter);
-console.log('Steps:', foldResult.steps);
-console.log('Final phases:', foldResult.phases);`,
+console.log('Order parameter:', foldResult.orderParameter);`,
   },
   {
     id: 'dna-circuit',
     number: '4',
     title: 'DNA Logic Circuit',
     subtitle: 'Molecular Boolean Gates',
-    description: 'Build logic circuits using DNA strand displacement. Create AND, OR, and NOT gates and compose them into complex circuits using the native DNACircuit API.',
+    description: 'Build logic circuits using DNA strand displacement with AND, OR, and NOT gates.',
     concepts: ['Boolean Logic', 'Strand Displacement', 'Toehold Reactions', 'Circuit Composition'],
-    code: `import { 
-  DNACircuit, ANDGate, ORGate, NOTGate 
-} from '@aleph-ai/tinyaleph';
+    code: `import { DNACircuit, ANDGate, ORGate, NOTGate } from '@aleph-ai/tinyaleph';
 
-// Create gates
-const and1 = new ANDGate({ name: 'and1' });
-const not1 = new NOTGate({ name: 'not1' });
-const or1 = new ORGate({ name: 'or1' });
-
-// Build circuit: (A AND B) OR (NOT C)
 const circuit = new DNACircuit('main-circuit');
-circuit.addGate('and1', and1);
-circuit.addGate('not1', not1);
-circuit.addGate('or1', or1);
-circuit.connect('and1', 'or1', 1);
-circuit.connect('not1', 'or1', 2);
+circuit.addGate('and1', new ANDGate({ name: 'and1' }));
+circuit.addGate('not1', new NOTGate({ name: 'not1' }));
+circuit.addGate('or1', new ORGate({ name: 'or1' }));
 
-// Evaluate
 const result = circuit.evaluate({ A: 1, B: 1, C: 0 });
 console.log('Output:', result.output);`,
   },
@@ -1301,59 +1618,100 @@ console.log('Output:', result.output);`,
     number: '5',
     title: 'Molecular Binding',
     subtitle: 'Spectral Coherence Affinity',
-    description: 'Calculate binding affinity between molecules using spectral coherence of their hypercomplex states. Higher coherence indicates stronger molecular compatibility.',
+    description: 'Calculate binding affinity between molecules using spectral coherence of their hypercomplex states.',
     concepts: ['Binding Affinity', 'Spectral Coherence', 'Hybridization', 'Drug Screening'],
     code: `import { BioinformaticsBackend } from '@aleph-ai/tinyaleph';
 
 const backend = new BioinformaticsBackend();
+const primes1 = backend.encode('ATGCATGC');
+const primes2 = backend.encode('TACGTACG');
 
-const dna1 = 'ATGCATGC';
-const dna2 = 'TACGTACG'; // Complement
-
-const primes1 = backend.encode(dna1);
-const primes2 = backend.encode(dna2);
-
-// Calculate binding affinity
 const result = backend.bindingAffinity(primes1, primes2);
-console.log('Affinity:', result.affinity);
-console.log('Golden pairs:', result.goldenPairs);
-
-// Calculate similarity
-const sim = backend.similarity(primes1, primes2);
-console.log('Similarity:', sim);`,
+console.log('Affinity:', result.affinity);`,
   },
   {
     id: 'strand-pool',
     number: '6',
     title: 'Strand Pool Reactor',
     subtitle: 'Kuramoto Meets Molecules',
-    description: 'Model parallel DNA reactions as a Kuramoto oscillator network. Each strand is an oscillator with phase representing hybridization state. Watch solutions crystallize as the pool synchronizes.',
+    description: 'Model parallel DNA reactions as a Kuramoto oscillator network. Watch solutions crystallize as the pool synchronizes.',
     concepts: ['Kuramoto Model', 'Order Parameter', 'Phase Dynamics', 'Self-Organization'],
     code: `import { BioinformaticsBackend } from '@aleph-ai/tinyaleph';
 
 const backend = new BioinformaticsBackend();
+const strands = ['ATGC', 'GCTA', 'TAGC', 'CGAT'];
 
-// Create strand pool
-const strands = ['ATGC', 'GCTA', 'TAGC', 'CGAT', 'GATC'];
-
-// Calculate coupling matrix from binding affinities
 const coupling = strands.map(s1 => 
-  strands.map(s2 => {
-    const p1 = backend.encode(s1);
-    const p2 = backend.encode(s2);
-    return backend.bindingAffinity(p1, p2).affinity;
-  })
+  strands.map(s2 => backend.bindingAffinity(
+    backend.encode(s1), backend.encode(s2)
+  ).affinity)
 );
+console.log('Coupling matrix:', coupling);`,
+  },
+  {
+    id: 'pcr-simulation',
+    number: '7',
+    title: 'PCR Simulation',
+    subtitle: 'Polymerase Chain Reaction',
+    description: 'Design primers and simulate PCR amplification. Automatically calculates melting temperatures and predicts amplicon.',
+    concepts: ['Primer Design', 'Annealing', 'Amplification', 'Gel Electrophoresis'],
+    code: `import { designPrimers, simulatePCR } from '@/lib/dna-computer/encoding';
 
-console.log('Coupling matrix:', coupling);
+const template = 'ATGCGATCGAATGCTAGCTAGCTAGCTAGCTAGCTGACTGA';
+const primers = designPrimers(template);
+const result = simulatePCR(template, primers.forward, primers.reverse, 25);
 
-// Natural frequencies from GC content
-const frequencies = strands.map(s => {
-  const gc = [...s].filter(n => n === 'G' || n === 'C').length;
-  return 0.5 + gc / (2 * s.length);
-});
+console.log('Product:', result.product);
+console.log('Amplification:', result.amplification);`,
+  },
+  {
+    id: 'crispr-editor',
+    number: '8',
+    title: 'CRISPR Editor',
+    subtitle: 'Cas9 Target Finder',
+    description: 'Find CRISPR-Cas9 target sites (NGG PAM) and simulate gene editing with custom insertions.',
+    concepts: ['Guide RNA', 'PAM Sequence', 'Off-target Score', 'Gene Editing'],
+    code: `import { findCRISPRTargets } from '@/lib/dna-computer/encoding';
 
-console.log('Frequencies:', frequencies);`,
+const sequence = 'ATGCGATCGAATGCTAGCTAGCTAGCTAAGGNGG';
+const targets = findCRISPRTargets(sequence);
+
+targets.forEach(t => {
+  console.log('Guide:', t.guide, 'PAM:', t.pam);
+  console.log('Off-target score:', t.offtargetScore);
+});`,
+  },
+  {
+    id: 'restriction-digest',
+    number: '9',
+    title: 'Restriction Digest',
+    subtitle: 'Enzyme Mapping',
+    description: 'Find restriction enzyme cut sites and simulate digestion. Visualize fragments with virtual gel electrophoresis.',
+    concepts: ['Restriction Enzymes', 'Digestion', 'Fragment Analysis', 'Gel Electrophoresis'],
+    code: `import { findRestrictionSites } from '@/lib/dna-computer/encoding';
+
+const sequence = 'ATGAATTCGATCGGATCCTAGCTCGAGAATGC';
+const sites = findRestrictionSites(sequence);
+
+sites.forEach(s => {
+  console.log(s.enzyme.name, '@', s.position, s.enzyme.site);
+});`,
+  },
+  {
+    id: 'sequence-analysis',
+    number: '10',
+    title: 'Sequence Analysis',
+    subtitle: 'Comprehensive Suite',
+    description: 'Full sequence analysis: ORF finding, hydrophobicity plots, complexity metrics, and more.',
+    concepts: ['ORF Detection', 'Hydrophobicity', 'Sequence Complexity', 'Kyte-Doolittle'],
+    code: `import { findORFs, calculateSequenceComplexity, calculateHydrophobicityProfile } from '@/lib/dna-computer/encoding';
+
+const sequence = 'ATGAAACCCGGGTTTATGCGATCGA';
+const orfs = findORFs(sequence);
+const complexity = calculateSequenceComplexity(sequence);
+
+console.log('ORFs found:', orfs.length);
+console.log('Complexity:', complexity);`,
   },
 ];
 
@@ -1364,6 +1722,10 @@ const exampleComponents: Record<string, React.FC> = {
   'dna-circuit': DNACircuitDemo,
   'molecular-binding': MolecularBindingDemo,
   'strand-pool': StrandPoolReactorDemo,
+  'pcr-simulation': PCRSimulationDemo,
+  'crispr-editor': CRISPREditorDemo,
+  'restriction-digest': RestrictionDigestDemo,
+  'sequence-analysis': SequenceAnalysisDemo,
 };
 
 const DNAComputerExamples = () => {
