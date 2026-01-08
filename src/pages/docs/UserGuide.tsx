@@ -290,6 +290,190 @@ const entropy = engine.shannonEntropy(state);
         </div>
       </section>
 
+      {/* Bioinformatics */}
+      <section id="bioinformatics" className="space-y-6 scroll-mt-24">
+        <h2 className="text-2xl font-bold">Bioinformatics Engine</h2>
+        
+        <Card className="border-l-4 border-l-green-500">
+          <CardContent className="pt-6 flex gap-4">
+            <Lightbulb className="w-6 h-6 text-green-500 flex-shrink-0" />
+            <div>
+              <p className="font-medium">Central Dogma Operations</p>
+              <p className="text-muted-foreground text-sm mt-1">
+                The BioinformaticsBackend provides native DNA → RNA → Protein translation,
+                protein folding simulation using Kuramoto oscillators, and molecular binding affinity calculations.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="grid gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>DNA/RNA/Protein Translation</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">
+                Convert between DNA, RNA, and amino acid sequences using the standard genetic code.
+              </p>
+              <CodeBlock
+                code={`import { BioinformaticsBackend } from '@aleph-ai/tinyaleph/bio';
+
+const bio = new BioinformaticsBackend();
+
+// Transcription: DNA → RNA
+const dna = 'ATGCGATCGATCG';
+const rna = bio.transcribe(dna);  // 'AUGCGAUCGAUCG'
+
+// Translation: RNA → Protein
+const protein = bio.translate(rna);  // 'MRS...'`}
+                language="typescript"
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Protein Folding Simulation</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">
+                Model protein folding dynamics using Kuramoto oscillators where each residue synchronizes based on hydrophobicity.
+              </p>
+              <CodeBlock
+                code={`// Each amino acid is an oscillator
+const result = bio.foldProtein('MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHFDLSH', 500);
+
+// Track synchronization over time
+console.log('Order parameter:', result.orderParameter);
+console.log('Final phases:', result.phases);
+console.log('Folding energy:', result.energy);`}
+                language="typescript"
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Molecular Binding</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">
+                Calculate binding affinity between molecular sequences using sedenion coherence.
+              </p>
+              <CodeBlock
+                code={`// Compute binding affinity
+const affinity = bio.bindingAffinity('ACGTACGT', 'TGCATGCA');
+console.log('Affinity:', affinity);  // 0.0-1.0`}
+                language="typescript"
+              />
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* Symbolic AI */}
+      <section id="symbolic-ai" className="space-y-6 scroll-mt-24">
+        <h2 className="text-2xl font-bold">Symbolic AI</h2>
+        
+        <Card className="border-l-4 border-l-purple-500">
+          <CardContent className="pt-6 flex gap-4">
+            <Lightbulb className="w-6 h-6 text-purple-500 flex-shrink-0" />
+            <div>
+              <p className="font-medium">400+ Universal Symbols</p>
+              <p className="text-muted-foreground text-sm mt-1">
+                A curated database of archetypes from Jungian psychology, Tarot, I-Ching, Egyptian hieroglyphs,
+                and more. Each symbol has a unique prime signature enabling resonance-based semantic operations.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="grid gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Symbol Lookup & Search</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">
+                Query the symbol database by ID, prime number, category, or cultural tag.
+              </p>
+              <CodeBlock
+                code={`import { symbolDatabase, getSymbol } from '@aleph-ai/tinyaleph/symbolic';
+
+// Direct lookup
+const sun = getSymbol('sun');
+console.log(sun.unicode, sun.meaning);
+
+// Browse categories: archetype, tarot, iching, element, etc.
+const archetypes = symbolDatabase.getSymbolsByCategory('archetype');
+
+// Filter by culture: egyptian, norse, greek, chinese, universal
+const egyptian = symbolDatabase.getSymbolsByTag('egyptian');
+
+// Full-text search
+const results = symbolDatabase.search('wisdom');`}
+                language="typescript"
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Semantic Inference</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">
+                Map natural language to symbols using pattern matching and resonance-enhanced disambiguation.
+              </p>
+              <CodeBlock
+                code={`import { inferSymbol, inferWithResonance } from '@aleph-ai/tinyaleph/symbolic';
+
+// Basic inference
+const symbol = inferSymbol('brave warrior');
+// Returns matched symbol with confidence score
+
+// Resonance-ranked inference (uses Golden Ratio)
+const ranked = inferWithResonance('transformation');
+// Returns symbols sorted by harmonic resonance
+
+// Context-aware selection
+const best = inferMostResonant('guide', ['hero', 'journey']);
+// Returns symbol that resonates best with context`}
+                language="typescript"
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Compound Symbols & Sequences</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">
+                Build complex multi-symbol concepts and narrative sequences with prime-based composition.
+              </p>
+              <CodeBlock
+                code={`import { createCompound, createSequence } from '@aleph-ai/tinyaleph/symbolic';
+
+// Create compound (prime product)
+const fireMage = createCompound('fire_mage', ['fire', 'wisdom', 'staff']);
+console.log(fireMage.prime);  // Product of component primes
+
+// Create narrative sequence
+const quest = createSequence('heroes_journey', [
+  'home', 'call', 'threshold', 'trials', 'transformation', 'return'
+]);
+
+// Analyze resonance between compounds
+const resonance = calculateResonance(fireMage, iceMage);`}
+                language="typescript"
+              />
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
       {/* Best Practices */}
       <section id="best-practices" className="space-y-6 scroll-mt-24">
         <h2 className="text-2xl font-bold">Best Practices</h2>
