@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Plus, RotateCcw, GripVertical, Zap, Circle, BarChart3, ArrowLeft, Sparkles, Target, Download, Upload, Wand2, Layers, GitBranch } from 'lucide-react';
+import { Play, Plus, RotateCcw, GripVertical, Zap, Circle, BarChart3, ArrowLeft, Sparkles, Target, Download, Upload, Wand2, Layers, GitBranch, ShieldCheck, Activity } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SedenionVisualizer from '@/components/SedenionVisualizer';
 import {
@@ -640,6 +640,21 @@ const AmplitudePlot = ({ state }: { state: ComplexNumber[] }) => {
   );
 };
 
+// Verification error interface
+interface VerificationError {
+  gateId: string;
+  type: 'error' | 'warning';
+  message: string;
+}
+
+// Noise simulation result
+interface NoiseSimResult {
+  fidelity: number;
+  errorRate: number;
+  decoherenceEffect: number;
+  noisyState: ComplexNumber[] | null;
+}
+
 const QuantumCircuitRunner = () => {
   const [wires, setWires] = useState<Wire[]>([
     { id: 1, label: 'q[0]' },
@@ -651,6 +666,9 @@ const QuantumCircuitRunner = () => {
   const [history, setHistory] = useState<string[]>([]);
   const [measurementResult, setMeasurementResult] = useState<MeasurementResult | null>(null);
   const [measurementSeed, setMeasurementSeed] = useState(42);
+  const [verificationErrors, setVerificationErrors] = useState<VerificationError[]>([]);
+  const [noiseResult, setNoiseResult] = useState<NoiseSimResult | null>(null);
+  const [noiseLevel, setNoiseLevel] = useState(0.01); // 1% gate error rate
   
   const nextGateId = useRef(1);
 
@@ -1103,19 +1121,107 @@ const QuantumCircuitRunner = () => {
     setHistory(prev => [...prev, `Transpiled: ${originalCount} gates → ${transpiled.length} gates (H, T, CNOT)`]);
   }, [gates, wires.length]);
 
-  const sedenionState = useMemo(() => {
-    if (!executedState) return Array(16).fill(0);
-    return stateToSedenion(executedState);
-  }, [executedState]);
+  // Circuit verification - check for common errors
+  const verifyCircuit = useCallback(() => {
+    const errors: VerificationError[] = [];
+    
+    for (const gate of gates) {
+      // Check if target wire exists
+      if (gate.wireIndex < 0 || gate.wireIndex >= wires.length) {
+        errors.push({
+          gateId: gate.id,
+          type: 'error',
+          message: `${gate.type} gate targets non-existent qubit q[${gate.wireIndex}]`,
+        });
+      }
+      
+      // Check control wire for controlled gates
+      if (gate.controlWire !== undefined) {
+        if (gate.controlWire < 0 || gate.controlWire >= wires.length) {
+          errors.push({
+            gateId: gate.id,
+            type: 'error',
+            message: `${gate.type} control wire q[${gate.controlWire}] doesn't exist`,
+          });
+        }
+        if (gate.controlWire === gate.wireIndex) {
+          errors.push({
+            gateId: gate.id,
+            type: 'error',
+            message: `${gate.type} control and target cannot be same qubit`,
+          });
+        }
+      }
+      
+      // Check second control wire for 3-qubit gates
+      if (gate.controlWire2 !== undefined) {
+        if (gate.controlWire2 < 0 || gate.controlWire2 >= wires.length) {
+          errors.push({
+            gateId: gate.id,
+            type: 'error',
+            message: `${gate.type} second control q[${gate.controlWire2}] doesn't exist`,
+          });
+        }
+        if (gate.controlWire2 === gate.wireIndex || gate.controlWire2 === gate.controlWire) {
+          errors.push({
+            gateId: gate.id,
+            type: 'error',
+            message: `${gate.type} requires 3 distinct qubits`,
+          });
+        }
+      }
+      
+      // Check 3-qubit gates have enough qubits
+      if (['CCX', 'CSWAP'].includes(gate.type) && wires.length < 3) {
+        errors.push({
+          gateId: gate.id,
+          type: 'error',
+          message: `${gate.type} requires at least 3 qubits`,
+        });
+      }
+      
+      // Warning for controlled gates without control wire set
+      if (['CNOT', 'CZ', 'CPHASE'].includes(gate.type) && gate.controlWire === undefined) {
+        errors.push({
+          gateId: gate.id,
+          type: 'warning',
+          message: `${gate.type} has no control wire set`,
+        });
+      }
+    }
+    
+    // Check for duplicate gates at same position/wire
+    const positionMap = new Map<string, GateInstance[]>();
+    for (const gate of gates) {
+      const key = `${gate.wireIndex}-${gate.position}`;
+      if (!positionMap.has(key)) positionMap.set(key, []);
+      positionMap.get(key)!.push(gate);
+    }
+    for (const [key, gatesAtPos] of positionMap) {
+      if (gatesAtPos.length > 1) {
+        errors.push({
+          gateId: gatesAtPos[1].id,
+          type: 'warning',
+          message: `Multiple gates at position ${key}`,
+        });
+      }
+    }
+    
+    setVerificationErrors(errors);
+    
+    const errorCount = errors.filter(e => e.type === 'error').length;
+    const warningCount = errors.filter(e => e.type === 'warning').length;
+    
+    if (errors.length === 0) {
+      setHistory(prev => [...prev, '✓ Circuit verified: no issues found']);
+    } else {
+      setHistory(prev => [...prev, `⚠ Verification: ${errorCount} error(s), ${warningCount} warning(s)`]);
+    }
+  }, [gates, wires.length]);
 
-  const entropy = useMemo(() => {
-    if (!executedState) return 0;
-    return computeEntropy(executedState);
-  }, [executedState]);
-
-  // Circuit depth analysis
+  // Circuit depth analysis (defined before simulateNoise which depends on it)
   const circuitDepth = useMemo(() => {
-    if (gates.length === 0) return { depth: 0, layers: [], criticalPath: 0 };
+    if (gates.length === 0) return { depth: 0, layers: [], criticalPath: 0, totalOps: 0, avgParallelism: 0 };
     
     // Group gates by position (parallel layer)
     const positionGroups = new Map<number, GateInstance[]>();
@@ -1132,17 +1238,97 @@ const QuantumCircuitRunner = () => {
       parallelism: positionGroups.get(pos)!.length,
     }));
     
-    // Critical path: count layers with actual gates
     const depth = layers.length;
-    
-    // Count total gate operations
     const totalOps = gates.length;
-    
-    // Calculate theoretical speedup from parallelism
-    const avgParallelism = totalOps / depth;
+    const avgParallelism = depth > 0 ? totalOps / depth : 0;
     
     return { depth, layers, criticalPath: depth, totalOps, avgParallelism };
   }, [gates]);
+
+  // Noise simulation - model gate errors and decoherence
+  const simulateNoise = useCallback(() => {
+    if (!executedState) return;
+    
+    const numWires = wires.length;
+    const dimensions = Math.pow(2, numWires);
+    
+    // Start from initial |0...0⟩ state
+    let noisyState: ComplexNumber[] = Array.from({ length: dimensions }, (_, i) => 
+      i === 0 ? { real: 1, imag: 0 } : { real: 0, imag: 0 }
+    );
+    
+    const sortedGates = [...gates].sort((a, b) => a.position - b.position);
+    let totalErrorProb = 0;
+    let seedOffset = measurementSeed;
+    
+    for (const gate of sortedGates) {
+      // Apply ideal gate
+      noisyState = applyGateToState(noisyState, gate.type, gate.wireIndex, numWires, gate.controlWire, gate.controlWire2);
+      
+      // Apply depolarizing noise with probability = noiseLevel
+      // Two-qubit gates have higher error rate
+      const is2QubitGate = ['CNOT', 'CZ', 'CPHASE', 'SWAP'].includes(gate.type);
+      const is3QubitGate = ['CCX', 'CSWAP'].includes(gate.type);
+      const gateErrorRate = is3QubitGate ? noiseLevel * 5 : is2QubitGate ? noiseLevel * 2 : noiseLevel;
+      
+      totalErrorProb += gateErrorRate * (1 - totalErrorProb); // Accumulated error
+      
+      // Apply random Pauli error with small probability
+      const rand = seededRandom(seedOffset++);
+      if (rand < gateErrorRate) {
+        // Apply random X, Y, or Z error
+        const errorType = Math.floor(seededRandom(seedOffset++) * 3);
+        const pauliGate: GateType = ['X', 'Y', 'Z'][errorType] as GateType;
+        noisyState = applyGateToState(noisyState, pauliGate, gate.wireIndex, numWires);
+      }
+    }
+    
+    // Apply T2 decoherence (phase damping)
+    const decoherenceRate = noiseLevel * circuitDepth.depth * 0.05;
+    for (let i = 0; i < noisyState.length; i++) {
+      const dampingFactor = 1 - decoherenceRate * seededRandom(seedOffset + i);
+      // Phase randomization (simplified)
+      const phaseNoise = (seededRandom(seedOffset + i + 1000) - 0.5) * decoherenceRate * Math.PI;
+      const cos = Math.cos(phaseNoise);
+      const sin = Math.sin(phaseNoise);
+      noisyState[i] = {
+        real: (noisyState[i].real * cos - noisyState[i].imag * sin) * dampingFactor,
+        imag: (noisyState[i].real * sin + noisyState[i].imag * cos) * dampingFactor,
+      };
+    }
+    
+    // Renormalize
+    const norm = Math.sqrt(noisyState.reduce((sum, s) => sum + s.real * s.real + s.imag * s.imag, 0)) || 1;
+    noisyState = noisyState.map(s => ({ real: s.real / norm, imag: s.imag / norm }));
+    
+    // Calculate fidelity: |⟨ideal|noisy⟩|²
+    let innerProductReal = 0;
+    let innerProductImag = 0;
+    for (let i = 0; i < executedState.length; i++) {
+      innerProductReal += executedState[i].real * noisyState[i].real + executedState[i].imag * noisyState[i].imag;
+      innerProductImag += executedState[i].real * noisyState[i].imag - executedState[i].imag * noisyState[i].real;
+    }
+    const fidelity = innerProductReal * innerProductReal + innerProductImag * innerProductImag;
+    
+    setNoiseResult({
+      fidelity: Math.max(0, Math.min(1, fidelity)),
+      errorRate: totalErrorProb,
+      decoherenceEffect: decoherenceRate,
+      noisyState,
+    });
+    
+    setHistory(prev => [...prev, `Noise sim: fidelity=${(fidelity * 100).toFixed(1)}%, error rate=${(totalErrorProb * 100).toFixed(2)}%`]);
+  }, [executedState, gates, wires.length, noiseLevel, measurementSeed, circuitDepth.depth]);
+
+  const sedenionState = useMemo(() => {
+    if (!executedState) return Array(16).fill(0);
+    return stateToSedenion(executedState);
+  }, [executedState]);
+
+  const entropy = useMemo(() => {
+    if (!executedState) return 0;
+    return computeEntropy(executedState);
+  }, [executedState]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -1215,6 +1401,14 @@ const QuantumCircuitRunner = () => {
                 <Button onClick={transpileCircuit} variant="outline" className="w-full" disabled={gates.length === 0}>
                   <GitBranch className="w-4 h-4 mr-2" /> Transpile (H,T,CNOT)
                 </Button>
+                <div className="flex gap-2 pt-2 border-t border-border mt-2">
+                  <Button onClick={verifyCircuit} variant="outline" size="sm" className="flex-1" disabled={gates.length === 0}>
+                    <ShieldCheck className="w-4 h-4 mr-1" /> Verify
+                  </Button>
+                  <Button onClick={simulateNoise} variant="outline" size="sm" className="flex-1" disabled={!executedState}>
+                    <Activity className="w-4 h-4 mr-1" /> Noise
+                  </Button>
+                </div>
                 <Button onClick={resetCircuit} variant="destructive" className="w-full">
                   <RotateCcw className="w-4 h-4 mr-2" /> Reset
                 </Button>
@@ -1236,8 +1430,70 @@ const QuantumCircuitRunner = () => {
                     />
                   </label>
                 </div>
+                {/* Noise level slider */}
+                <div className="pt-2 border-t border-border mt-2">
+                  <label className="text-xs text-muted-foreground">
+                    Gate Error Rate: {(noiseLevel * 100).toFixed(1)}%
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="0.1"
+                    step="0.005"
+                    value={noiseLevel}
+                    onChange={(e) => setNoiseLevel(parseFloat(e.target.value))}
+                    className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer"
+                  />
+                </div>
               </div>
             </div>
+
+            {/* Verification Results */}
+            {verificationErrors.length > 0 && (
+              <div className="p-4 rounded-lg border border-destructive/50 bg-destructive/10">
+                <h2 className="text-sm font-semibold mb-2 flex items-center gap-2 text-destructive">
+                  <ShieldCheck className="w-4 h-4" /> Verification Issues
+                </h2>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {verificationErrors.map((err, i) => (
+                    <div 
+                      key={i} 
+                      className={`text-xs py-1 px-2 rounded ${
+                        err.type === 'error' ? 'bg-destructive/20 text-destructive' : 'bg-yellow-500/20 text-yellow-600'
+                      }`}
+                    >
+                      {err.type === 'error' ? '✗' : '⚠'} {err.message}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Noise Simulation Results */}
+            {noiseResult && (
+              <div className="p-4 rounded-lg border border-border bg-card">
+                <h2 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                  <Activity className="w-4 h-4" /> Noise Simulation
+                </h2>
+                <div className="grid grid-cols-2 gap-2 text-center">
+                  <div className="bg-muted/30 rounded p-2">
+                    <p className={`text-lg font-mono ${noiseResult.fidelity > 0.9 ? 'text-green-500' : noiseResult.fidelity > 0.7 ? 'text-yellow-500' : 'text-destructive'}`}>
+                      {(noiseResult.fidelity * 100).toFixed(1)}%
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">Fidelity</p>
+                  </div>
+                  <div className="bg-muted/30 rounded p-2">
+                    <p className="text-lg font-mono text-muted-foreground">
+                      {(noiseResult.errorRate * 100).toFixed(2)}%
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">Error Rate</p>
+                  </div>
+                </div>
+                <div className="mt-2 text-xs text-muted-foreground text-center">
+                  Decoherence: {(noiseResult.decoherenceEffect * 100).toFixed(3)}%
+                </div>
+              </div>
+            )}
 
             <div className="p-4 rounded-lg border border-border bg-card max-h-48 overflow-y-auto">
               <h2 className="text-lg font-semibold mb-2">History</h2>
