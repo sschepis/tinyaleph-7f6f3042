@@ -223,6 +223,77 @@ state = state.scale(0.5);
 console.log('Final entropy:', state.entropy());
 console.log('Final norm:', state.norm());`,
   },
+  {
+    id: 'word-algebra',
+    number: '10',
+    title: 'Word Algebra',
+    subtitle: 'King - Man + Woman = Queen',
+    description: 'Perform algebraic operations on word embeddings: addition, subtraction, and analogies. Find semantic relationships through vector arithmetic.',
+    concepts: ['Analogies', 'Addition', 'Subtraction', 'Vector Arithmetic'],
+    code: `// king - man + woman = queen
+const king = backend.textToOrderedState('king');
+const man = backend.textToOrderedState('man');  
+const woman = backend.textToOrderedState('woman');
+
+// b - a + c = ?
+const result = add(subtract(king, man), woman);
+const nearest = findNearest(result, vocabulary);
+console.log(nearest.word); // queen`,
+  },
+  {
+    id: 'classification',
+    number: '11',
+    title: 'Text Classification',
+    subtitle: 'Prototype-Based Classifier',
+    description: 'Train text classifiers from labeled examples. Create category prototypes by averaging embeddings and classify new texts by similarity.',
+    concepts: ['Prototypes', 'Multi-class', 'Confidence Scores'],
+    code: `class PrototypeClassifier {
+  train(examples) {
+    for (const { text, label } of examples) {
+      const state = backend.textToOrderedState(text);
+      // Average embeddings per class
+    }
+  }
+  predict(text) {
+    const state = backend.textToOrderedState(text);
+    return findMostSimilarPrototype(state);
+  }
+}`,
+  },
+  {
+    id: 'semantic-search',
+    number: '12',
+    title: 'Semantic Search',
+    subtitle: 'Search by Meaning',
+    description: 'Build a semantic search engine that finds documents by meaning, not just keywords. Index documents as embeddings and query with natural language.',
+    concepts: ['Indexing', 'Ranking', 'Semantic Matching'],
+    code: `const engine = new SemanticSearchEngine(backend);
+
+// Index documents
+engine.addDocument('doc1', 'Machine learning intro', content);
+engine.addDocument('doc2', 'Deep learning guide', content);
+
+// Search by meaning
+const results = engine.search('AI algorithms');
+// Returns ranked documents by semantic similarity`,
+  },
+  {
+    id: 'qa-system',
+    number: '13',
+    title: 'Question Answering',
+    subtitle: 'Knowledge Base Q&A',
+    description: 'Build a QA system using semantic embeddings. Match questions to relevant knowledge base passages and extract answers.',
+    concepts: ['Knowledge Base', 'Passage Retrieval', 'Answer Extraction'],
+    code: `const qa = new QASystem(backend);
+
+// Add knowledge
+qa.addPassage('kb1', 'Solar System', 'The Sun and planets...');
+qa.addPassage('kb2', 'Earth', 'Third planet from Sun...');
+
+// Ask questions
+const answer = qa.answer('How many planets are there?');
+console.log(answer.text, answer.confidence);`,
+  },
 ];
 
 // Example 1: Vocabulary Building
@@ -1969,6 +2040,281 @@ const VocabularyExampleDemo = () => {
   );
 };
 
+// Word Algebra Demo
+const WordAlgebraDemo = () => {
+  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [wordA, setWordA] = useState('king');
+  const [wordB, setWordB] = useState('man');
+  const [wordC, setWordC] = useState('woman');
+  const [result, setResult] = useState<{word: string; similarity: number} | null>(null);
+  
+  const vocabulary = ['king', 'queen', 'man', 'woman', 'prince', 'princess', 'boy', 'girl', 'father', 'mother'];
+
+  const textToState = (text: string): number[] => {
+    const primes = backend.encode(text);
+    const state = backend.primesToState(primes);
+    const c = (state as any)?.c || (state as any)?.components || [];
+    return Array.from(c).map(v => Number(v) || 0);
+  };
+
+  const similarity = (a: number[], b: number[]): number => {
+    let dot = 0, magA = 0, magB = 0;
+    for (let i = 0; i < Math.min(a.length, b.length); i++) {
+      dot += a[i] * b[i];
+      magA += a[i] * a[i];
+      magB += b[i] * b[i];
+    }
+    return dot / (Math.sqrt(magA) * Math.sqrt(magB) || 1);
+  };
+
+  const runAnalogy = () => {
+    const stateA = textToState(wordA);
+    const stateB = textToState(wordB);
+    const stateC = textToState(wordC);
+    
+    // b - a + c = ?
+    const resultState = stateA.map((_, i) => stateB[i] - stateA[i] + stateC[i]);
+    
+    let best = { word: '', sim: -1 };
+    for (const w of vocabulary.filter(v => v !== wordA && v !== wordB && v !== wordC)) {
+      const wState = textToState(w);
+      const sim = similarity(resultState, wState);
+      if (sim > best.sim) best = { word: w, sim };
+    }
+    setResult({ word: best.word, similarity: best.sim });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-4 gap-2 items-end">
+        <div>
+          <label className="text-xs text-muted-foreground">A</label>
+          <input value={wordA} onChange={e => setWordA(e.target.value)} className="w-full px-3 py-2 rounded bg-secondary border border-border" />
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground">B</label>
+          <input value={wordB} onChange={e => setWordB(e.target.value)} className="w-full px-3 py-2 rounded bg-secondary border border-border" />
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground">C</label>
+          <input value={wordC} onChange={e => setWordC(e.target.value)} className="w-full px-3 py-2 rounded bg-secondary border border-border" />
+        </div>
+        <Button onClick={runAnalogy}>Compute</Button>
+      </div>
+      <div className="text-center p-4 bg-muted/30 rounded-lg">
+        <p className="text-lg font-mono">{wordA} : {wordB} :: {wordC} : <span className="text-primary font-bold">{result?.word || '?'}</span></p>
+        {result && <p className="text-xs text-muted-foreground mt-1">Similarity: {(result.similarity * 100).toFixed(1)}%</p>}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {vocabulary.map(w => (
+          <span key={w} className="px-2 py-1 rounded bg-muted text-xs">{w}</span>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Text Classification Demo
+const ClassificationDemo = () => {
+  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [prototypes, setPrototypes] = useState<{label: string; examples: string[]; centroid: number[]}[]>([]);
+  const [testText, setTestText] = useState('Neural networks are powerful');
+  const [predictions, setPredictions] = useState<{label: string; score: number}[]>([]);
+
+  const textToState = (text: string): number[] => {
+    const primes = backend.encode(text);
+    const state = backend.primesToState(primes);
+    const c = (state as any)?.c || (state as any)?.components || [];
+    return Array.from(c).map(v => Number(v) || 0);
+  };
+
+  const similarity = (a: number[], b: number[]): number => {
+    let dot = 0, magA = 0, magB = 0;
+    for (let i = 0; i < Math.min(a.length, b.length); i++) {
+      dot += a[i] * b[i]; magA += a[i] * a[i]; magB += b[i] * b[i];
+    }
+    return dot / (Math.sqrt(magA) * Math.sqrt(magB) || 1);
+  };
+
+  const train = () => {
+    const data = [
+      { label: 'tech', examples: ['Machine learning algorithms', 'AI neural networks', 'Computer software'] },
+      { label: 'sports', examples: ['Football championship', 'Basketball tournament', 'Athletic competition'] },
+      { label: 'food', examples: ['Italian cuisine pasta', 'Gourmet restaurant meal', 'Fresh vegetables cooking'] }
+    ];
+    const trained = data.map(d => {
+      const embeddings = d.examples.map(textToState);
+      const centroid = Array(16).fill(0);
+      for (const e of embeddings) e.forEach((v, i) => { if (i < 16) centroid[i] += v / embeddings.length; });
+      return { label: d.label, examples: d.examples, centroid };
+    });
+    setPrototypes(trained);
+  };
+
+  const classify = () => {
+    if (prototypes.length === 0) return;
+    const state = textToState(testText);
+    const scores = prototypes.map(p => ({ label: p.label, score: similarity(state, p.centroid) }));
+    scores.sort((a, b) => b.score - a.score);
+    setPredictions(scores);
+  };
+
+  return (
+    <div className="space-y-4">
+      <Button onClick={train}>Train Classifier (3 categories)</Button>
+      {prototypes.length > 0 && (
+        <>
+          <div className="grid md:grid-cols-3 gap-2">
+            {prototypes.map(p => (
+              <div key={p.label} className="p-3 bg-muted/30 rounded-lg">
+                <Badge className="mb-2">{p.label}</Badge>
+                <div className="text-xs text-muted-foreground">{p.examples.length} examples</div>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input value={testText} onChange={e => setTestText(e.target.value)} className="flex-1 px-3 py-2 rounded bg-secondary border border-border" placeholder="Text to classify..." />
+            <Button onClick={classify}>Classify</Button>
+          </div>
+          {predictions.length > 0 && (
+            <div className="space-y-1">
+              {predictions.map(p => (
+                <div key={p.label} className="flex items-center justify-between p-2 bg-muted/20 rounded">
+                  <span className="font-medium">{p.label}</span>
+                  <span className="font-mono text-sm">{(p.score * 100).toFixed(1)}%</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
+// Semantic Search Demo
+const SemanticSearchDemo = () => {
+  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [query, setQuery] = useState('artificial intelligence');
+  const [results, setResults] = useState<{title: string; score: number}[]>([]);
+
+  const docs = [
+    { id: 1, title: 'Machine Learning Basics', content: 'ML algorithms learn from data' },
+    { id: 2, title: 'Deep Learning Guide', content: 'Neural networks with many layers' },
+    { id: 3, title: 'Natural Language Processing', content: 'Text analysis and understanding' },
+    { id: 4, title: 'Computer Vision', content: 'Image recognition and analysis' },
+    { id: 5, title: 'Cooking Recipes', content: 'Delicious meals and ingredients' }
+  ];
+
+  const textToState = (text: string): number[] => {
+    const primes = backend.encode(text);
+    const state = backend.primesToState(primes);
+    const c = (state as any)?.c || (state as any)?.components || [];
+    return Array.from(c).map(v => Number(v) || 0);
+  };
+
+  const similarity = (a: number[], b: number[]): number => {
+    let dot = 0, magA = 0, magB = 0;
+    for (let i = 0; i < Math.min(a.length, b.length); i++) {
+      dot += a[i] * b[i]; magA += a[i] * a[i]; magB += b[i] * b[i];
+    }
+    return dot / (Math.sqrt(magA) * Math.sqrt(magB) || 1);
+  };
+
+  const search = () => {
+    const queryState = textToState(query);
+    const scored = docs.map(d => ({
+      title: d.title,
+      score: similarity(queryState, textToState(d.title + ' ' + d.content))
+    }));
+    scored.sort((a, b) => b.score - a.score);
+    setResults(scored);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <input value={query} onChange={e => setQuery(e.target.value)} className="flex-1 px-3 py-2 rounded bg-secondary border border-border" placeholder="Search query..." />
+        <Button onClick={search} className="gap-2"><Play className="w-4 h-4" /> Search</Button>
+      </div>
+      <div className="text-xs text-muted-foreground">{docs.length} documents indexed</div>
+      {results.length > 0 && (
+        <div className="space-y-2">
+          {results.map((r, i) => (
+            <div key={i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+              <span className={i === 0 ? 'font-medium text-primary' : ''}>{r.title}</span>
+              <Badge variant={i === 0 ? 'default' : 'outline'}>{(r.score * 100).toFixed(0)}%</Badge>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// QA System Demo
+const QASystemDemo = () => {
+  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [question, setQuestion] = useState('How many planets are in the solar system?');
+  const [answer, setAnswer] = useState<{passage: string; topic: string; score: number} | null>(null);
+
+  const knowledge = [
+    { topic: 'Solar System', passage: 'The Solar System has eight planets orbiting the Sun.' },
+    { topic: 'Earth', passage: 'Earth is the third planet from the Sun and supports life.' },
+    { topic: 'Moon', passage: 'The Moon orbits Earth at 384,400 km distance.' },
+    { topic: 'Photosynthesis', passage: 'Plants convert sunlight to glucose through photosynthesis.' }
+  ];
+
+  const textToState = (text: string): number[] => {
+    const primes = backend.encode(text);
+    const state = backend.primesToState(primes);
+    const c = (state as any)?.c || (state as any)?.components || [];
+    return Array.from(c).map(v => Number(v) || 0);
+  };
+
+  const similarity = (a: number[], b: number[]): number => {
+    let dot = 0, magA = 0, magB = 0;
+    for (let i = 0; i < Math.min(a.length, b.length); i++) {
+      dot += a[i] * b[i]; magA += a[i] * a[i]; magB += b[i] * b[i];
+    }
+    return dot / (Math.sqrt(magA) * Math.sqrt(magB) || 1);
+  };
+
+  const askQuestion = () => {
+    const qState = textToState(question);
+    let best = { topic: '', passage: '', score: -1 };
+    for (const k of knowledge) {
+      const score = similarity(qState, textToState(k.topic + ' ' + k.passage));
+      if (score > best.score) best = { ...k, score };
+    }
+    setAnswer(best);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="p-3 bg-muted/30 rounded-lg">
+        <div className="text-xs text-muted-foreground mb-2">Knowledge Base ({knowledge.length} passages)</div>
+        <div className="flex flex-wrap gap-2">
+          {knowledge.map(k => <Badge key={k.topic} variant="outline">{k.topic}</Badge>)}
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <input value={question} onChange={e => setQuestion(e.target.value)} className="flex-1 px-3 py-2 rounded bg-secondary border border-border" placeholder="Ask a question..." />
+        <Button onClick={askQuestion}>Ask</Button>
+      </div>
+      {answer && (
+        <div className="p-4 border border-primary/30 bg-primary/5 rounded-lg">
+          <div className="flex items-center justify-between mb-2">
+            <Badge>{answer.topic}</Badge>
+            <span className="text-xs text-muted-foreground">Confidence: {(answer.score * 100).toFixed(0)}%</span>
+          </div>
+          <p className="text-sm">{answer.passage}</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Map example IDs to their component implementations
 const exampleComponents: Record<string, React.FC> = {
   'vocabulary': VocabularyExampleDemo,
@@ -1980,6 +2326,10 @@ const exampleComponents: Record<string, React.FC> = {
   'composition': () => <StateCompositionExample />,
   'dimension-comparison': () => <DimensionComparisonExample />,
   'expression-builder': () => <ExpressionBuilderExample />,
+  'word-algebra': WordAlgebraDemo,
+  'classification': ClassificationDemo,
+  'semantic-search': SemanticSearchDemo,
+  'qa-system': QASystemDemo,
 };
 
 const SemanticExamplesPage = () => {
