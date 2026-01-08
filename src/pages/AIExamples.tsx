@@ -10,6 +10,8 @@ import SedenionVisualizer from '@/components/SedenionVisualizer';
 import { motion } from 'framer-motion';
 
 // Import code examples
+import embeddingsCode from '@/examples/ai/01-embeddings.js?raw';
+import semanticMemoryCode from '@/examples/ai/02-semantic-memory.js?raw';
 import reasoningCode from '@/examples/ai/03-reasoning.js?raw';
 import knowledgeGraphCode from '@/examples/ai/04-knowledge-graph.js?raw';
 import llmIntegrationCode from '@/examples/ai/05-llm-integration.js?raw';
@@ -61,7 +63,255 @@ function calculateEntropy(state: number[]): number {
   return entropy / Math.log2(16); // Normalized
 }
 
-// Demo 1: Reasoning Chains
+// Demo 1: Prime Embeddings
+const EmbeddingsDemo = () => {
+  const [words] = useState(['cat', 'dog', 'animal', 'tree', 'forest']);
+  const [customWord, setCustomWord] = useState('');
+  const [embeddings, setEmbeddings] = useState<{word: string; embedding: number[]}[]>([]);
+  const [similarities, setSimilarities] = useState<{w1: string; w2: string; sim: number}[]>([]);
+  const [arithmeticResult, setArithmeticResult] = useState<{result: number[]; queenSim: number} | null>(null);
+
+  useEffect(() => {
+    const embs = words.map(word => ({ word, embedding: textToSedenion(word) }));
+    setEmbeddings(embs);
+    
+    // Compute pairwise similarities
+    const pairs: {w1: string; w2: string; sim: number}[] = [];
+    for (let i = 0; i < embs.length; i++) {
+      for (let j = i + 1; j < embs.length; j++) {
+        pairs.push({
+          w1: embs[i].word,
+          w2: embs[j].word,
+          sim: similarity(embs[i].embedding, embs[j].embedding)
+        });
+      }
+    }
+    pairs.sort((a, b) => b.sim - a.sim);
+    setSimilarities(pairs.slice(0, 6));
+  }, [words]);
+
+  const addCustomWord = () => {
+    if (!customWord.trim() || embeddings.some(e => e.word === customWord)) return;
+    const newEmb = { word: customWord, embedding: textToSedenion(customWord) };
+    const newEmbs = [...embeddings, newEmb];
+    setEmbeddings(newEmbs);
+    
+    // Recompute similarities
+    const pairs: {w1: string; w2: string; sim: number}[] = [];
+    for (let i = 0; i < newEmbs.length; i++) {
+      for (let j = i + 1; j < newEmbs.length; j++) {
+        pairs.push({
+          w1: newEmbs[i].word,
+          w2: newEmbs[j].word,
+          sim: similarity(newEmbs[i].embedding, newEmbs[j].embedding)
+        });
+      }
+    }
+    pairs.sort((a, b) => b.sim - a.sim);
+    setSimilarities(pairs.slice(0, 6));
+    setCustomWord('');
+  };
+
+  const runArithmetic = () => {
+    // king - man + woman ≈ queen
+    const king = textToSedenion('king');
+    const man = textToSedenion('man');
+    const woman = textToSedenion('woman');
+    const queen = textToSedenion('queen');
+    
+    const result = king.map((v, i) => v - man[i] + woman[i]);
+    const norm = Math.sqrt(result.reduce((s, c) => s + c * c, 0));
+    const normalized = result.map(c => c / (norm || 1));
+    
+    setArithmeticResult({
+      result: normalized,
+      queenSim: similarity(normalized, queen)
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 className="text-sm font-medium mb-3">Word Embeddings (16D Sedenions)</h4>
+          <div className="space-y-2">
+            {embeddings.map((e, i) => (
+              <Card key={i} className="p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-mono font-medium">{e.word}</span>
+                  <Badge variant="outline" className="text-xs">16D</Badge>
+                </div>
+                <div className="text-xs font-mono text-muted-foreground">
+                  [{e.embedding.slice(0, 4).map(c => c.toFixed(3)).join(', ')}, ...]
+                </div>
+              </Card>
+            ))}
+          </div>
+          <div className="flex gap-2 mt-3">
+            <Input 
+              value={customWord} 
+              onChange={(e) => setCustomWord(e.target.value)}
+              placeholder="Add word..."
+              onKeyDown={(e) => e.key === 'Enter' && addCustomWord()}
+            />
+            <Button onClick={addCustomWord} size="sm">Add</Button>
+          </div>
+        </div>
+
+        <div>
+          <h4 className="text-sm font-medium mb-3">Top Similarities</h4>
+          <div className="space-y-2">
+            {similarities.map((s, i) => (
+              <Card key={i} className="p-2 flex items-center justify-between">
+                <span className="text-sm">{s.w1} ↔ {s.w2}</span>
+                <Badge className={s.sim > 0.5 ? 'bg-green-500/20 text-green-500' : 'bg-muted'}>
+                  {(s.sim * 100).toFixed(1)}%
+                </Badge>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <Card className="p-4">
+        <h4 className="text-sm font-medium mb-3">Embedding Arithmetic: king - man + woman = ?</h4>
+        <Button onClick={runArithmetic} size="sm" className="mb-4">Compute</Button>
+        {arithmeticResult && (
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground mb-2">Result Vector</p>
+              <SedenionVisualizer components={arithmeticResult.result} size="sm" />
+            </div>
+            <div className="flex flex-col items-center justify-center">
+              <p className="text-sm text-muted-foreground mb-1">Similarity to "queen"</p>
+              <p className="text-3xl font-bold text-primary">{(arithmeticResult.queenSim * 100).toFixed(1)}%</p>
+            </div>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+};
+
+// Demo 2: Semantic Memory
+const SemanticMemoryDemo = () => {
+  const [memories, setMemories] = useState<{id: number; content: string; embedding: number[]; strength: number; accessCount: number}[]>([
+    { id: 1, content: 'The user asked about machine learning algorithms', embedding: textToSedenion('The user asked about machine learning algorithms'), strength: 1.0, accessCount: 0 },
+    { id: 2, content: 'We discussed neural networks and deep learning', embedding: textToSedenion('We discussed neural networks and deep learning'), strength: 1.0, accessCount: 0 },
+    { id: 3, content: 'The user is interested in AI applications', embedding: textToSedenion('The user is interested in AI applications'), strength: 1.0, accessCount: 0 },
+    { id: 4, content: 'Last meeting was about natural language processing', embedding: textToSedenion('Last meeting was about natural language processing'), strength: 1.0, accessCount: 0 },
+  ]);
+  const [newMemory, setNewMemory] = useState('');
+  const [query, setQuery] = useState('artificial intelligence topics');
+  const [recalled, setRecalled] = useState<{memory: typeof memories[0]; score: number}[]>([]);
+
+  const storeMemory = () => {
+    if (!newMemory.trim()) return;
+    const mem = {
+      id: Date.now(),
+      content: newMemory,
+      embedding: textToSedenion(newMemory),
+      strength: 1.0,
+      accessCount: 0
+    };
+    setMemories([...memories, mem]);
+    setNewMemory('');
+  };
+
+  const recall = () => {
+    if (!query.trim()) return;
+    const queryEmbed = textToSedenion(query);
+    const scored = memories.map(m => ({
+      memory: m,
+      score: similarity(queryEmbed, m.embedding) * m.strength
+    }));
+    scored.sort((a, b) => b.score - a.score);
+    
+    // Update access counts for recalled memories
+    const topRecalled = scored.slice(0, 3);
+    setRecalled(topRecalled);
+    
+    // Strengthen accessed memories
+    setMemories(memories.map(m => {
+      const wasRecalled = topRecalled.some(r => r.memory.id === m.id);
+      return wasRecalled ? { ...m, accessCount: m.accessCount + 1, strength: Math.min(2.0, m.strength * 1.1) } : m;
+    }));
+  };
+
+  const decay = () => {
+    setMemories(memories.map(m => ({
+      ...m,
+      strength: m.strength * Math.exp(-0.1 / (m.accessCount + 1))
+    })).filter(m => m.strength > 0.1));
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="grid md:grid-cols-2 gap-6">
+        <div>
+          <h4 className="text-sm font-medium mb-3">Stored Memories</h4>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {memories.map((m) => (
+              <Card key={m.id} className="p-2">
+                <p className="text-sm truncate">{m.content}</p>
+                <div className="flex gap-2 mt-1 text-xs text-muted-foreground">
+                  <span>Strength: {(m.strength * 100).toFixed(0)}%</span>
+                  <span>•</span>
+                  <span>Accessed: {m.accessCount}x</span>
+                </div>
+              </Card>
+            ))}
+          </div>
+          <div className="flex gap-2 mt-3">
+            <Input 
+              value={newMemory} 
+              onChange={(e) => setNewMemory(e.target.value)}
+              placeholder="New memory..."
+              onKeyDown={(e) => e.key === 'Enter' && storeMemory()}
+            />
+            <Button onClick={storeMemory} size="sm">Store</Button>
+          </div>
+          <Button onClick={decay} variant="outline" size="sm" className="mt-2">
+            Apply Decay
+          </Button>
+        </div>
+
+        <div>
+          <h4 className="text-sm font-medium mb-3">Semantic Recall</h4>
+          <div className="flex gap-2 mb-4">
+            <Input 
+              value={query} 
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Query memories..."
+            />
+            <Button onClick={recall}>Recall</Button>
+          </div>
+          
+          {recalled.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Top matches:</p>
+              {recalled.map((r, i) => (
+                <Card key={i} className={`p-3 ${r.score > 0.5 ? 'border-primary/50' : ''}`}>
+                  <p className="text-sm">{r.memory.content}</p>
+                  <div className="flex justify-between items-center mt-2">
+                    <Badge className={r.score > 0.5 ? 'bg-green-500/20 text-green-500' : 'bg-muted'}>
+                      {(r.score * 100).toFixed(1)}% match
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      +{r.memory.accessCount} access
+                    </span>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Demo 3: Reasoning Chains
 const ReasoningDemo = () => {
   const [facts, setFacts] = useState<{name: string; statement: string; confidence: number; embedding: number[]}[]>([
     { name: 'all_men_mortal', statement: 'All men are mortal', confidence: 1.0, embedding: textToSedenion('All men are mortal') },
@@ -1273,6 +1523,8 @@ const NeuroSymbolicDemo = () => {
 
 // Example configurations
 const examples: ExampleConfig[] = [
+  { id: 'embeddings', number: '01', title: 'Prime Embeddings', subtitle: 'Text to vectors', description: 'Generate deterministic embeddings based on prime factorization', concepts: ['Embeddings', 'Similarity', 'Arithmetic'], code: embeddingsCode },
+  { id: 'semantic-memory', number: '02', title: 'Semantic Memory', subtitle: 'Long-term recall', description: 'Build memory systems with decay and consolidation', concepts: ['Memory', 'Recall', 'Decay'], code: semanticMemoryCode },
   { id: 'reasoning', number: '03', title: 'Reasoning Chains', subtitle: 'Multi-step inference', description: 'Build reasoning chains with confidence tracking', concepts: ['Syllogism', 'Inference', 'Confidence'], code: reasoningCode },
   { id: 'knowledge-graph', number: '04', title: 'Knowledge Graph', subtitle: 'Entity relations', description: 'Prime-based semantic knowledge graphs', concepts: ['Entities', 'Relations', 'Path finding'], code: knowledgeGraphCode },
   { id: 'llm-integration', number: '05', title: 'LLM Integration', subtitle: 'Context & verification', description: 'Semantic context management for LLMs', concepts: ['Context', 'Verification', 'Memory'], code: llmIntegrationCode },
@@ -1286,6 +1538,8 @@ const examples: ExampleConfig[] = [
 ];
 
 const exampleComponents: Record<string, React.FC> = {
+  'embeddings': EmbeddingsDemo,
+  'semantic-memory': SemanticMemoryDemo,
   'reasoning': ReasoningDemo,
   'knowledge-graph': KnowledgeGraphDemo,
   'llm-integration': LLMIntegrationDemo,
