@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Plus, RotateCcw, GripVertical, Zap, Circle, BarChart3, ArrowLeft, Sparkles, Target, Download, Upload, Wand2 } from 'lucide-react';
+import { Play, Plus, RotateCcw, GripVertical, Zap, Circle, BarChart3, ArrowLeft, Sparkles, Target, Download, Upload, Wand2, Layers } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SedenionVisualizer from '@/components/SedenionVisualizer';
 import {
@@ -183,6 +183,18 @@ const GATE_DEFINITIONS = {
     description: 'Controlled NOT',
     matrix: '[[1,0,0,0], [0,1,0,0], [0,0,0,1], [0,0,1,0]]'
   },
+  CZ: { 
+    name: 'CZ', 
+    color: 'bg-indigo-500', 
+    description: 'Controlled-Z',
+    matrix: '[[1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,-1]]'
+  },
+  CPHASE: { 
+    name: 'CPHASE', 
+    color: 'bg-teal-500', 
+    description: 'Controlled π/4 phase',
+    matrix: '[[1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,e^(iπ/4)]]'
+  },
   SWAP: { 
     name: 'SWAP', 
     color: 'bg-yellow-500', 
@@ -295,6 +307,35 @@ const applyGateToState = (
           if ((i & controlMask) !== 0 && (i & wirePositionMask) === 0) {
             const j = i | wirePositionMask;
             [newState[i], newState[j]] = [{ ...state[j] }, { ...state[i] }];
+          }
+        }
+      }
+      break;
+    
+    case 'CZ':
+      if (controlWire !== undefined) {
+        const controlMask = 1 << (numWires - 1 - controlWire);
+        for (let i = 0; i < state.length; i++) {
+          // Apply -1 phase when both control and target are |1⟩
+          if ((i & controlMask) !== 0 && (i & wirePositionMask) !== 0) {
+            newState[i] = { real: -state[i].real, imag: -state[i].imag };
+          }
+        }
+      }
+      break;
+    
+    case 'CPHASE':
+      if (controlWire !== undefined) {
+        const controlMask = 1 << (numWires - 1 - controlWire);
+        const cos = Math.cos(Math.PI / 4);
+        const sin = Math.sin(Math.PI / 4);
+        for (let i = 0; i < state.length; i++) {
+          // Apply e^(iπ/4) phase when both control and target are |1⟩
+          if ((i & controlMask) !== 0 && (i & wirePositionMask) !== 0) {
+            newState[i] = {
+              real: state[i].real * cos - state[i].imag * sin,
+              imag: state[i].real * sin + state[i].imag * cos,
+            };
           }
         }
       }
@@ -593,12 +634,16 @@ const QuantumCircuitRunner = () => {
     const existing = gates.find(g => g.wireIndex === wireIndex && g.position === position);
     if (existing) return;
     
+    // Controlled gates get a control wire (one qubit above if possible)
+    const isControlledGate = ['CNOT', 'CZ', 'CPHASE'].includes(draggedGate);
+    const controlWire = isControlledGate && wireIndex > 0 ? wireIndex - 1 : undefined;
+    
     const newGate: GateInstance = {
       id: `gate-${nextGateId.current++}`,
       type: draggedGate,
       wireIndex,
       position,
-      controlWire: draggedGate === 'CNOT' && wireIndex > 0 ? wireIndex - 1 : undefined,
+      controlWire,
     };
     
     setGates(prev => [...prev, newGate]);
@@ -869,6 +914,37 @@ const QuantumCircuitRunner = () => {
     return computeEntropy(executedState);
   }, [executedState]);
 
+  // Circuit depth analysis
+  const circuitDepth = useMemo(() => {
+    if (gates.length === 0) return { depth: 0, layers: [], criticalPath: 0 };
+    
+    // Group gates by position (parallel layer)
+    const positionGroups = new Map<number, GateInstance[]>();
+    gates.forEach(g => {
+      const pos = g.position;
+      if (!positionGroups.has(pos)) positionGroups.set(pos, []);
+      positionGroups.get(pos)!.push(g);
+    });
+    
+    const positions = Array.from(positionGroups.keys()).sort((a, b) => a - b);
+    const layers = positions.map(pos => ({
+      position: pos,
+      gates: positionGroups.get(pos)!,
+      parallelism: positionGroups.get(pos)!.length,
+    }));
+    
+    // Critical path: count layers with actual gates
+    const depth = layers.length;
+    
+    // Count total gate operations
+    const totalOps = gates.length;
+    
+    // Calculate theoretical speedup from parallelism
+    const avgParallelism = totalOps / depth;
+    
+    return { depth, layers, criticalPath: depth, totalOps, avgParallelism };
+  }, [gates]);
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8 px-4">
@@ -983,24 +1059,29 @@ const QuantumCircuitRunner = () => {
               <GripVertical className="w-5 h-5" /> Circuit
             </h2>
             <div className="relative min-h-[300px]">
-              {/* CNOT Control Lines Overlay */}
+              {/* Control Lines Overlay for CNOT, CZ, CPHASE */}
               <svg className="absolute inset-0 pointer-events-none z-20" style={{ overflow: 'visible' }}>
-                {gates.filter(g => g.type === 'CNOT' && g.controlWire !== undefined).map((gate) => {
+                {gates.filter(g => ['CNOT', 'CZ', 'CPHASE'].includes(g.type) && g.controlWire !== undefined).map((gate) => {
                   const controlY = (gate.controlWire! * 66) + 33; // 66px per wire row, centered
                   const targetY = (gate.wireIndex * 66) + 33;
                   const slotX = 80 + (gate.position * 52) + 24; // 80px offset + slot width + center
                   const minY = Math.min(controlY, targetY);
                   const maxY = Math.max(controlY, targetY);
                   
+                  const isCNOT = gate.type === 'CNOT';
+                  const strokeColor = gate.type === 'CZ' ? 'hsl(239, 84%, 67%)' : 
+                                     gate.type === 'CPHASE' ? 'hsl(168, 76%, 42%)' : 
+                                     'hsl(var(--primary))';
+                  
                   return (
-                    <g key={`cnot-line-${gate.id}`}>
+                    <g key={`control-line-${gate.id}`}>
                       {/* Vertical line connecting control to target */}
                       <line
                         x1={slotX}
                         y1={minY + 12}
                         x2={slotX}
                         y2={maxY - 12}
-                        stroke="hsl(var(--primary))"
+                        stroke={strokeColor}
                         strokeWidth="2"
                         strokeDasharray="4 2"
                       />
@@ -1009,35 +1090,49 @@ const QuantumCircuitRunner = () => {
                         cx={slotX}
                         cy={controlY}
                         r="6"
-                        fill="hsl(var(--primary))"
+                        fill={strokeColor}
                         stroke="hsl(var(--primary-foreground))"
                         strokeWidth="1"
                       />
-                      {/* Target indicator (⊕ symbol approximation) */}
-                      <circle
-                        cx={slotX}
-                        cy={targetY}
-                        r="8"
-                        fill="none"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth="2"
-                      />
-                      <line
-                        x1={slotX - 6}
-                        y1={targetY}
-                        x2={slotX + 6}
-                        y2={targetY}
-                        stroke="hsl(var(--primary))"
-                        strokeWidth="2"
-                      />
-                      <line
-                        x1={slotX}
-                        y1={targetY - 6}
-                        x2={slotX}
-                        y2={targetY + 6}
-                        stroke="hsl(var(--primary))"
-                        strokeWidth="2"
-                      />
+                      {isCNOT ? (
+                        <>
+                          {/* Target indicator (⊕ symbol) for CNOT */}
+                          <circle
+                            cx={slotX}
+                            cy={targetY}
+                            r="8"
+                            fill="none"
+                            stroke={strokeColor}
+                            strokeWidth="2"
+                          />
+                          <line
+                            x1={slotX - 6}
+                            y1={targetY}
+                            x2={slotX + 6}
+                            y2={targetY}
+                            stroke={strokeColor}
+                            strokeWidth="2"
+                          />
+                          <line
+                            x1={slotX}
+                            y1={targetY - 6}
+                            x2={slotX}
+                            y2={targetY + 6}
+                            stroke={strokeColor}
+                            strokeWidth="2"
+                          />
+                        </>
+                      ) : (
+                        /* Target dot for CZ/CPHASE */
+                        <circle
+                          cx={slotX}
+                          cy={targetY}
+                          r="6"
+                          fill={strokeColor}
+                          stroke="hsl(var(--primary-foreground))"
+                          strokeWidth="1"
+                        />
+                      )}
                     </g>
                   );
                 })}
@@ -1069,6 +1164,43 @@ const QuantumCircuitRunner = () => {
 
           {/* Right Panel - Results */}
           <div className="space-y-4">
+            {/* Circuit Depth Analysis */}
+            <div className="p-4 rounded-lg border border-border bg-card">
+              <h2 className="text-lg font-semibold text-primary mb-3 flex items-center gap-2">
+                <Layers className="w-5 h-5" /> Circuit Depth
+              </h2>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="bg-muted/30 rounded-lg p-2">
+                  <p className="text-2xl font-mono text-primary">{circuitDepth.depth}</p>
+                  <p className="text-[10px] text-muted-foreground">Depth</p>
+                </div>
+                <div className="bg-muted/30 rounded-lg p-2">
+                  <p className="text-2xl font-mono text-primary">{gates.length}</p>
+                  <p className="text-[10px] text-muted-foreground">Gates</p>
+                </div>
+                <div className="bg-muted/30 rounded-lg p-2">
+                  <p className="text-2xl font-mono text-primary">
+                    {circuitDepth.avgParallelism ? circuitDepth.avgParallelism.toFixed(1) : '0'}×
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">Parallelism</p>
+                </div>
+              </div>
+              {circuitDepth.layers.length > 0 && (
+                <div className="mt-3 flex gap-1 overflow-x-auto pb-1">
+                  {circuitDepth.layers.map((layer, i) => (
+                    <div
+                      key={i}
+                      className="flex-shrink-0 w-6 bg-primary/20 rounded text-center text-[10px] font-mono"
+                      style={{ height: `${Math.max(16, layer.parallelism * 12)}px` }}
+                      title={`Layer ${layer.position}: ${layer.parallelism} gate(s)`}
+                    >
+                      {layer.parallelism}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="p-4 rounded-lg border border-border bg-card">
               <h2 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
                 <Circle className="w-5 h-5" /> Bloch Sphere
