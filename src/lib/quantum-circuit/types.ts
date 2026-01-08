@@ -116,6 +116,51 @@ export interface AlgorithmPreset {
   category?: 'basic' | 'algorithms' | 'error-correction' | 'variational' | 'communication' | 'gates';
 }
 
+export interface CircuitMetrics {
+  gateCount: number;
+  depth: number;
+  twoQubitGates: number;
+  estimatedTimeNs: number; // Estimated execution time in nanoseconds
+}
+
+// Gate execution times in nanoseconds (typical superconducting qubit values)
+const GATE_TIMES: Record<string, number> = {
+  H: 20, X: 20, Y: 20, Z: 10, S: 10, T: 10,
+  RZ: 10, RX: 20, RY: 20,
+  CNOT: 40, CZ: 40, CPHASE: 40, SWAP: 120,
+  CCX: 200, CSWAP: 300,
+};
+
+export function calculateCircuitMetrics(preset: AlgorithmPreset): CircuitMetrics {
+  const gates = preset.gates;
+  const gateCount = gates.length;
+  
+  // Calculate depth by finding max position + 1
+  const depth = gates.length > 0 ? Math.max(...gates.map(g => g.position)) + 1 : 0;
+  
+  // Count two-qubit (and three-qubit) gates
+  const multiQubitGates = ['CNOT', 'CZ', 'CPHASE', 'SWAP', 'CCX', 'CSWAP'];
+  const twoQubitGates = gates.filter(g => multiQubitGates.includes(g.type)).length;
+  
+  // Estimate execution time (simplified: assume sequential execution per layer)
+  // Group gates by position for parallel execution estimation
+  const layers: Map<number, string[]> = new Map();
+  gates.forEach(g => {
+    const existing = layers.get(g.position) || [];
+    existing.push(g.type);
+    layers.set(g.position, existing);
+  });
+  
+  let estimatedTimeNs = 0;
+  layers.forEach(layerGates => {
+    // Take the max time in each layer (parallel execution)
+    const layerTime = Math.max(...layerGates.map(type => GATE_TIMES[type] || 20));
+    estimatedTimeNs += layerTime;
+  });
+  
+  return { gateCount, depth, twoQubitGates, estimatedTimeNs };
+}
+
 export interface VerificationError {
   gateId: string;
   type: 'error' | 'warning';

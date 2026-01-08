@@ -40,6 +40,7 @@ import {
   NoiseSimResult,
   ComparisonResult,
   GATE_DEFINITIONS,
+  calculateCircuitMetrics,
 } from '@/lib/quantum-circuit/types';
 
 import { ALGORITHM_PRESETS } from '@/lib/quantum-circuit/presets';
@@ -513,22 +514,37 @@ const QuantumCircuitRunner = () => {
                 Presets
               </h2>
               <div className="grid grid-cols-2 gap-2 max-h-[240px] overflow-y-auto pr-1">
-                {ALGORITHM_PRESETS.map((preset) => (
-                  <TooltipProvider key={preset.name}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="outline" size="sm" className="text-xs h-auto py-2 flex flex-col items-start hover:bg-primary/5 hover:border-primary/30 transition-colors"
-                          onClick={() => loadPreset(preset)}>
-                          <span className="font-semibold">{preset.name}</span>
-                          <span className="text-muted-foreground text-[10px]">{preset.numQubits}q</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="max-w-[200px]">
-                        <p className="text-xs">{preset.description}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                ))}
+                {ALGORITHM_PRESETS.map((preset) => {
+                  const metrics = calculateCircuitMetrics(preset);
+                  return (
+                    <TooltipProvider key={preset.name}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="outline" size="sm" className="text-xs h-auto py-2 flex flex-col items-start hover:bg-primary/5 hover:border-primary/30 transition-colors"
+                            onClick={() => loadPreset(preset)}>
+                            <span className="font-semibold">{preset.name}</span>
+                            <div className="flex items-center gap-1.5 text-muted-foreground text-[10px]">
+                              <span>{preset.numQubits}q</span>
+                              <span className="text-muted-foreground/50">•</span>
+                              <span>{metrics.gateCount}g</span>
+                              <span className="text-muted-foreground/50">•</span>
+                              <span>d{metrics.depth}</span>
+                            </div>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="max-w-[220px]">
+                          <p className="text-xs mb-2">{preset.description}</p>
+                          <div className="text-[10px] text-muted-foreground border-t border-border pt-2 grid grid-cols-2 gap-1">
+                            <span>Gates: {metrics.gateCount}</span>
+                            <span>Depth: {metrics.depth}</span>
+                            <span>2Q gates: {metrics.twoQubitGates}</span>
+                            <span>~{metrics.estimatedTimeNs}ns</span>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  );
+                })}
               </div>
             </div>
 
