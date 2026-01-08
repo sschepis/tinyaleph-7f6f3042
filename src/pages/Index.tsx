@@ -163,7 +163,7 @@ const exampleCategories = [
     path: '/dna-computer',
     icon: Dna,
     title: 'DNA Computer',
-    description: 'Molecular computation with BioinformaticsBackend 1.3.0',
+    description: 'Molecular computation with prime encoding and sedenion states',
     examples: ['Central dogma', 'Protein folding', 'DNA circuits', 'Molecular binding']
   },
   {
@@ -302,7 +302,7 @@ const Index = () => {
                       DNA Computer
                     </h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Molecular computation with BioinformaticsBackend 1.3.0. Central dogma, protein folding, and DNA logic circuits.
+                      Molecular computation with prime encoding. Central dogma, protein folding, and DNA logic circuits.
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {['Protein Folding', 'DNA Circuits', 'Binding'].map(tag => (
@@ -313,7 +313,7 @@ const Index = () => {
                     </div>
                   </div>
                   <div className="px-6 py-3 bg-green-500/5 border-t border-green-500/10 flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">tinyaleph 1.3.0 native API</span>
+                    <span className="text-xs text-muted-foreground">BioinformaticsBackend</span>
                     <ArrowRight className="w-4 h-4 text-green-400 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </Card>
