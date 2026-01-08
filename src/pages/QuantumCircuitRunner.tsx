@@ -247,7 +247,7 @@ const QuantumCircuitRunner = () => {
               <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
                 <Sparkles className="w-5 h-5" /> Presets
               </h2>
-              <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+              <div className="grid grid-cols-2 gap-2">
                 {ALGORITHM_PRESETS.map((preset) => (
                   <Button key={preset.name} variant="outline" size="sm" className="text-xs h-auto py-2 flex flex-col items-start"
                     onClick={() => loadPreset(preset)} title={preset.description}>
