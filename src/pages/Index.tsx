@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import Hero from '../components/Hero';
-import { Layers, Waves, Database, Cpu, ArrowRight, Play, Server, Atom, MessageSquare, Languages, BookOpen, Sparkles, Bot, Zap, Shuffle } from 'lucide-react';
+import { Layers, Waves, Database, Cpu, ArrowRight, Play, Server, Atom, MessageSquare, Languages, BookOpen, Sparkles, Bot, Zap, Shuffle, Dna, Brain } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -161,10 +161,18 @@ const exampleCategories = [
   {
     id: 'dna-computer',
     path: '/dna-computer',
-    icon: Atom,
+    icon: Dna,
     title: 'DNA Computer',
-    description: 'Molecular computation with prime-encoded nucleotides',
-    examples: ['Nucleotide encoding', 'Codon translation', 'Hybridization', 'Hamiltonian paths']
+    description: 'Molecular computation with BioinformaticsBackend 1.3.0',
+    examples: ['Central dogma', 'Protein folding', 'DNA circuits', 'Molecular binding']
+  },
+  {
+    id: 'symbolic',
+    path: '/symbolic',
+    icon: Brain,
+    title: 'Symbolic AI',
+    description: '400+ symbols: archetypes, Tarot, I-Ching, hieroglyphs',
+    examples: ['Jungian archetypes', 'Tarot spreads', 'Cross-cultural mapping', 'Golden ratio resonance']
   },
 ];
 
@@ -230,7 +238,7 @@ const Index = () => {
           </motion.div>
 
           <motion.div 
-            className="grid md:grid-cols-3 gap-6"
+            className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-50px" }}
@@ -248,7 +256,7 @@ const Index = () => {
                       Quantum Circuit Runner
                     </h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Build and simulate quantum circuits with drag-and-drop gates. Real-time state visualization, noise simulation, and step-through debugging.
+                      Build and simulate quantum circuits with drag-and-drop gates. Real-time state visualization and noise simulation.
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {['Bloch Sphere', 'Noise Sim', 'Debugger'].map(tag => (
@@ -274,22 +282,82 @@ const Index = () => {
               </Link>
             </motion.div>
 
+            {/* DNA Computer */}
+            <motion.div variants={scaleIn}>
+              <Link to="/dna-computer" className="group block h-full">
+                <Card className="h-full overflow-hidden border-2 border-transparent hover:border-green-500/50 transition-all duration-300 bg-gradient-to-br from-green-500/5 to-emerald-500/5">
+                  <div className="p-6">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Dna className="w-6 h-6 text-green-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2 group-hover:text-green-400 transition-colors">
+                      DNA Computer
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Molecular computation with BioinformaticsBackend 1.3.0. Central dogma, protein folding, and DNA logic circuits.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Protein Folding', 'DNA Circuits', 'Binding'].map(tag => (
+                        <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="px-6 py-3 bg-green-500/5 border-t border-green-500/10 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">tinyaleph 1.3.0 native API</span>
+                    <ArrowRight className="w-4 h-4 text-green-400 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </Card>
+              </Link>
+            </motion.div>
+
+            {/* Symbolic AI */}
+            <motion.div variants={scaleIn}>
+              <Link to="/symbolic" className="group block h-full">
+                <Card className="h-full overflow-hidden border-2 border-transparent hover:border-rose-500/50 transition-all duration-300 bg-gradient-to-br from-rose-500/5 to-pink-500/5">
+                  <div className="p-6">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500/20 to-pink-500/20 border border-rose-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Brain className="w-6 h-6 text-rose-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2 group-hover:text-rose-400 transition-colors">
+                      Symbolic AI
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      400+ symbols: Jungian archetypes, Tarot, I-Ching, hieroglyphs. Cross-cultural resonance with golden ratio detection.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Archetypes', 'Tarot', 'I-Ching'].map(tag => (
+                        <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="px-6 py-3 bg-rose-500/5 border-t border-rose-500/10 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">400+ symbols × golden φ</span>
+                    <ArrowRight className="w-4 h-4 text-rose-400 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </Card>
+              </Link>
+            </motion.div>
+
             {/* Aleph Chat */}
             <motion.div variants={scaleIn}>
               <Link to="/chat" className="group block h-full">
-                <Card className="h-full overflow-hidden border-2 border-transparent hover:border-purple-500/50 transition-all duration-300 bg-gradient-to-br from-purple-500/5 to-pink-500/5">
+                <Card className="h-full overflow-hidden border-2 border-transparent hover:border-purple-500/50 transition-all duration-300 bg-gradient-to-br from-purple-500/5 to-violet-500/5">
                   <div className="p-6">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-violet-500/20 border border-purple-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                       <Bot className="w-6 h-6 text-purple-400" />
                     </div>
                     <h3 className="text-xl font-semibold mb-2 group-hover:text-purple-400 transition-colors">
                       Aleph Chat
                     </h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Semantic AI chat with prime-based hypercomplex algebra. Watch meaning evolve in 16D space with real-time entropy and coherence tracking.
+                      Semantic AI chat with prime-based hypercomplex algebra. Watch meaning evolve in 16D space.
                     </p>
                     <div className="flex flex-wrap gap-1.5">
-                      {['16D Viz', 'Entropy', 'Cross-Coherence'].map(tag => (
+                      {['16D Viz', 'Entropy', 'Coherence'].map(tag => (
                         <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
                           {tag}
                         </span>
@@ -297,7 +365,7 @@ const Index = () => {
                     </div>
                   </div>
                   <div className="px-6 py-3 bg-purple-500/5 border-t border-purple-500/10 flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">LLM + TinyAleph integration</span>
+                    <span className="text-xs text-muted-foreground">LLM + TinyAleph</span>
                     <ArrowRight className="w-4 h-4 text-purple-400 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </Card>
@@ -316,7 +384,7 @@ const Index = () => {
                       Enochian Explorer
                     </h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Map the 21-letter angelic alphabet to prime sedenions. Build invocations, visualize glyph mandalas, and search for zero divisors.
+                      Map the 21-letter angelic alphabet to prime sedenions. Build invocations and visualize glyph mandalas.
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {['Glyph Mandala', 'Zero Divisors', 'Elements'].map(tag => (
@@ -327,8 +395,38 @@ const Index = () => {
                     </div>
                   </div>
                   <div className="px-6 py-3 bg-amber-500/5 border-t border-amber-500/10 flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">21 letters × 16 dimensions</span>
+                    <span className="text-xs text-muted-foreground">21 letters × 16D</span>
                     <ArrowRight className="w-4 h-4 text-amber-400 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </Card>
+              </Link>
+            </motion.div>
+
+            {/* Kuramoto Models */}
+            <motion.div variants={scaleIn}>
+              <Link to="/kuramoto" className="group block h-full">
+                <Card className="h-full overflow-hidden border-2 border-transparent hover:border-sky-500/50 transition-all duration-300 bg-gradient-to-br from-sky-500/5 to-indigo-500/5">
+                  <div className="p-6">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-sky-500/20 to-indigo-500/20 border border-sky-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Waves className="w-6 h-6 text-sky-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2 group-hover:text-sky-400 transition-colors">
+                      Kuramoto Models
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Oscillator synchronization: Network, Adaptive, Sakaguchi, and Small-World topologies with real-time controls.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Phase Sync', 'Order Parameter', 'Plasticity'].map(tag => (
+                        <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="px-6 py-3 bg-sky-500/5 border-t border-sky-500/10 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">4 network topologies</span>
+                    <ArrowRight className="w-4 h-4 text-sky-400 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </Card>
               </Link>
