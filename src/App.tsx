@@ -23,6 +23,7 @@ import ScientificExamples from "./pages/ScientificExamples";
 import TypeSystemExamples from "./pages/TypeSystemExamples";
 import ChatExamples from "./pages/ChatExamples";
 import EnochianExamples from "./pages/EnochianExamples";
+import DNAComputerExamples from "./pages/DNAComputerExamples";
 import NotFound from "./pages/NotFound";
 // Docs pages
 import GettingStarted from "./pages/docs/GettingStarted";
@@ -64,6 +65,7 @@ const App = () => (
             <Route path="/typesystem" element={<TypeSystemExamples />} />
             <Route path="/chat" element={<ChatExamples />} />
             <Route path="/enochian" element={<EnochianExamples />} />
+            <Route path="/dna-computer" element={<DNAComputerExamples />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
