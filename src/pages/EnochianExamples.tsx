@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { Play, Languages, Grid3X3 } from 'lucide-react';
+import { useState, useCallback, useMemo } from 'react';
+import { Play, Languages, Grid3X3, Wand2, RotateCcw, Zap, Sparkles, Scale, Layers } from 'lucide-react';
 import ExamplePageWrapper, { ExampleConfig } from '../components/ExamplePageWrapper';
 import SedenionVisualizer from '../components/SedenionVisualizer';
 
@@ -28,7 +28,6 @@ const ENOCHIAN_ALPHABET = [
   { letter: 'X', enochian: 'Pal', prime: 89, element: 'Spirit' },
 ];
 
-const PRIME_BASIS = [7, 11, 13, 17, 19, 23, 29];
 const ELEMENT_COLORS: Record<string, string> = {
   'Air': 'text-yellow-400',
   'Earth': 'text-green-400',
@@ -37,7 +36,16 @@ const ELEMENT_COLORS: Record<string, string> = {
   'Spirit': 'text-purple-400',
 };
 
+const ELEMENT_BG: Record<string, string> = {
+  'Air': 'bg-yellow-400/20',
+  'Earth': 'bg-green-400/20',
+  'Fire': 'bg-red-400/20',
+  'Water': 'bg-blue-400/20',
+  'Spirit': 'bg-purple-400/20',
+};
+
 const letterToPrime = (letter: string) => ENOCHIAN_ALPHABET.find(e => e.letter === letter.toUpperCase())?.prime || 7;
+const letterToElement = (letter: string) => ENOCHIAN_ALPHABET.find(e => e.letter === letter.toUpperCase())?.element || 'Spirit';
 
 const primesToSedenion = (primes: number[]) => {
   const c = new Array(16).fill(0);
@@ -47,6 +55,30 @@ const primesToSedenion = (primes: number[]) => {
   });
   const norm = Math.sqrt(c.reduce((s, v) => s + v * v, 0)) || 1;
   return c.map(v => v / norm);
+};
+
+// Sedenion multiplication (simplified Cayley-Dickson)
+const sedenionMul = (a: number[], b: number[]): number[] => {
+  const result = new Array(16).fill(0);
+  for (let i = 0; i < 16; i++) {
+    for (let j = 0; j < 16; j++) {
+      const k = (i + j) % 16;
+      const sign = ((i & j) & 8) ? -1 : 1;
+      result[k] += sign * a[i] * b[j];
+    }
+  }
+  const norm = Math.sqrt(result.reduce((s, v) => s + v * v, 0)) || 1;
+  return result.map(v => v / norm);
+};
+
+// Compute entropy of sedenion state
+const sedenionEntropy = (s: number[]): number => {
+  const probs = s.map(v => v * v);
+  const sum = probs.reduce((a, b) => a + b, 0) || 1;
+  return -probs.reduce((h, p) => {
+    const normalized = p / sum;
+    return normalized > 0 ? h + normalized * Math.log2(normalized) : h;
+  }, 0);
 };
 
 const AlphabetGrid = () => {
@@ -185,7 +217,6 @@ const ResonanceExample = () => {
     const primes2 = word2.toUpperCase().split('').map(letterToPrime);
     const s1 = primesToSedenion(primes1);
     const s2 = primesToSedenion(primes2);
-    // Compute dot product (coherence)
     const dot = s1.reduce((sum, v, i) => sum + v * s2[i], 0);
     setResonance(dot);
   }, [word1, word2]);
@@ -222,6 +253,364 @@ const ResonanceExample = () => {
           <p className="text-xs text-muted-foreground mt-1">
             {resonance > 0.7 ? 'High resonance' : resonance > 0.3 ? 'Moderate resonance' : 'Low resonance'}
           </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const SedenionMultiplication = () => {
+  const [word1, setWord1] = useState('FIRE');
+  const [word2, setWord2] = useState('WATER');
+  const [result, setResult] = useState<{ s1: number[]; s2: number[]; product: number[]; nonCommutativity: number } | null>(null);
+
+  const multiply = useCallback(() => {
+    const s1 = primesToSedenion(word1.toUpperCase().split('').map(letterToPrime));
+    const s2 = primesToSedenion(word2.toUpperCase().split('').map(letterToPrime));
+    const ab = sedenionMul(s1, s2);
+    const ba = sedenionMul(s2, s1);
+    // Non-commutativity = ||AB - BA||
+    const diff = ab.map((v, i) => v - ba[i]);
+    const nonComm = Math.sqrt(diff.reduce((s, v) => s + v * v, 0));
+    setResult({ s1, s2, product: ab, nonCommutativity: nonComm });
+  }, [word1, word2]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-4">
+        <Zap className="w-5 h-5 text-primary" />
+        <h3 className="font-semibold">Sedenion Multiplication</h3>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Sedenions are non-commutative: A×B ≠ B×A. See the interference between word states.
+      </p>
+      <div className="grid grid-cols-2 gap-4">
+        <input 
+          type="text" 
+          value={word1} 
+          onChange={(e) => setWord1(e.target.value.toUpperCase())} 
+          className="px-4 py-2 rounded-lg bg-secondary border border-border font-mono" 
+          maxLength={8} 
+        />
+        <input 
+          type="text" 
+          value={word2} 
+          onChange={(e) => setWord2(e.target.value.toUpperCase())} 
+          className="px-4 py-2 rounded-lg bg-secondary border border-border font-mono" 
+          maxLength={8} 
+        />
+      </div>
+      <button onClick={multiply} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground">
+        <Zap className="w-4 h-4" /> Multiply
+      </button>
+      
+      {result && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="p-2 rounded bg-muted/50">
+              <p className="text-xs text-muted-foreground">Word A</p>
+              <p className="font-mono text-primary">{word1}</p>
+            </div>
+            <div className="p-2 rounded bg-muted/50">
+              <p className="text-xs text-muted-foreground">×</p>
+              <p className="text-2xl">⊗</p>
+            </div>
+            <div className="p-2 rounded bg-muted/50">
+              <p className="text-xs text-muted-foreground">Word B</p>
+              <p className="font-mono text-primary">{word2}</p>
+            </div>
+          </div>
+          <SedenionVisualizer components={result.product} animated={false} size="lg" />
+          <div className="p-4 rounded-lg bg-primary/10 border border-primary/30 text-center">
+            <p className="text-sm text-muted-foreground">Non-Commutativity ||A×B - B×A||</p>
+            <p className="text-2xl font-mono font-bold text-primary">{result.nonCommutativity.toFixed(4)}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {result.nonCommutativity > 0.5 ? 'High interference' : result.nonCommutativity > 0.2 ? 'Moderate interference' : 'Low interference'}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const InvocationBuilder = () => {
+  const [letters, setLetters] = useState<string[]>(['L', 'I', 'G', 'H', 'T']);
+  const [sedenion, setSedenion] = useState<number[]>(Array(16).fill(0));
+  const [elementBalance, setElementBalance] = useState<Record<string, number>>({});
+
+  const build = useCallback(() => {
+    const primes = letters.map(letterToPrime);
+    setSedenion(primesToSedenion(primes));
+    const balance: Record<string, number> = { Air: 0, Earth: 0, Fire: 0, Water: 0, Spirit: 0 };
+    letters.forEach(l => {
+      const el = letterToElement(l);
+      balance[el] = (balance[el] || 0) + 1;
+    });
+    setElementBalance(balance);
+  }, [letters]);
+
+  const addLetter = (l: string) => {
+    if (letters.length < 12) {
+      setLetters([...letters, l]);
+    }
+  };
+
+  const removeLetter = (idx: number) => {
+    setLetters(letters.filter((_, i) => i !== idx));
+  };
+
+  const clear = () => setLetters([]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-4">
+        <Wand2 className="w-5 h-5 text-primary" />
+        <h3 className="font-semibold">Invocation Builder</h3>
+      </div>
+      
+      <div className="p-4 rounded-lg bg-muted/50 min-h-[60px] flex flex-wrap gap-2 items-center">
+        {letters.length === 0 ? (
+          <span className="text-muted-foreground text-sm">Click letters below to build invocation...</span>
+        ) : (
+          letters.map((l, i) => (
+            <button 
+              key={i} 
+              onClick={() => removeLetter(i)} 
+              className={`px-3 py-1 rounded ${ELEMENT_BG[letterToElement(l)]} border border-border hover:border-destructive transition-colors`}
+            >
+              <span className="font-mono font-bold">{l}</span>
+            </button>
+          ))
+        )}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {ENOCHIAN_ALPHABET.map((e, i) => (
+          <button 
+            key={i} 
+            onClick={() => addLetter(e.letter)} 
+            className="p-2 rounded border border-border hover:border-primary/50 text-center transition-colors"
+          >
+            <span className="text-sm font-bold text-primary">{e.letter}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="flex gap-2">
+        <button onClick={build} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground">
+          <Sparkles className="w-4 h-4" /> Build
+        </button>
+        <button onClick={clear} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary">
+          <RotateCcw className="w-4 h-4" /> Clear
+        </button>
+      </div>
+
+      {Object.keys(elementBalance).length > 0 && (
+        <div className="grid grid-cols-5 gap-2">
+          {['Air', 'Earth', 'Fire', 'Water', 'Spirit'].map(el => (
+            <div key={el} className={`p-2 rounded text-center ${ELEMENT_BG[el]}`}>
+              <p className={`text-xs ${ELEMENT_COLORS[el]}`}>{el}</p>
+              <p className="text-lg font-bold">{elementBalance[el] || 0}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <SedenionVisualizer components={sedenion} animated={false} size="lg" />
+    </div>
+  );
+};
+
+const ElementalBalance = () => {
+  const [word, setWord] = useState('BALANCE');
+  const [analysis, setAnalysis] = useState<{ 
+    elements: Record<string, number>; 
+    dominant: string; 
+    entropy: number;
+    sedenion: number[];
+  } | null>(null);
+
+  const analyze = useCallback(() => {
+    const letters = word.toUpperCase().split('').filter(l => ENOCHIAN_ALPHABET.some(e => e.letter === l));
+    const elements: Record<string, number> = { Air: 0, Earth: 0, Fire: 0, Water: 0, Spirit: 0 };
+    letters.forEach(l => {
+      const el = letterToElement(l);
+      elements[el] = (elements[el] || 0) + 1;
+    });
+    const dominant = Object.entries(elements).sort((a, b) => b[1] - a[1])[0]?.[0] || 'None';
+    const primes = letters.map(letterToPrime);
+    const sed = primesToSedenion(primes);
+    const entropy = sedenionEntropy(sed);
+    setAnalysis({ elements, dominant, entropy, sedenion: sed });
+  }, [word]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-4">
+        <Scale className="w-5 h-5 text-primary" />
+        <h3 className="font-semibold">Elemental Balance</h3>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Analyze the elemental composition and entropy of any Enochian word.
+      </p>
+      <div className="flex gap-2">
+        <input 
+          type="text" 
+          value={word} 
+          onChange={(e) => setWord(e.target.value.toUpperCase())} 
+          className="flex-1 px-4 py-2 rounded-lg bg-secondary border border-border font-mono" 
+          maxLength={12} 
+        />
+        <button onClick={analyze} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground">
+          <Scale className="w-4 h-4" /> Analyze
+        </button>
+      </div>
+
+      {analysis && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-5 gap-2">
+            {['Air', 'Earth', 'Fire', 'Water', 'Spirit'].map(el => (
+              <div key={el} className={`p-3 rounded text-center ${analysis.dominant === el ? 'ring-2 ring-primary' : ''} ${ELEMENT_BG[el]}`}>
+                <p className={`text-xs ${ELEMENT_COLORS[el]}`}>{el}</p>
+                <p className="text-xl font-bold">{analysis.elements[el] || 0}</p>
+              </div>
+            ))}
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 rounded-lg bg-muted/50 text-center">
+              <p className="text-sm text-muted-foreground">Dominant Element</p>
+              <p className={`text-2xl font-bold ${ELEMENT_COLORS[analysis.dominant]}`}>{analysis.dominant}</p>
+            </div>
+            <div className="p-4 rounded-lg bg-muted/50 text-center">
+              <p className="text-sm text-muted-foreground">State Entropy</p>
+              <p className="text-2xl font-mono font-bold text-primary">{analysis.entropy.toFixed(2)} bits</p>
+            </div>
+          </div>
+          
+          <SedenionVisualizer components={analysis.sedenion} animated={false} size="md" />
+        </div>
+      )}
+    </div>
+  );
+};
+
+const WordTransformation = () => {
+  const [word, setWord] = useState('CHAOS');
+  const [steps, setSteps] = useState<{ word: string; sedenion: number[]; operation: string }[]>([]);
+
+  const transform = useCallback(() => {
+    const letters = word.toUpperCase().split('').filter(l => ENOCHIAN_ALPHABET.some(e => e.letter === l));
+    const newSteps: typeof steps = [];
+    
+    // Original
+    const original = primesToSedenion(letters.map(letterToPrime));
+    newSteps.push({ word: letters.join(''), sedenion: original, operation: 'Original' });
+    
+    // Reverse
+    const reversed = [...letters].reverse();
+    const reversedSed = primesToSedenion(reversed.map(letterToPrime));
+    newSteps.push({ word: reversed.join(''), sedenion: reversedSed, operation: 'Reversed' });
+    
+    // Rotation (shift letters)
+    const rotated = [...letters.slice(1), letters[0]];
+    const rotatedSed = primesToSedenion(rotated.map(letterToPrime));
+    newSteps.push({ word: rotated.join(''), sedenion: rotatedSed, operation: 'Rotated' });
+    
+    // Combined (original × reversed)
+    const combined = sedenionMul(original, reversedSed);
+    newSteps.push({ word: `(${letters.join('')} × ${reversed.join('')})`, sedenion: combined, operation: 'Combined' });
+    
+    setSteps(newSteps);
+  }, [word]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-4">
+        <Layers className="w-5 h-5 text-primary" />
+        <h3 className="font-semibold">Word Transformations</h3>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        See how transformations (reverse, rotate, combine) affect the sedenion state.
+      </p>
+      <div className="flex gap-2">
+        <input 
+          type="text" 
+          value={word} 
+          onChange={(e) => setWord(e.target.value.toUpperCase())} 
+          className="flex-1 px-4 py-2 rounded-lg bg-secondary border border-border font-mono" 
+          maxLength={8} 
+        />
+        <button onClick={transform} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground">
+          <Layers className="w-4 h-4" /> Transform
+        </button>
+      </div>
+
+      {steps.length > 0 && (
+        <div className="grid grid-cols-2 gap-4">
+          {steps.map((step, i) => (
+            <div key={i} className="p-4 rounded-lg bg-muted/50 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs px-2 py-1 rounded bg-primary/20 text-primary">{step.operation}</span>
+                <span className="font-mono text-sm">{step.word}</span>
+              </div>
+              <SedenionVisualizer components={step.sedenion} animated={false} size="sm" />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const ZeroDivisorSearch = () => {
+  const [seed, setSeed] = useState(1);
+  const [results, setResults] = useState<{ word1: string; word2: string; product: number; isZero: boolean }[]>([]);
+
+  const search = useCallback(() => {
+    const words = ['FIRE', 'WATER', 'AIR', 'EARTH', 'LIGHT', 'DARK', 'CHAOS', 'ORDER'];
+    const newResults: typeof results = [];
+    
+    for (let i = 0; i < words.length; i++) {
+      for (let j = i + 1; j < words.length; j++) {
+        const s1 = primesToSedenion(words[i].split('').map(letterToPrime));
+        const s2 = primesToSedenion(words[j].split('').map(letterToPrime));
+        const product = sedenionMul(s1, s2);
+        const magnitude = Math.sqrt(product.reduce((s, v) => s + v * v, 0));
+        const isZero = magnitude < 0.1;
+        newResults.push({ word1: words[i], word2: words[j], product: magnitude, isZero });
+      }
+    }
+    
+    newResults.sort((a, b) => a.product - b.product);
+    setResults(newResults);
+    setSeed(s => s + 1);
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-4">
+        <Zap className="w-5 h-5 text-primary" />
+        <h3 className="font-semibold">Zero Divisor Search</h3>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Sedenions contain zero divisors: non-zero elements that multiply to (near) zero. These represent "semantic cancellation."
+      </p>
+      <button onClick={search} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground">
+        <Zap className="w-4 h-4" /> Search (Seed #{seed})
+      </button>
+
+      {results.length > 0 && (
+        <div className="space-y-2 max-h-64 overflow-y-auto">
+          {results.slice(0, 10).map((r, i) => (
+            <div key={i} className={`p-3 rounded-lg flex justify-between items-center ${r.isZero ? 'bg-destructive/20 border border-destructive/50' : 'bg-muted/50'}`}>
+              <span className="font-mono text-sm">{r.word1} × {r.word2}</span>
+              <span className={`font-mono ${r.isZero ? 'text-destructive' : 'text-muted-foreground'}`}>
+                ||A×B|| = {r.product.toFixed(4)}
+              </span>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -277,12 +666,122 @@ const coherence = s1.reduce((sum, v, i) => sum + v * s2[i], 0);
 console.log('Resonance:', coherence);`, 
     codeTitle: 'enochian/03-resonance.js' 
   },
+  { 
+    id: 'multiplication', 
+    number: '4', 
+    title: 'Sedenion Multiplication', 
+    subtitle: 'Non-commutative algebra', 
+    description: 'Sedenions are non-commutative: A×B ≠ B×A. Multiply two word states and measure the interference between them.', 
+    concepts: ['Sedenion Algebra', 'Non-Commutativity', 'Cayley-Dickson'], 
+    code: `const s1 = primesToSedenion(encode('FIRE'));
+const s2 = primesToSedenion(encode('WATER'));
+
+const ab = sedenionMul(s1, s2);
+const ba = sedenionMul(s2, s1);
+
+// Measure non-commutativity
+const diff = ab.map((v, i) => v - ba[i]);
+const nonComm = Math.sqrt(diff.reduce((s, v) => s + v * v, 0));
+console.log('||AB - BA||:', nonComm);`, 
+    codeTitle: 'enochian/04-multiplication.js' 
+  },
+  { 
+    id: 'invocation', 
+    number: '5', 
+    title: 'Invocation Builder', 
+    subtitle: 'Compose semantic states', 
+    description: 'Build invocations by selecting letters and see the resulting elemental balance and sedenion state.', 
+    concepts: ['Composition', 'Elemental Balance', 'State Building'], 
+    code: `const invocation = ['L', 'I', 'G', 'H', 'T'];
+const primes = invocation.map(letterToPrime);
+const state = primesToSedenion(primes);
+
+// Count elemental balance
+const elements = { Air: 0, Earth: 0, Fire: 0, Water: 0 };
+invocation.forEach(l => {
+  elements[letterToElement(l)]++;
+});
+console.log('Balance:', elements);`, 
+    codeTitle: 'enochian/05-invocation.js' 
+  },
+  { 
+    id: 'balance', 
+    number: '6', 
+    title: 'Elemental Balance', 
+    subtitle: 'Composition analysis', 
+    description: 'Analyze the elemental composition, dominant element, and entropy of any Enochian word.', 
+    concepts: ['Element Analysis', 'Entropy', 'State Properties'], 
+    code: `const word = 'BALANCE';
+const letters = word.split('');
+
+// Count elements
+const elements = letters.reduce((acc, l) => {
+  acc[letterToElement(l)]++;
+  return acc;
+}, { Air: 0, Earth: 0, Fire: 0, Water: 0, Spirit: 0 });
+
+// Calculate entropy
+const state = primesToSedenion(letters.map(letterToPrime));
+const entropy = sedenionEntropy(state);
+console.log('Entropy:', entropy, 'bits');`, 
+    codeTitle: 'enochian/06-balance.js' 
+  },
+  { 
+    id: 'transformations', 
+    number: '7', 
+    title: 'Word Transformations', 
+    subtitle: 'State evolution', 
+    description: 'See how transformations (reverse, rotate, combine) affect the sedenion state of a word.', 
+    concepts: ['Transformations', 'State Evolution', 'Symmetry'], 
+    code: `const word = 'CHAOS';
+const letters = word.split('');
+
+// Original state
+const original = primesToSedenion(letters.map(letterToPrime));
+
+// Reversed state
+const reversed = [...letters].reverse();
+const reversedState = primesToSedenion(reversed.map(letterToPrime));
+
+// Combined: original × reversed
+const combined = sedenionMul(original, reversedState);
+console.log('Combined state:', combined);`, 
+    codeTitle: 'enochian/07-transformations.js' 
+  },
+  { 
+    id: 'zerodivisors', 
+    number: '8', 
+    title: 'Zero Divisor Search', 
+    subtitle: 'Semantic cancellation', 
+    description: 'Sedenions contain zero divisors: non-zero elements that multiply to zero. Find word pairs that semantically cancel.', 
+    concepts: ['Zero Divisors', 'Cancellation', 'Sedenion Properties'], 
+    code: `const words = ['FIRE', 'WATER', 'AIR', 'EARTH'];
+
+// Search for zero divisors
+for (let i = 0; i < words.length; i++) {
+  for (let j = i + 1; j < words.length; j++) {
+    const s1 = encode(words[i]);
+    const s2 = encode(words[j]);
+    const product = sedenionMul(s1, s2);
+    const magnitude = norm(product);
+    if (magnitude < 0.1) {
+      console.log('Zero divisor:', words[i], '×', words[j]);
+    }
+  }
+}`, 
+    codeTitle: 'enochian/08-zerodivisors.js' 
+  },
 ];
 
 const exampleComponents: Record<string, React.FC> = { 
   'alphabet': AlphabetGrid, 
   'encoder': EncoderExample,
   'resonance': ResonanceExample,
+  'multiplication': SedenionMultiplication,
+  'invocation': InvocationBuilder,
+  'balance': ElementalBalance,
+  'transformations': WordTransformation,
+  'zerodivisors': ZeroDivisorSearch,
 };
 
 export default function EnochianExamplesPage() {
