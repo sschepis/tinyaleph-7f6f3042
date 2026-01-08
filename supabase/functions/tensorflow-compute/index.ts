@@ -3,10 +3,76 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 // TensorFlow.js operations implemented natively for edge runtime
 // Since tf.js has heavy dependencies, we implement core tensor operations directly
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// Rate limiting storage (in-memory, resets on function restart)
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 30;
+
+function getRateLimitKey(req: Request): string {
+  const forwarded = req.headers.get('x-forwarded-for');
+  const ip = forwarded ? forwarded.split(',')[0].trim() : 'unknown';
+  return ip;
+}
+
+function checkRateLimit(key: string): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const record = rateLimitStore.get(key);
+  
+  if (!record || now > record.resetTime) {
+    rateLimitStore.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true, remaining: MAX_REQUESTS_PER_WINDOW - 1 };
+  }
+  
+  if (record.count >= MAX_REQUESTS_PER_WINDOW) {
+    return { allowed: false, remaining: 0 };
+  }
+  
+  record.count++;
+  return { allowed: true, remaining: MAX_REQUESTS_PER_WINDOW - record.count };
+}
+
+// Get CORS headers with origin validation
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') || '';
+  const allowedOrigins = [
+    'https://lovable.dev',
+    'https://www.lovable.dev',
+  ];
+  
+  // Allow localhost for development
+  const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
+  // Allow Lovable preview domains
+  const isLovablePreview = origin.includes('.lovable.app') || origin.includes('.lovableproject.com');
+  
+  const allowedOrigin = allowedOrigins.includes(origin) || isLocalhost || isLovablePreview
+    ? origin
+    : allowedOrigins[0];
+  
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
+}
+
+// Input validation constants
+const MAX_ARRAY_SIZE = 10000;
+const MAX_TENSOR_ELEMENTS = 100000;
+const MAX_LAYERS = 10;
+const MAX_SVD_COMPONENTS = 50;
+const MAX_ITERATIONS = 100;
+
+// Allowed operations whitelist
+const ALLOWED_OPERATIONS = [
+  'tensor.create', 'tensor.zeros', 'tensor.ones', 'tensor.random', 'tensor.randomNormal',
+  'tensor.add', 'tensor.sub', 'tensor.mul', 'tensor.matmul', 'tensor.transpose',
+  'activation.relu', 'activation.sigmoid', 'activation.tanh', 'activation.softmax',
+  'nn.dense', 'nn.sequential',
+  'loss.mse', 'loss.crossEntropy',
+  'conv.conv1d', 'pool.max1d', 'pool.avg1d',
+  'decomposition.svd', 'decomposition.pca',
+  'stats.describe'
+];
 
 // Tensor class for matrix operations
 class Tensor {
@@ -416,13 +482,139 @@ function pca(data: Tensor, numComponents = 2): { transformed: Tensor; components
   return { transformed, components: V, explainedVariance };
 }
 
+// Input validation helper
+function validateTensorParams(params: Record<string, unknown>, operation: string): { valid: boolean; error?: string } {
+  // Validate shape if present
+  if (params.shape) {
+    const shape = params.shape as number[];
+    if (!Array.isArray(shape) || shape.length === 0 || shape.length > 4) {
+      return { valid: false, error: 'Shape must be an array of 1-4 dimensions' };
+    }
+    const totalElements = shape.reduce((a: number, b: number) => a * b, 1);
+    if (totalElements > MAX_TENSOR_ELEMENTS) {
+      return { valid: false, error: `Tensor size exceeds maximum of ${MAX_TENSOR_ELEMENTS} elements` };
+    }
+  }
+  
+  // Validate data arrays
+  if (params.data) {
+    const data = params.data as number[];
+    if (!Array.isArray(data) || data.length > MAX_ARRAY_SIZE) {
+      return { valid: false, error: `Data array must have at most ${MAX_ARRAY_SIZE} elements` };
+    }
+  }
+  
+  // Validate tensor inputs for operations
+  if (params.a && typeof params.a === 'object') {
+    const a = params.a as { data?: number[]; shape?: number[] };
+    if (a.data && a.data.length > MAX_ARRAY_SIZE) {
+      return { valid: false, error: `Input tensor a exceeds maximum size` };
+    }
+  }
+  if (params.b && typeof params.b === 'object') {
+    const b = params.b as { data?: number[]; shape?: number[] };
+    if (b.data && b.data.length > MAX_ARRAY_SIZE) {
+      return { valid: false, error: `Input tensor b exceeds maximum size` };
+    }
+  }
+  
+  // Validate neural network params
+  if (operation === 'nn.sequential') {
+    const layers = params.layers as Array<{ inputSize: number; outputSize: number }>;
+    if (!Array.isArray(layers) || layers.length > MAX_LAYERS) {
+      return { valid: false, error: `Sequential model can have at most ${MAX_LAYERS} layers` };
+    }
+  }
+  
+  // Validate SVD/PCA params
+  if (operation === 'decomposition.svd' || operation === 'decomposition.pca') {
+    const numComponents = params.numComponents as number;
+    if (numComponents && numComponents > MAX_SVD_COMPONENTS) {
+      return { valid: false, error: `numComponents cannot exceed ${MAX_SVD_COMPONENTS}` };
+    }
+  }
+  
+  // Validate input arrays for conv/pool
+  if (params.input && Array.isArray(params.input)) {
+    if ((params.input as number[]).length > MAX_ARRAY_SIZE) {
+      return { valid: false, error: `Input array exceeds maximum size` };
+    }
+  }
+  
+  return { valid: true };
+}
+
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Only allow POST
+  if (req.method !== 'POST') {
+    return new Response(
+      JSON.stringify({ error: 'Method not allowed' }),
+      { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Rate limiting
+  const rateLimitKey = getRateLimitKey(req);
+  const { allowed, remaining } = checkRateLimit(rateLimitKey);
+  
+  if (!allowed) {
+    return new Response(
+      JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+      { 
+        status: 429, 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'X-RateLimit-Remaining': '0',
+          'Retry-After': '60'
+        } 
+      }
+    );
+  }
+
   try {
-    const { operation, params } = await req.json();
+    const body = await req.text();
+    if (body.length > 100000) {
+      return new Response(
+        JSON.stringify({ error: 'Request body too large' }),
+        { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const { operation, params = {} } = JSON.parse(body);
+    
+    // Validate operation is allowed
+    if (!operation || typeof operation !== 'string') {
+      return new Response(
+        JSON.stringify({ error: 'Operation is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    if (!ALLOWED_OPERATIONS.includes(operation)) {
+      return new Response(
+        JSON.stringify({ error: 'Unknown operation', availableOperations: ALLOWED_OPERATIONS }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Validate input parameters
+    const validation = validateTensorParams(params, operation);
+    if (!validation.valid) {
+      return new Response(
+        JSON.stringify({ error: validation.error }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    console.log(`Processing operation: ${operation}`);
+    
     let result: unknown;
 
     switch (operation) {
@@ -516,10 +708,11 @@ serve(async (req) => {
       }
       case 'nn.sequential': {
         const model = new Sequential();
-        for (const layer of params.layers) {
+        const layers = (params.layers as Array<{ inputSize: number; outputSize: number; activation?: string }>).slice(0, MAX_LAYERS);
+        for (const layer of layers) {
           model.addLayer(layer.inputSize, layer.outputSize, layer.activation);
         }
-        const input = new Tensor(params.input, [params.layers[0].inputSize]);
+        const input = new Tensor(params.input, [layers[0].inputSize]);
         const output = model.predict(input);
         result = { output: output.toJSON(), model: model.toJSON() };
         break;
@@ -559,13 +752,16 @@ serve(async (req) => {
       // Dimensionality reduction
       case 'decomposition.svd': {
         const matrix = new Tensor(params.data, params.shape);
-        const { U, S, V } = svdApprox(matrix, params.numComponents || 2);
+        const numComponents = Math.min(params.numComponents || 2, MAX_SVD_COMPONENTS);
+        const iterations = Math.min(params.iterations || 100, MAX_ITERATIONS);
+        const { U, S, V } = svdApprox(matrix, numComponents, iterations);
         result = { U: U.toJSON(), S, V: V.toJSON() };
         break;
       }
       case 'decomposition.pca': {
         const data = new Tensor(params.data, params.shape);
-        const { transformed, components, explainedVariance } = pca(data, params.numComponents || 2);
+        const numComponents = Math.min(params.numComponents || 2, MAX_SVD_COMPONENTS);
+        const { transformed, components, explainedVariance } = pca(data, numComponents);
         result = { transformed: transformed.toJSON(), components: components.toJSON(), explainedVariance };
         break;
       }
@@ -591,12 +787,18 @@ serve(async (req) => {
         });
     }
 
+    console.log(`Operation ${operation} completed successfully`);
+
     return new Response(JSON.stringify({ result }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { 
+        ...corsHeaders, 
+        'Content-Type': 'application/json',
+        'X-RateLimit-Remaining': String(remaining)
+      },
     });
   } catch (error) {
-    console.error('tensorflow-compute error:', error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), {
+    console.error('tensorflow-compute error:', error instanceof Error ? error.message : 'Unknown error');
+    return new Response(JSON.stringify({ error: 'An error occurred processing your request' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

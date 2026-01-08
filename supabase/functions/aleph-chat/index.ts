@@ -1,10 +1,62 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// Rate limiting storage (in-memory, resets on function restart)
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 20; // More restrictive for AI endpoint
+
+function getRateLimitKey(req: Request): string {
+  const forwarded = req.headers.get('x-forwarded-for');
+  const ip = forwarded ? forwarded.split(',')[0].trim() : 'unknown';
+  return ip;
+}
+
+function checkRateLimit(key: string): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const record = rateLimitStore.get(key);
+  
+  if (!record || now > record.resetTime) {
+    rateLimitStore.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true, remaining: MAX_REQUESTS_PER_WINDOW - 1 };
+  }
+  
+  if (record.count >= MAX_REQUESTS_PER_WINDOW) {
+    return { allowed: false, remaining: 0 };
+  }
+  
+  record.count++;
+  return { allowed: true, remaining: MAX_REQUESTS_PER_WINDOW - record.count };
+}
+
+// Get CORS headers with origin validation
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') || '';
+  const allowedOrigins = [
+    'https://lovable.dev',
+    'https://www.lovable.dev',
+  ];
+  
+  // Allow localhost for development
+  const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
+  // Allow Lovable preview domains
+  const isLovablePreview = origin.includes('.lovable.app') || origin.includes('.lovableproject.com');
+  
+  const allowedOrigin = allowedOrigins.includes(origin) || isLocalhost || isLovablePreview
+    ? origin
+    : allowedOrigins[0];
+  
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
+}
+
+// Input validation constants
+const MAX_MESSAGES = 50;
+const MAX_MESSAGE_LENGTH = 4000;
+const MAX_TOTAL_CONTENT = 50000;
 
 const LOVABLE_AI_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
 
@@ -108,30 +160,122 @@ Guidelines:
 5. Be warm, thoughtful, and engage with the meaning behind the words`;
 }
 
+// Validate messages array
+function validateMessages(messages: unknown): { valid: boolean; error?: string } {
+  if (!messages || !Array.isArray(messages)) {
+    return { valid: false, error: 'Messages array is required' };
+  }
+  
+  if (messages.length === 0) {
+    return { valid: false, error: 'Messages array cannot be empty' };
+  }
+  
+  if (messages.length > MAX_MESSAGES) {
+    return { valid: false, error: `Too many messages. Maximum is ${MAX_MESSAGES}` };
+  }
+  
+  let totalContent = 0;
+  for (const msg of messages) {
+    if (!msg || typeof msg !== 'object') {
+      return { valid: false, error: 'Each message must be an object' };
+    }
+    
+    const { role, content } = msg as { role?: string; content?: string };
+    
+    if (!role || !['user', 'assistant', 'system'].includes(role)) {
+      return { valid: false, error: 'Invalid message role' };
+    }
+    
+    if (typeof content !== 'string') {
+      return { valid: false, error: 'Message content must be a string' };
+    }
+    
+    if (content.length > MAX_MESSAGE_LENGTH) {
+      return { valid: false, error: `Message too long. Maximum is ${MAX_MESSAGE_LENGTH} characters` };
+    }
+    
+    totalContent += content.length;
+  }
+  
+  if (totalContent > MAX_TOTAL_CONTENT) {
+    return { valid: false, error: `Total content too large. Maximum is ${MAX_TOTAL_CONTENT} characters` };
+  }
+  
+  return { valid: true };
+}
+
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Only allow POST
+  if (req.method !== 'POST') {
+    return new Response(
+      JSON.stringify({ error: 'Method not allowed' }),
+      { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Rate limiting
+  const rateLimitKey = getRateLimitKey(req);
+  const { allowed, remaining } = checkRateLimit(rateLimitKey);
+  
+  if (!allowed) {
+    return new Response(
+      JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+      { 
+        status: 429, 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'X-RateLimit-Remaining': '0',
+          'Retry-After': '60'
+        } 
+      }
+    );
+  }
+
   try {
-    const { messages, temperature = 0.7 } = await req.json();
-    
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+    const body = await req.text();
+    if (body.length > 100000) {
       return new Response(
-        JSON.stringify({ error: 'Messages array is required' }),
+        JSON.stringify({ error: 'Request body too large' }),
+        { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const { messages, temperature = 0.7 } = JSON.parse(body);
+    
+    // Validate messages
+    const validation = validateMessages(messages);
+    if (!validation.valid) {
+      return new Response(
+        JSON.stringify({ error: validation.error }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    // Validate temperature
+    const validTemperature = typeof temperature === 'number' 
+      ? Math.max(0, Math.min(2, temperature)) 
+      : 0.7;
 
     const apiKey = Deno.env.get('LOVABLE_API_KEY');
     if (!apiKey) {
-      throw new Error('LOVABLE_API_KEY not configured');
+      console.error('LOVABLE_API_KEY not configured');
+      return new Response(
+        JSON.stringify({ error: 'Service configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Get the latest user message for semantic analysis
-    const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
-    const userText = lastUserMessage?.content || '';
+    const lastUserMessage = [...messages].reverse().find((m: { role: string }) => m.role === 'user');
+    const userText = (lastUserMessage?.content || '').substring(0, MAX_MESSAGE_LENGTH);
     
     // Semantic encoding
     const userPrimes = encodeText(userText);
@@ -140,7 +284,7 @@ serve(async (req) => {
     const userCoherence = coherence(userState);
     
     console.log('Semantic analysis:', { 
-      text: userText.slice(0, 50),
+      textLength: userText.length,
       primeCount: userPrimes.length,
       entropy: userEntropy,
       coherence: userCoherence
@@ -169,15 +313,17 @@ serve(async (req) => {
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: enhancedMessages,
-        temperature,
+        temperature: validTemperature,
         max_tokens: 1024,
       }),
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Lovable AI error:', response.status, errorText);
-      throw new Error(`AI API error: ${response.status}`);
+      console.error('Lovable AI error:', response.status);
+      return new Response(
+        JSON.stringify({ error: 'AI service temporarily unavailable' }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const data = await response.json();
@@ -208,14 +354,19 @@ serve(async (req) => {
         },
         usage: data.usage,
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'X-RateLimit-Remaining': String(remaining)
+        } 
+      }
     );
 
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Error in aleph-chat:', errorMessage);
+    console.error('Error in aleph-chat:', error instanceof Error ? error.message : 'Unknown error');
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: 'An error occurred processing your request' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

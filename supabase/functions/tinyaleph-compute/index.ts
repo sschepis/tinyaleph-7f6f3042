@@ -1,10 +1,78 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// Rate limiting storage (in-memory, resets on function restart)
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 30;
+
+function getRateLimitKey(req: Request): string {
+  const forwarded = req.headers.get('x-forwarded-for');
+  const ip = forwarded ? forwarded.split(',')[0].trim() : 'unknown';
+  return ip;
+}
+
+function checkRateLimit(key: string): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const record = rateLimitStore.get(key);
+  
+  if (!record || now > record.resetTime) {
+    rateLimitStore.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true, remaining: MAX_REQUESTS_PER_WINDOW - 1 };
+  }
+  
+  if (record.count >= MAX_REQUESTS_PER_WINDOW) {
+    return { allowed: false, remaining: 0 };
+  }
+  
+  record.count++;
+  return { allowed: true, remaining: MAX_REQUESTS_PER_WINDOW - record.count };
+}
+
+// Get CORS headers with origin validation
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') || '';
+  const allowedOrigins = [
+    'https://lovable.dev',
+    'https://www.lovable.dev',
+  ];
+  
+  // Allow localhost for development
+  const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
+  // Allow Lovable preview domains
+  const isLovablePreview = origin.includes('.lovable.app') || origin.includes('.lovableproject.com');
+  
+  const allowedOrigin = allowedOrigins.includes(origin) || isLocalhost || isLovablePreview
+    ? origin
+    : allowedOrigins[0];
+  
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
+}
+
+// Input validation constants
+const MAX_ARRAY_SIZE = 1000;
+const MAX_DIMS = 64;
+const MAX_PRIME_LIMIT = 10000;
+const MAX_NTH_PRIME = 1000;
+const MAX_ENGINE_STEPS = 100;
+const MAX_INPUT_LENGTH = 1000;
+
+// Allowed operations whitelist
+const ALLOWED_OPERATIONS = [
+  'hypercomplex.create',
+  'hypercomplex.multiply',
+  'hypercomplex.normalize',
+  'hypercomplex.conjugate',
+  'prime.check',
+  'prime.factorize',
+  'prime.upTo',
+  'prime.nth',
+  'engine.run'
+];
 
 // Hypercomplex number operations (Quaternion, Octonion, Sedenion)
 class Hypercomplex {
@@ -157,8 +225,8 @@ interface EngineConfig {
 }
 
 function runSemanticEngine(input: string, config: EngineConfig = {}) {
-  const dims = config.dims || 16;
-  const maxSteps = config.maxSteps || 100;
+  const dims = Math.min(config.dims || 16, MAX_DIMS);
+  const maxSteps = Math.min(config.maxSteps || 100, MAX_ENGINE_STEPS);
   const collapseCoherence = config.collapseCoherence || 0.85;
   const collapseEntropy = config.collapseEntropy || 0.5;
   
@@ -206,7 +274,7 @@ function runSemanticEngine(input: string, config: EngineConfig = {}) {
   const output = dominant.map(d => `axis_${d.index}`).join(' ');
   
   return {
-    input,
+    input: input.substring(0, 100), // Truncate in response
     output,
     finalState: state.toJSON(),
     steps,
@@ -215,41 +283,164 @@ function runSemanticEngine(input: string, config: EngineConfig = {}) {
   };
 }
 
+// Input validation helper
+function validateParams(operation: string, params: Record<string, unknown>): { valid: boolean; error?: string } {
+  switch (operation) {
+    case 'hypercomplex.create':
+    case 'hypercomplex.normalize':
+    case 'hypercomplex.conjugate': {
+      const components = params.components as number[] | undefined;
+      if (components && (!Array.isArray(components) || components.length > MAX_ARRAY_SIZE)) {
+        return { valid: false, error: `Components array must have at most ${MAX_ARRAY_SIZE} elements` };
+      }
+      if (components && !components.every(c => typeof c === 'number' && isFinite(c))) {
+        return { valid: false, error: 'All components must be finite numbers' };
+      }
+      break;
+    }
+    case 'hypercomplex.multiply': {
+      const a = params.a as number[] | undefined;
+      const b = params.b as number[] | undefined;
+      if ((a && a.length > MAX_ARRAY_SIZE) || (b && b.length > MAX_ARRAY_SIZE)) {
+        return { valid: false, error: `Arrays must have at most ${MAX_ARRAY_SIZE} elements` };
+      }
+      break;
+    }
+    case 'prime.check':
+    case 'prime.factorize': {
+      const n = params.n as number;
+      if (typeof n !== 'number' || !isFinite(n) || n < 0 || n > 1e9) {
+        return { valid: false, error: 'n must be a positive number <= 1 billion' };
+      }
+      break;
+    }
+    case 'prime.upTo': {
+      const limit = params.limit as number;
+      if (typeof limit !== 'number' || limit > MAX_PRIME_LIMIT) {
+        return { valid: false, error: `limit must be at most ${MAX_PRIME_LIMIT}` };
+      }
+      break;
+    }
+    case 'prime.nth': {
+      const n = params.n as number;
+      if (typeof n !== 'number' || n > MAX_NTH_PRIME) {
+        return { valid: false, error: `n must be at most ${MAX_NTH_PRIME}` };
+      }
+      break;
+    }
+    case 'engine.run': {
+      const input = params.input as string;
+      if (typeof input !== 'string' || input.length > MAX_INPUT_LENGTH) {
+        return { valid: false, error: `input must be a string with at most ${MAX_INPUT_LENGTH} characters` };
+      }
+      break;
+    }
+  }
+  return { valid: true };
+}
+
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Only allow POST
+  if (req.method !== 'POST') {
+    return new Response(
+      JSON.stringify({ error: 'Method not allowed' }),
+      { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Rate limiting
+  const rateLimitKey = getRateLimitKey(req);
+  const { allowed, remaining } = checkRateLimit(rateLimitKey);
+  
+  if (!allowed) {
+    return new Response(
+      JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+      { 
+        status: 429, 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'X-RateLimit-Remaining': '0',
+          'Retry-After': '60'
+        } 
+      }
+    );
+  }
+
   try {
-    const { operation, params } = await req.json();
+    const body = await req.text();
+    if (body.length > 50000) {
+      return new Response(
+        JSON.stringify({ error: 'Request body too large' }),
+        { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
-    console.log(`Processing operation: ${operation}`, params);
+    const { operation, params = {} } = JSON.parse(body);
+    
+    // Validate operation is allowed
+    if (!operation || typeof operation !== 'string') {
+      return new Response(
+        JSON.stringify({ error: 'Operation is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    if (!ALLOWED_OPERATIONS.includes(operation)) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Unknown operation', 
+          availableOperations: ALLOWED_OPERATIONS
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Validate params
+    const validation = validateParams(operation, params);
+    if (!validation.valid) {
+      return new Response(
+        JSON.stringify({ error: validation.error }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    console.log(`Processing operation: ${operation}`);
     
     let result: unknown;
     
     switch (operation) {
       case 'hypercomplex.create': {
-        const h = new Hypercomplex(params.components || [1, 0, 0, 0]);
+        const components = (params.components || [1, 0, 0, 0]).slice(0, MAX_ARRAY_SIZE);
+        const h = new Hypercomplex(components);
         result = h.toJSON();
         break;
       }
       
       case 'hypercomplex.multiply': {
-        const a = new Hypercomplex(params.a || [1, 0, 0, 0]);
-        const b = new Hypercomplex(params.b || [1, 0, 0, 0]);
+        const a = new Hypercomplex((params.a || [1, 0, 0, 0]).slice(0, MAX_ARRAY_SIZE));
+        const b = new Hypercomplex((params.b || [1, 0, 0, 0]).slice(0, MAX_ARRAY_SIZE));
         result = a.multiply(b).toJSON();
         break;
       }
       
       case 'hypercomplex.normalize': {
-        const h = new Hypercomplex(params.components || [1, 0, 0, 0]);
+        const components = (params.components || [1, 0, 0, 0]).slice(0, MAX_ARRAY_SIZE);
+        const h = new Hypercomplex(components);
         result = h.normalize().toJSON();
         break;
       }
       
       case 'hypercomplex.conjugate': {
-        const h = new Hypercomplex(params.components || [1, 0, 0, 0]);
+        const components = (params.components || [1, 0, 0, 0]).slice(0, MAX_ARRAY_SIZE);
+        const h = new Hypercomplex(components);
         result = h.conjugate().toJSON();
         break;
       }
@@ -265,59 +456,46 @@ serve(async (req) => {
       }
       
       case 'prime.upTo': {
-        const limit = Math.min(params.limit || 100, 100000);
+        const limit = Math.min(params.limit || 100, MAX_PRIME_LIMIT);
         result = { limit, primes: primesUpTo(limit) };
         break;
       }
       
       case 'prime.nth': {
-        const n = Math.min(params.n || 1, 10000);
+        const n = Math.min(params.n || 1, MAX_NTH_PRIME);
         result = { n, prime: nthPrime(n) };
         break;
       }
       
       case 'engine.run': {
-        result = runSemanticEngine(params.input || '', {
-          dims: params.dims,
-          maxSteps: params.maxSteps,
+        const input = (params.input || '').substring(0, MAX_INPUT_LENGTH);
+        result = runSemanticEngine(input, {
+          dims: Math.min(params.dims || 16, MAX_DIMS),
+          maxSteps: Math.min(params.maxSteps || 100, MAX_ENGINE_STEPS),
           collapseCoherence: params.collapseCoherence,
           collapseEntropy: params.collapseEntropy
         });
         break;
       }
-      
-      default:
-        return new Response(
-          JSON.stringify({ 
-            error: 'Unknown operation', 
-            availableOperations: [
-              'hypercomplex.create',
-              'hypercomplex.multiply', 
-              'hypercomplex.normalize',
-              'hypercomplex.conjugate',
-              'prime.check',
-              'prime.factorize',
-              'prime.upTo',
-              'prime.nth',
-              'engine.run'
-            ]
-          }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
     }
     
     console.log(`Operation ${operation} completed successfully`);
     
     return new Response(
       JSON.stringify({ success: true, operation, result }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'X-RateLimit-Remaining': String(remaining)
+        } 
+      }
     );
     
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Error in tinyaleph-compute:', errorMessage);
+    console.error('Error in tinyaleph-compute:', error instanceof Error ? error.message : 'Unknown error');
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: 'An error occurred processing your request' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
