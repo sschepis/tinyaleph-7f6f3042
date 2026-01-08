@@ -1,9 +1,11 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Hero from '../components/Hero';
-import { Layers, Waves, Database, Cpu, ArrowRight, Play, Server, Atom, MessageSquare, Languages, BookOpen, Sparkles, Bot, Zap } from 'lucide-react';
+import { Layers, Waves, Database, Cpu, ArrowRight, Play, Server, Atom, MessageSquare, Languages, BookOpen, Sparkles, Bot, Zap, Shuffle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
+import { ALGORITHM_PRESETS } from '@/lib/quantum-circuit/presets';
 
 // Animation variants
 const fadeInUp = {
@@ -159,6 +161,15 @@ const exampleCategories = [
 ];
 
 const Index = () => {
+  const navigate = useNavigate();
+
+  const handleTryExample = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const randomPreset = ALGORITHM_PRESETS[Math.floor(Math.random() * ALGORITHM_PRESETS.length)];
+    navigate(`/circuit-runner?preset=${encodeURIComponent(randomPreset.name)}`);
+  };
+
   return (
     <>
       <Hero />
@@ -240,7 +251,15 @@ const Index = () => {
                     </div>
                   </div>
                   <div className="px-6 py-3 bg-cyan-500/5 border-t border-cyan-500/10 flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Drag & drop interface</span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-xs text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
+                      onClick={handleTryExample}
+                    >
+                      <Shuffle className="w-3 h-3 mr-1" />
+                      Try Example
+                    </Button>
                     <ArrowRight className="w-4 h-4 text-cyan-400 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </Card>

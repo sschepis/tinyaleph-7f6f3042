@@ -200,6 +200,33 @@ const QuantumCircuitRunner = () => {
   // Load circuit from URL on mount
   useEffect(() => {
     if (hasLoadedFromUrl.current) return;
+    
+    // Check for preset parameter first
+    const presetParam = searchParams.get('preset');
+    if (presetParam) {
+      const preset = ALGORITHM_PRESETS.find(p => p.name === decodeURIComponent(presetParam));
+      if (preset) {
+        const newWires = Array.from({ length: preset.numQubits }, (_, i) => ({
+          id: i + 1, label: `q[${i}]`,
+        }));
+        const newGates: GateInstance[] = preset.gates.map((g, idx) => ({
+          id: `gate-${idx + 1}`,
+          type: g.type as GateType,
+          wireIndex: g.wireIndex,
+          position: g.position,
+          controlWire: g.controlWire,
+          parameter: g.parameter,
+        }));
+        nextGateId.current = newGates.length + 1;
+        setWires(newWires);
+        setGates(newGates);
+        setHistory([`Loaded preset: ${preset.name}`]);
+        hasLoadedFromUrl.current = true;
+        return;
+      }
+    }
+    
+    // Check for circuit parameter
     const circuitParam = searchParams.get('circuit');
     if (circuitParam) {
       const decoded = decodeCircuit(circuitParam);
