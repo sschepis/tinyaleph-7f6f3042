@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Plus, RotateCcw, GripVertical, Zap, Circle, BarChart3, ArrowLeft, Sparkles, Target, Download, Upload, Wand2, Layers, GitBranch, ShieldCheck, Activity, Clock } from 'lucide-react';
+import { Play, Plus, RotateCcw, GripVertical, Zap, Circle, BarChart3, ArrowLeft, Sparkles, Target, Download, Upload, Wand2, Layers, GitBranch, ShieldCheck, Activity, Clock, GitCompare } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SedenionVisualizer from '@/components/SedenionVisualizer';
 import {
@@ -191,6 +191,103 @@ const ALGORITHM_PRESETS: AlgorithmPreset[] = [
       { type: 'H', wireIndex: 2, position: 6 },
       { type: 'CNOT', wireIndex: 2, position: 7, controlWire: 0 },
       { type: 'CNOT', wireIndex: 1, position: 8, controlWire: 0 },
+    ],
+  },
+  {
+    name: 'VQE (H₂)',
+    description: 'Variational Quantum Eigensolver ansatz for H₂ molecule',
+    numQubits: 2,
+    gates: [
+      // Initialize with Hartree-Fock state
+      { type: 'X', wireIndex: 0, position: 0 },
+      // Parameterized rotations (simplified UCC ansatz)
+      { type: 'H', wireIndex: 0, position: 1 },
+      { type: 'H', wireIndex: 1, position: 1 },
+      { type: 'CNOT', wireIndex: 1, position: 2, controlWire: 0 },
+      // Variational parameter: Rz(θ) ~ T for demo
+      { type: 'T', wireIndex: 1, position: 3 },
+      { type: 'CNOT', wireIndex: 1, position: 4, controlWire: 0 },
+      { type: 'H', wireIndex: 0, position: 5 },
+      { type: 'H', wireIndex: 1, position: 5 },
+      // Second layer for expressibility
+      { type: 'S', wireIndex: 0, position: 6 },
+      { type: 'CNOT', wireIndex: 1, position: 7, controlWire: 0 },
+      { type: 'T', wireIndex: 1, position: 8 },
+      { type: 'CNOT', wireIndex: 1, position: 9, controlWire: 0 },
+    ],
+  },
+  {
+    name: 'VQE (HeH⁺)',
+    description: 'VQE ansatz for HeH⁺ with 3 qubits',
+    numQubits: 3,
+    gates: [
+      // Initial state preparation
+      { type: 'X', wireIndex: 0, position: 0 },
+      { type: 'X', wireIndex: 1, position: 0 },
+      // Entangling layer
+      { type: 'H', wireIndex: 0, position: 1 },
+      { type: 'CNOT', wireIndex: 1, position: 2, controlWire: 0 },
+      { type: 'CNOT', wireIndex: 2, position: 3, controlWire: 1 },
+      // Rotation layer
+      { type: 'T', wireIndex: 0, position: 4 },
+      { type: 'S', wireIndex: 1, position: 4 },
+      { type: 'T', wireIndex: 2, position: 4 },
+      // Second entangling layer
+      { type: 'CNOT', wireIndex: 2, position: 5, controlWire: 0 },
+      { type: 'H', wireIndex: 1, position: 6 },
+      { type: 'CNOT', wireIndex: 2, position: 7, controlWire: 1 },
+    ],
+  },
+  {
+    name: 'QAOA (MaxCut)',
+    description: 'QAOA for 2-node MaxCut: finds optimal graph partition',
+    numQubits: 2,
+    gates: [
+      // Initial superposition
+      { type: 'H', wireIndex: 0, position: 0 },
+      { type: 'H', wireIndex: 1, position: 0 },
+      // Cost layer: ZZ interaction (simulated)
+      { type: 'CNOT', wireIndex: 1, position: 1, controlWire: 0 },
+      { type: 'T', wireIndex: 1, position: 2 }, // Rz(γ)
+      { type: 'CNOT', wireIndex: 1, position: 3, controlWire: 0 },
+      // Mixer layer: Rx rotations (H-Z-H approximation)
+      { type: 'H', wireIndex: 0, position: 4 },
+      { type: 'H', wireIndex: 1, position: 4 },
+      { type: 'T', wireIndex: 0, position: 5 }, // Rz(β)
+      { type: 'T', wireIndex: 1, position: 5 },
+      { type: 'H', wireIndex: 0, position: 6 },
+      { type: 'H', wireIndex: 1, position: 6 },
+    ],
+  },
+  {
+    name: 'QAOA (Triangle)',
+    description: 'QAOA for 3-node triangle graph MaxCut',
+    numQubits: 3,
+    gates: [
+      // Initial superposition
+      { type: 'H', wireIndex: 0, position: 0 },
+      { type: 'H', wireIndex: 1, position: 0 },
+      { type: 'H', wireIndex: 2, position: 0 },
+      // Cost layer: ZZ interactions for edges (0-1), (1-2), (0-2)
+      { type: 'CNOT', wireIndex: 1, position: 1, controlWire: 0 },
+      { type: 'T', wireIndex: 1, position: 2 },
+      { type: 'CNOT', wireIndex: 1, position: 3, controlWire: 0 },
+      { type: 'CNOT', wireIndex: 2, position: 4, controlWire: 1 },
+      { type: 'T', wireIndex: 2, position: 5 },
+      { type: 'CNOT', wireIndex: 2, position: 6, controlWire: 1 },
+      { type: 'CNOT', wireIndex: 2, position: 7, controlWire: 0 },
+      { type: 'T', wireIndex: 2, position: 8 },
+      { type: 'CNOT', wireIndex: 2, position: 9, controlWire: 0 },
+      // Mixer layer
+      { type: 'H', wireIndex: 0, position: 10 },
+      { type: 'H', wireIndex: 1, position: 10 },
+      { type: 'H', wireIndex: 2, position: 10 },
+      { type: 'S', wireIndex: 0, position: 11 },
+      { type: 'S', wireIndex: 1, position: 11 },
+      { type: 'S', wireIndex: 2, position: 11 },
+      { type: 'H', wireIndex: 0, position: 12 },
+      { type: 'H', wireIndex: 1, position: 12 },
+      { type: 'H', wireIndex: 2, position: 12 },
     ],
   },
 ];
@@ -838,6 +935,126 @@ interface NoiseSimResult {
   noisyState: ComplexNumber[] | null;
 }
 
+// Comparison result interface
+interface ComparisonResult {
+  idealState: ComplexNumber[];
+  noisyState: ComplexNumber[];
+  fidelity: number;
+  stateOverlap: number[];
+  idealProbs: number[];
+  noisyProbs: number[];
+  probDifference: number[];
+}
+
+// Circuit Comparison Component
+const CircuitComparison = ({ 
+  comparison, 
+  numQubits 
+}: { 
+  comparison: ComparisonResult; 
+  numQubits: number;
+}) => {
+  const maxStates = Math.min(comparison.idealProbs.length, 8);
+  const maxProb = Math.max(
+    ...comparison.idealProbs.slice(0, maxStates), 
+    ...comparison.noisyProbs.slice(0, maxStates),
+    0.01
+  );
+  
+  const formatBasis = (index: number) => {
+    return `|${index.toString(2).padStart(numQubits, '0')}⟩`;
+  };
+  
+  return (
+    <div className="space-y-4">
+      {/* Fidelity header */}
+      <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+        <div className="text-center flex-1">
+          <p className="text-xs text-muted-foreground">State Fidelity</p>
+          <p className={`text-2xl font-mono font-bold ${
+            comparison.fidelity > 0.95 ? 'text-green-500' : 
+            comparison.fidelity > 0.8 ? 'text-yellow-500' : 'text-destructive'
+          }`}>
+            {(comparison.fidelity * 100).toFixed(1)}%
+          </p>
+        </div>
+        <div className="h-8 w-px bg-border" />
+        <div className="text-center flex-1">
+          <p className="text-xs text-muted-foreground">Avg Prob Error</p>
+          <p className="text-xl font-mono text-muted-foreground">
+            {(comparison.probDifference.reduce((a, b) => a + Math.abs(b), 0) / comparison.probDifference.length * 100).toFixed(2)}%
+          </p>
+        </div>
+      </div>
+      
+      {/* Side-by-side probability comparison */}
+      <div className="p-3 bg-muted/30 rounded-lg">
+        <p className="text-xs text-muted-foreground mb-3 text-center">
+          Probability Distribution: <span className="text-blue-400">Ideal</span> vs <span className="text-orange-400">Noisy</span>
+        </p>
+        <div className="flex items-end gap-1 h-28">
+          {Array.from({ length: maxStates }).map((_, i) => {
+            const idealHeight = (comparison.idealProbs[i] / maxProb) * 100;
+            const noisyHeight = (comparison.noisyProbs[i] / maxProb) * 100;
+            const diff = comparison.probDifference[i];
+            
+            return (
+              <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                <div className="w-full flex gap-0.5 items-end h-20">
+                  {/* Ideal bar */}
+                  <div 
+                    className="flex-1 bg-blue-500 rounded-t transition-all duration-300"
+                    style={{ height: `${Math.max(4, idealHeight)}%` }}
+                    title={`Ideal: ${(comparison.idealProbs[i] * 100).toFixed(1)}%`}
+                  />
+                  {/* Noisy bar */}
+                  <div 
+                    className="flex-1 bg-orange-500 rounded-t transition-all duration-300"
+                    style={{ height: `${Math.max(4, noisyHeight)}%` }}
+                    title={`Noisy: ${(comparison.noisyProbs[i] * 100).toFixed(1)}%`}
+                  />
+                </div>
+                {/* Difference indicator */}
+                <div className={`text-[8px] font-mono ${
+                  Math.abs(diff) < 0.01 ? 'text-green-500' : 
+                  Math.abs(diff) < 0.05 ? 'text-yellow-500' : 'text-destructive'
+                }`}>
+                  {diff >= 0 ? '+' : ''}{(diff * 100).toFixed(1)}%
+                </div>
+                <span className="text-[8px] text-muted-foreground font-mono">
+                  {formatBasis(i)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      
+      {/* Amplitude overlap visualization */}
+      <div className="p-3 bg-muted/30 rounded-lg">
+        <p className="text-xs text-muted-foreground mb-2 text-center">State Amplitude Overlap</p>
+        <div className="flex gap-1">
+          {comparison.stateOverlap.slice(0, maxStates).map((overlap, i) => (
+            <div
+              key={i}
+              className="flex-1 h-4 rounded-sm"
+              style={{ 
+                backgroundColor: `hsl(${120 * overlap}, 70%, 45%)`,
+                opacity: 0.3 + 0.7 * overlap
+              }}
+              title={`${formatBasis(i)}: ${(overlap * 100).toFixed(1)}% overlap`}
+            />
+          ))}
+        </div>
+        <div className="flex justify-between text-[8px] text-muted-foreground mt-1 px-1">
+          <span>Low overlap</span>
+          <span>High overlap</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const QuantumCircuitRunner = () => {
   const [wires, setWires] = useState<Wire[]>([
     { id: 1, label: 'q[0]' },
@@ -852,6 +1069,7 @@ const QuantumCircuitRunner = () => {
   const [verificationErrors, setVerificationErrors] = useState<VerificationError[]>([]);
   const [noiseResult, setNoiseResult] = useState<NoiseSimResult | null>(null);
   const [noiseLevel, setNoiseLevel] = useState(0.01); // 1% gate error rate
+  const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
   
   const nextGateId = useRef(1);
 
@@ -1503,6 +1721,95 @@ const QuantumCircuitRunner = () => {
     setHistory(prev => [...prev, `Noise sim: fidelity=${(fidelity * 100).toFixed(1)}%, error rate=${(totalErrorProb * 100).toFixed(2)}%`]);
   }, [executedState, gates, wires.length, noiseLevel, measurementSeed, circuitDepth.depth]);
 
+  // Compare ideal vs noisy execution side-by-side
+  const compareCircuit = useCallback(() => {
+    if (!executedState) return;
+    
+    const numWires = wires.length;
+    const dimensions = Math.pow(2, numWires);
+    
+    // Start from initial |0...0⟩ state for noisy simulation
+    let noisyState: ComplexNumber[] = Array.from({ length: dimensions }, (_, i) => 
+      i === 0 ? { real: 1, imag: 0 } : { real: 0, imag: 0 }
+    );
+    
+    const sortedGates = [...gates].sort((a, b) => a.position - b.position);
+    let seedOffset = measurementSeed + 1000; // Different seed than noise sim
+    
+    for (const gate of sortedGates) {
+      // Apply ideal gate
+      noisyState = applyGateToState(noisyState, gate.type, gate.wireIndex, numWires, gate.controlWire, gate.controlWire2);
+      
+      // Apply depolarizing noise
+      const is2QubitGate = ['CNOT', 'CZ', 'CPHASE', 'SWAP'].includes(gate.type);
+      const is3QubitGate = ['CCX', 'CSWAP'].includes(gate.type);
+      const gateErrorRate = is3QubitGate ? noiseLevel * 5 : is2QubitGate ? noiseLevel * 2 : noiseLevel;
+      
+      const rand = seededRandom(seedOffset++);
+      if (rand < gateErrorRate) {
+        const errorType = Math.floor(seededRandom(seedOffset++) * 3);
+        const pauliGate: GateType = ['X', 'Y', 'Z'][errorType] as GateType;
+        noisyState = applyGateToState(noisyState, pauliGate, gate.wireIndex, numWires);
+      }
+    }
+    
+    // Apply decoherence
+    const decoherenceRate = noiseLevel * circuitDepth.depth * 0.05;
+    for (let i = 0; i < noisyState.length; i++) {
+      const phaseNoise = (seededRandom(seedOffset + i * 2) - 0.5) * decoherenceRate * Math.PI;
+      const cos = Math.cos(phaseNoise);
+      const sin = Math.sin(phaseNoise);
+      const origReal = noisyState[i].real;
+      const origImag = noisyState[i].imag;
+      noisyState[i] = {
+        real: origReal * cos - origImag * sin,
+        imag: origReal * sin + origImag * cos,
+      };
+    }
+    
+    // Renormalize
+    const norm = Math.sqrt(noisyState.reduce((sum, s) => sum + s.real * s.real + s.imag * s.imag, 0)) || 1;
+    noisyState = noisyState.map(s => ({ real: s.real / norm, imag: s.imag / norm }));
+    
+    // Calculate probabilities
+    const idealProbs = executedState.map(s => s.real * s.real + s.imag * s.imag);
+    const noisyProbs = noisyState.map(s => s.real * s.real + s.imag * s.imag);
+    const probDifference = idealProbs.map((p, i) => noisyProbs[i] - p);
+    
+    // Calculate per-state amplitude overlap
+    const stateOverlap = executedState.map((ideal, i) => {
+      const noisy = noisyState[i];
+      const idealAmp = Math.sqrt(ideal.real * ideal.real + ideal.imag * ideal.imag);
+      const noisyAmp = Math.sqrt(noisy.real * noisy.real + noisy.imag * noisy.imag);
+      if (idealAmp < 0.001 && noisyAmp < 0.001) return 1; // Both zero = perfect match
+      if (idealAmp < 0.001 || noisyAmp < 0.001) return 0; // One zero, other not
+      // Calculate overlap via dot product of normalized amplitudes
+      const dot = (ideal.real * noisy.real + ideal.imag * noisy.imag) / (idealAmp * noisyAmp);
+      return Math.max(0, Math.min(1, (dot + 1) / 2)); // Map [-1,1] to [0,1]
+    });
+    
+    // Calculate fidelity
+    let innerProductReal = 0;
+    let innerProductImag = 0;
+    for (let i = 0; i < executedState.length; i++) {
+      innerProductReal += executedState[i].real * noisyState[i].real + executedState[i].imag * noisyState[i].imag;
+      innerProductImag += executedState[i].real * noisyState[i].imag - executedState[i].imag * noisyState[i].real;
+    }
+    const fidelity = Math.max(0, Math.min(1, innerProductReal * innerProductReal + innerProductImag * innerProductImag));
+    
+    setComparisonResult({
+      idealState: executedState,
+      noisyState,
+      fidelity,
+      stateOverlap,
+      idealProbs,
+      noisyProbs,
+      probDifference,
+    });
+    
+    setHistory(prev => [...prev, `Comparison: fidelity=${(fidelity * 100).toFixed(1)}%`]);
+  }, [executedState, gates, wires.length, noiseLevel, measurementSeed, circuitDepth.depth]);
+
   const sedenionState = useMemo(() => {
     if (!executedState) return Array(16).fill(0);
     return stateToSedenion(executedState);
@@ -1592,6 +1899,9 @@ const QuantumCircuitRunner = () => {
                     <Activity className="w-4 h-4 mr-1" /> Noise
                   </Button>
                 </div>
+                <Button onClick={compareCircuit} variant="outline" className="w-full" disabled={!executedState}>
+                  <GitCompare className="w-4 h-4 mr-2" /> Compare (Ideal vs Noisy)
+                </Button>
                 <Button onClick={resetCircuit} variant="destructive" className="w-full">
                   <RotateCcw className="w-4 h-4 mr-2" /> Reset
                 </Button>
@@ -1675,6 +1985,16 @@ const QuantumCircuitRunner = () => {
                 <div className="mt-2 text-xs text-muted-foreground text-center">
                   Decoherence: {(noiseResult.decoherenceEffect * 100).toFixed(3)}%
                 </div>
+              </div>
+            )}
+
+            {/* Circuit Comparison Results */}
+            {comparisonResult && (
+              <div className="p-4 rounded-lg border border-border bg-card">
+                <h2 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                  <GitCompare className="w-4 h-4" /> Ideal vs Noisy Comparison
+                </h2>
+                <CircuitComparison comparison={comparisonResult} numQubits={wires.length} />
               </div>
             )}
 
