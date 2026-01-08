@@ -1,9 +1,10 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Plus, RotateCcw, GripVertical, Zap, Circle, BarChart3, ArrowLeft, Sparkles, Target, Download, Upload, Wand2, Layers, GitBranch, ShieldCheck, Activity, GitCompare, Bug, HelpCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Play, Plus, RotateCcw, GripVertical, Zap, Circle, BarChart3, ArrowLeft, Sparkles, Target, Download, Upload, Wand2, Layers, GitBranch, ShieldCheck, Activity, GitCompare, Bug, HelpCircle, Share2, Check, Link2 } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import SedenionVisualizer from '@/components/SedenionVisualizer';
 import CodeBlock from '@/components/CodeBlock';
+import { toast } from '@/hooks/use-toast';
 import {
   Tooltip,
   TooltipContent,
@@ -55,6 +56,8 @@ import {
 } from '@/lib/quantum-circuit/debugger';
 
 const QuantumCircuitRunner = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  
   const [wires, setWires] = useState<Wire[]>([
     { id: 1, label: 'q[0]' },
     { id: 2, label: 'q[1]' },
@@ -69,6 +72,7 @@ const QuantumCircuitRunner = () => {
   const [noiseResult, setNoiseResult] = useState<NoiseSimResult | null>(null);
   const [noiseLevel, setNoiseLevel] = useState(0.01);
   const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
   
   // Debug mode state
   const [debugMode, setDebugMode] = useState(false);
@@ -87,6 +91,84 @@ const QuantumCircuitRunner = () => {
   }, [isFirstRun, markAsSeen]);
   
   const nextGateId = useRef(1);
+  const hasLoadedFromUrl = useRef(false);
+
+  // Encode circuit to URL-safe string
+  const encodeCircuit = useCallback(() => {
+    const circuitData = {
+      q: wires.length,
+      g: gates.map(g => ({
+        t: g.type,
+        w: g.wireIndex,
+        p: g.position,
+        c: g.controlWire,
+        c2: g.controlWire2,
+        r: g.parameter,
+      })),
+    };
+    return btoa(JSON.stringify(circuitData));
+  }, [wires.length, gates]);
+
+  // Decode circuit from URL string
+  const decodeCircuit = useCallback((encoded: string) => {
+    try {
+      const circuitData = JSON.parse(atob(encoded));
+      const newWires = Array.from({ length: circuitData.q }, (_, i) => ({
+        id: i + 1,
+        label: `q[${i}]`,
+      }));
+      const newGates: GateInstance[] = circuitData.g.map((g: any, idx: number) => ({
+        id: `gate-${idx + 1}`,
+        type: g.t as GateType,
+        wireIndex: g.w,
+        position: g.p,
+        controlWire: g.c,
+        controlWire2: g.c2,
+        parameter: g.r,
+      }));
+      nextGateId.current = newGates.length + 1;
+      return { wires: newWires, gates: newGates };
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // Load circuit from URL on mount
+  useEffect(() => {
+    if (hasLoadedFromUrl.current) return;
+    const circuitParam = searchParams.get('circuit');
+    if (circuitParam) {
+      const decoded = decodeCircuit(circuitParam);
+      if (decoded) {
+        setWires(decoded.wires);
+        setGates(decoded.gates);
+        setHistory(['Loaded circuit from shared link']);
+        hasLoadedFromUrl.current = true;
+      }
+    }
+  }, [searchParams, decodeCircuit]);
+
+  // Share circuit link
+  const shareCircuit = useCallback(async () => {
+    const encoded = encodeCircuit();
+    const url = new URL(window.location.href);
+    url.searchParams.set('circuit', encoded);
+    
+    try {
+      await navigator.clipboard.writeText(url.toString());
+      setLinkCopied(true);
+      toast({
+        title: "Link copied!",
+        description: "Circuit link copied to clipboard",
+      });
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      toast({
+        title: "Share link",
+        description: url.toString(),
+      });
+    }
+  }, [encodeCircuit]);
 
   const addWire = useCallback(() => {
     if (wires.length >= 4) return;
@@ -401,6 +483,21 @@ const QuantumCircuitRunner = () => {
                     <RotateCcw className="w-3 h-3 mr-1" /> Reset
                   </Button>
                 </div>
+                <div className="pt-2 border-t border-border mt-1">
+                  <Button 
+                    onClick={shareCircuit} 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full h-9"
+                    disabled={gates.length === 0}
+                  >
+                    {linkCopied ? (
+                      <><Check className="w-3 h-3 mr-1 text-green-500" /> Copied!</>
+                    ) : (
+                      <><Share2 className="w-3 h-3 mr-1" /> Share Circuit</>
+                    )}
+                  </Button>
+                </div>
                 <div className="pt-3 border-t border-border mt-1">
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs text-muted-foreground">Noise Level</label>
@@ -510,6 +607,7 @@ const QuantumCircuitRunner = () => {
               <CodeBlock 
                 code={generateCodeExample(wires.length, gates, entropy)} 
                 language="typescript"
+                title="circuit.ts"
               />
             </div>
 
