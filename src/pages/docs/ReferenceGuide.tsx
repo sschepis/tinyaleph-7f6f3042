@@ -53,6 +53,16 @@ const ReferenceGuide = () => {
                 <TableCell>Cryptographic functions</TableCell>
                 <TableCell className="font-mono text-xs">hash, hmac, commit, verify</TableCell>
               </TableRow>
+              <TableRow>
+                <TableCell className="font-mono text-sm">@aleph-ai/tinyaleph/bio</TableCell>
+                <TableCell>Bioinformatics engine</TableCell>
+                <TableCell className="font-mono text-xs">BioinformaticsBackend, transcribe, translate, foldProtein</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-mono text-sm">@aleph-ai/tinyaleph/symbolic</TableCell>
+                <TableCell>Symbolic AI</TableCell>
+                <TableCell className="font-mono text-xs">SymbolDatabase, inferSymbol, getCompound, createSequence</TableCell>
+              </TableRow>
             </TableBody>
           </Table>
         </div>
@@ -248,6 +258,234 @@ console.log(\`Network is \${(sync * 100).toFixed(1)}% synchronized\`);`}
                 <CodeBlock
                   code={`const product = backend.sedenionMultiply(stateA, stateB);
 // Returns: 16-component sedenion product`}
+                  language="typescript"
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </section>
+
+      {/* Bioinformatics Backend */}
+      <section id="bioinformatics" className="space-y-6 scroll-mt-24">
+        <h2 className="text-2xl font-bold">BioinformaticsBackend</h2>
+        <p className="text-muted-foreground">
+          Specialized backend for DNA/RNA/protein computations with native central dogma operations.
+        </p>
+
+        <Tabs defaultValue="transcribe">
+          <TabsList className="flex-wrap h-auto">
+            <TabsTrigger value="transcribe">transcribe()</TabsTrigger>
+            <TabsTrigger value="translate">translate()</TabsTrigger>
+            <TabsTrigger value="fold">foldProtein()</TabsTrigger>
+            <TabsTrigger value="binding">bindingAffinity()</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="transcribe">
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-mono text-lg">transcribe(dna: string): string</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground mb-4">
+                  Converts a DNA sequence to its corresponding RNA sequence (T → U).
+                </p>
+                <CodeBlock
+                  code={`import { BioinformaticsBackend } from '@aleph-ai/tinyaleph/bio';
+
+const bio = new BioinformaticsBackend();
+const rna = bio.transcribe('ATGCGATCG');
+// Returns: 'AUGCGAUCG'`}
+                  language="typescript"
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="translate">
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-mono text-lg">translate(rna: string): string</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground mb-4">
+                  Translates an RNA sequence to an amino acid chain using the standard codon table.
+                </p>
+                <CodeBlock
+                  code={`const protein = bio.translate('AUGUUUAAA');
+// Returns: 'MFK' (Met-Phe-Lys)`}
+                  language="typescript"
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="fold">
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-mono text-lg">foldProtein(sequence: string, steps?: number): FoldingResult</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground mb-4">
+                  Simulates protein folding using Kuramoto oscillator dynamics. Each residue is modeled as an oscillator that synchronizes based on hydrophobicity coupling.
+                </p>
+                <CodeBlock
+                  code={`const result = bio.foldProtein('MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHFDLSH');
+
+console.log(result.orderParameter); // Final synchronization (0-1)
+console.log(result.phases);         // Final residue phases
+console.log(result.energy);         // Folding energy`}
+                  language="typescript"
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="binding">
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-mono text-lg">bindingAffinity(molecule1: string, molecule2: string): number</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground mb-4">
+                  Computes the binding affinity between two molecular sequences using sedenion coherence.
+                </p>
+                <CodeBlock
+                  code={`const affinity = bio.bindingAffinity('ACGT', 'TGCA');
+// Returns: 0.0-1.0 (higher = stronger binding)`}
+                  language="typescript"
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </section>
+
+      {/* Symbol Database */}
+      <section id="symbolic-ai" className="space-y-6 scroll-mt-24">
+        <h2 className="text-2xl font-bold">Symbolic AI</h2>
+        <p className="text-muted-foreground">
+          A comprehensive symbol database with 400+ archetypes, resonance analysis, and semantic inference capabilities.
+        </p>
+
+        <Tabs defaultValue="database">
+          <TabsList className="flex-wrap h-auto">
+            <TabsTrigger value="database">SymbolDatabase</TabsTrigger>
+            <TabsTrigger value="inference">Inference</TabsTrigger>
+            <TabsTrigger value="compounds">Compounds</TabsTrigger>
+            <TabsTrigger value="resonance">Resonance</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="database">
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-mono text-lg">SymbolDatabase</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-muted-foreground mb-4">
+                  Query and browse 400+ symbols across Jungian archetypes, Tarot, I-Ching, Egyptian hieroglyphs, and more.
+                </p>
+                <CodeBlock
+                  code={`import { symbolDatabase, getSymbol, getSymbolByPrime } from '@aleph-ai/tinyaleph/symbolic';
+
+// Get symbol by ID
+const sun = getSymbol('sun');
+console.log(sun.unicode, sun.meaning, sun.prime);
+
+// Browse by category
+const archetypes = symbolDatabase.getSymbolsByCategory('archetype');
+
+// Filter by cultural tag
+const egyptian = symbolDatabase.getSymbolsByTag('egyptian');
+
+// Search symbols
+const results = symbolDatabase.search('transformation');`}
+                  language="typescript"
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="inference">
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-mono text-lg">Semantic Inference</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-muted-foreground mb-4">
+                  Map natural language to symbolic representations using pattern matching and semantic similarity.
+                </p>
+                <CodeBlock
+                  code={`import { inferSymbol, inferSymbols, extractEntities } from '@aleph-ai/tinyaleph/symbolic';
+
+// Infer single symbol
+const symbol = inferSymbol('warrior');
+// Returns: { id: 'sword', confidence: 0.92, ... }
+
+// Infer from sentence
+const symbols = inferSymbols('The hero embarks on a journey');
+// Returns array of matched symbols
+
+// Extract entities
+const entities = extractEntities('King Arthur found Excalibur');
+// Returns: { people: ['Arthur'], items: ['Excalibur'], ... }`}
+                  language="typescript"
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="compounds">
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-mono text-lg">Compound Symbols</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-muted-foreground mb-4">
+                  Create multi-symbol concepts and narrative sequences with prime-based composition.
+                </p>
+                <CodeBlock
+                  code={`import { createCompound, createSequence, getCompound } from '@aleph-ai/tinyaleph/symbolic';
+
+// Get pre-built compound
+const warrior = getCompound('greek_warrior');
+console.log(warrior.unicode, warrior.resonance);
+
+// Create custom compound
+const fireMage = createCompound('fire_mage', ['fire', 'wisdom', 'staff']);
+
+// Create narrative sequence
+const quest = createSequence('heroes_journey', [
+  'home', 'call', 'threshold', 'trials', 'transformation', 'return'
+]);`}
+                  language="typescript"
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="resonance">
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-mono text-lg">Resonance Analysis</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-muted-foreground mb-4">
+                  Calculate harmonic relationships between symbols using Golden Ratio proximity and sedenion coherence.
+                </p>
+                <CodeBlock
+                  code={`import { inferWithResonance, inferMostResonant } from '@aleph-ai/tinyaleph/symbolic';
+
+// Resonance-ranked inference
+const ranked = inferWithResonance('transformation');
+// Returns symbols sorted by harmonic resonance
+
+// Context-aware selection
+const best = inferMostResonant('guide', ['hero', 'journey', 'wisdom']);
+// Returns symbol that resonates best with context
+
+// PHI (Golden Ratio) is used for resonance scoring
+// Symbols with prime ratios near φ ≈ 1.618 resonate more strongly`}
                   language="typescript"
                 />
               </CardContent>
