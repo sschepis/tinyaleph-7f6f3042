@@ -112,8 +112,8 @@ export interface AlgorithmPreset {
   name: string;
   description: string;
   numQubits: number;
-  gates: Array<{ type: string; wireIndex: number; position: number; controlWire?: number; parameter?: number }>;
-  category?: 'basic' | 'error-correction' | 'variational';
+  gates: Array<{ type: string; wireIndex: number; position: number; controlWire?: number; controlWire2?: number; parameter?: number }>;
+  category?: 'basic' | 'algorithms' | 'error-correction' | 'variational' | 'communication' | 'gates';
 }
 
 export interface VerificationError {

@@ -1,6 +1,7 @@
 import { AlgorithmPreset } from './types';
 
 export const ALGORITHM_PRESETS: AlgorithmPreset[] = [
+  // === Basic States ===
   {
     name: 'Bell State',
     description: 'Creates maximally entangled |Φ⁺⟩ = (|00⟩ + |11⟩)/√2',
@@ -9,6 +10,17 @@ export const ALGORITHM_PRESETS: AlgorithmPreset[] = [
     gates: [
       { type: 'H', wireIndex: 0, position: 0 },
       { type: 'CNOT', wireIndex: 1, position: 1, controlWire: 0 },
+    ],
+  },
+  {
+    name: 'Bell State |Ψ⁺⟩',
+    description: 'Bell state (|01⟩ + |10⟩)/√2',
+    numQubits: 2,
+    category: 'basic',
+    gates: [
+      { type: 'X', wireIndex: 0, position: 0 },
+      { type: 'H', wireIndex: 0, position: 1 },
+      { type: 'CNOT', wireIndex: 1, position: 2, controlWire: 0 },
     ],
   },
   {
@@ -23,10 +35,49 @@ export const ALGORITHM_PRESETS: AlgorithmPreset[] = [
     ],
   },
   {
+    name: 'W State',
+    description: '3-qubit W state: (|001⟩ + |010⟩ + |100⟩)/√3',
+    numQubits: 3,
+    category: 'basic',
+    gates: [
+      { type: 'X', wireIndex: 0, position: 0 },
+      { type: 'RY', wireIndex: 0, position: 1, parameter: Math.acos(Math.sqrt(1/3)) * 2 },
+      { type: 'CNOT', wireIndex: 1, position: 2, controlWire: 0 },
+      { type: 'RY', wireIndex: 1, position: 3, parameter: Math.PI / 4 },
+      { type: 'CNOT', wireIndex: 2, position: 4, controlWire: 1 },
+      { type: 'CNOT', wireIndex: 1, position: 5, controlWire: 2 },
+    ],
+  },
+  {
+    name: 'Superposition',
+    description: 'Equal superposition of all basis states',
+    numQubits: 3,
+    category: 'basic',
+    gates: [
+      { type: 'H', wireIndex: 0, position: 0 },
+      { type: 'H', wireIndex: 1, position: 0 },
+      { type: 'H', wireIndex: 2, position: 0 },
+    ],
+  },
+  {
+    name: 'Cat State (4Q)',
+    description: '4-qubit cat state (|0000⟩ + |1111⟩)/√2',
+    numQubits: 4,
+    category: 'basic',
+    gates: [
+      { type: 'H', wireIndex: 0, position: 0 },
+      { type: 'CNOT', wireIndex: 1, position: 1, controlWire: 0 },
+      { type: 'CNOT', wireIndex: 2, position: 2, controlWire: 1 },
+      { type: 'CNOT', wireIndex: 3, position: 3, controlWire: 2 },
+    ],
+  },
+
+  // === Quantum Algorithms ===
+  {
     name: "Grover's (2-qubit)",
     description: 'Quantum search amplifying |11⟩ state',
     numQubits: 2,
-    category: 'basic',
+    category: 'algorithms',
     gates: [
       { type: 'H', wireIndex: 0, position: 0 },
       { type: 'H', wireIndex: 1, position: 0 },
@@ -46,16 +97,81 @@ export const ALGORITHM_PRESETS: AlgorithmPreset[] = [
     ],
   },
   {
-    name: 'Superposition',
-    description: 'Equal superposition of all basis states',
+    name: 'Quantum Fourier Transform',
+    description: 'QFT on 3 qubits - basis for many algorithms',
     numQubits: 3,
-    category: 'basic',
+    category: 'algorithms',
     gates: [
       { type: 'H', wireIndex: 0, position: 0 },
-      { type: 'H', wireIndex: 1, position: 0 },
-      { type: 'H', wireIndex: 2, position: 0 },
+      { type: 'CPHASE', wireIndex: 0, position: 1, controlWire: 1, parameter: Math.PI / 2 },
+      { type: 'CPHASE', wireIndex: 0, position: 2, controlWire: 2, parameter: Math.PI / 4 },
+      { type: 'H', wireIndex: 1, position: 3 },
+      { type: 'CPHASE', wireIndex: 1, position: 4, controlWire: 2, parameter: Math.PI / 2 },
+      { type: 'H', wireIndex: 2, position: 5 },
+      { type: 'SWAP', wireIndex: 2, position: 6, controlWire: 0 },
     ],
   },
+  {
+    name: 'Deutsch-Jozsa',
+    description: 'Determines if function is constant or balanced',
+    numQubits: 3,
+    category: 'algorithms',
+    gates: [
+      { type: 'X', wireIndex: 2, position: 0 },
+      { type: 'H', wireIndex: 0, position: 1 },
+      { type: 'H', wireIndex: 1, position: 1 },
+      { type: 'H', wireIndex: 2, position: 1 },
+      { type: 'CNOT', wireIndex: 2, position: 2, controlWire: 0 },
+      { type: 'CNOT', wireIndex: 2, position: 3, controlWire: 1 },
+      { type: 'H', wireIndex: 0, position: 4 },
+      { type: 'H', wireIndex: 1, position: 4 },
+    ],
+  },
+  {
+    name: 'Bernstein-Vazirani',
+    description: 'Finds hidden bit string in one query',
+    numQubits: 4,
+    category: 'algorithms',
+    gates: [
+      { type: 'X', wireIndex: 3, position: 0 },
+      { type: 'H', wireIndex: 0, position: 1 },
+      { type: 'H', wireIndex: 1, position: 1 },
+      { type: 'H', wireIndex: 2, position: 1 },
+      { type: 'H', wireIndex: 3, position: 1 },
+      { type: 'CNOT', wireIndex: 3, position: 2, controlWire: 0 },
+      { type: 'CNOT', wireIndex: 3, position: 3, controlWire: 2 },
+      { type: 'H', wireIndex: 0, position: 4 },
+      { type: 'H', wireIndex: 1, position: 4 },
+      { type: 'H', wireIndex: 2, position: 4 },
+    ],
+  },
+  {
+    name: 'Quantum Phase Estimation',
+    description: 'Estimates eigenvalue phase of a unitary',
+    numQubits: 4,
+    category: 'algorithms',
+    gates: [
+      { type: 'X', wireIndex: 3, position: 0 },
+      { type: 'H', wireIndex: 0, position: 1 },
+      { type: 'H', wireIndex: 1, position: 1 },
+      { type: 'H', wireIndex: 2, position: 1 },
+      { type: 'CPHASE', wireIndex: 3, position: 2, controlWire: 2, parameter: Math.PI / 2 },
+      { type: 'CPHASE', wireIndex: 3, position: 3, controlWire: 1, parameter: Math.PI / 2 },
+      { type: 'CPHASE', wireIndex: 3, position: 4, controlWire: 1, parameter: Math.PI / 2 },
+      { type: 'CPHASE', wireIndex: 3, position: 5, controlWire: 0, parameter: Math.PI / 2 },
+      { type: 'CPHASE', wireIndex: 3, position: 6, controlWire: 0, parameter: Math.PI / 2 },
+      { type: 'CPHASE', wireIndex: 3, position: 7, controlWire: 0, parameter: Math.PI / 2 },
+      { type: 'CPHASE', wireIndex: 3, position: 8, controlWire: 0, parameter: Math.PI / 2 },
+      { type: 'H', wireIndex: 0, position: 9 },
+      { type: 'CPHASE', wireIndex: 0, position: 10, controlWire: 1, parameter: -Math.PI / 2 },
+      { type: 'CPHASE', wireIndex: 0, position: 11, controlWire: 2, parameter: -Math.PI / 4 },
+      { type: 'H', wireIndex: 1, position: 12 },
+      { type: 'CPHASE', wireIndex: 1, position: 13, controlWire: 2, parameter: -Math.PI / 2 },
+      { type: 'H', wireIndex: 2, position: 14 },
+    ],
+  },
+
+  // === Error Correction ===
   {
     name: '3-Bit Flip Code',
     description: 'Error correction: encodes 1 logical qubit in 3 physical qubits',
@@ -69,6 +185,41 @@ export const ALGORITHM_PRESETS: AlgorithmPreset[] = [
       { type: 'CNOT', wireIndex: 0, position: 5, controlWire: 1 },
     ],
   },
+  {
+    name: '3-Phase Flip Code',
+    description: 'Protects against phase flip errors',
+    numQubits: 3,
+    category: 'error-correction',
+    gates: [
+      { type: 'CNOT', wireIndex: 1, position: 0, controlWire: 0 },
+      { type: 'CNOT', wireIndex: 2, position: 1, controlWire: 0 },
+      { type: 'H', wireIndex: 0, position: 2 },
+      { type: 'H', wireIndex: 1, position: 2 },
+      { type: 'H', wireIndex: 2, position: 2 },
+      { type: 'H', wireIndex: 0, position: 4 },
+      { type: 'H', wireIndex: 1, position: 4 },
+      { type: 'H', wireIndex: 2, position: 4 },
+      { type: 'CNOT', wireIndex: 1, position: 5, controlWire: 0 },
+      { type: 'CNOT', wireIndex: 2, position: 6, controlWire: 0 },
+    ],
+  },
+  {
+    name: 'Steane Code (Encoder)',
+    description: '7-qubit code encoding circuit',
+    numQubits: 4,
+    category: 'error-correction',
+    gates: [
+      { type: 'H', wireIndex: 0, position: 0 },
+      { type: 'H', wireIndex: 1, position: 0 },
+      { type: 'H', wireIndex: 2, position: 0 },
+      { type: 'CNOT', wireIndex: 3, position: 1, controlWire: 0 },
+      { type: 'CNOT', wireIndex: 3, position: 2, controlWire: 1 },
+      { type: 'CNOT', wireIndex: 3, position: 3, controlWire: 2 },
+      { type: 'H', wireIndex: 3, position: 4 },
+    ],
+  },
+
+  // === Variational Circuits ===
   {
     name: 'VQE (H₂)',
     description: 'Variational Quantum Eigensolver ansatz for H₂ molecule',
@@ -101,6 +252,25 @@ export const ALGORITHM_PRESETS: AlgorithmPreset[] = [
       { type: 'RZ', wireIndex: 2, position: 4, parameter: Math.PI / 4 },
       { type: 'CNOT', wireIndex: 2, position: 5, controlWire: 0 },
       { type: 'H', wireIndex: 1, position: 6 },
+    ],
+  },
+  {
+    name: 'Hardware Efficient Ansatz',
+    description: 'Layered parameterized circuit for NISQ devices',
+    numQubits: 3,
+    category: 'variational',
+    gates: [
+      { type: 'RY', wireIndex: 0, position: 0, parameter: Math.PI / 4 },
+      { type: 'RY', wireIndex: 1, position: 0, parameter: Math.PI / 3 },
+      { type: 'RY', wireIndex: 2, position: 0, parameter: Math.PI / 6 },
+      { type: 'RZ', wireIndex: 0, position: 1, parameter: Math.PI / 2 },
+      { type: 'RZ', wireIndex: 1, position: 1, parameter: Math.PI / 4 },
+      { type: 'RZ', wireIndex: 2, position: 1, parameter: Math.PI / 3 },
+      { type: 'CZ', wireIndex: 1, position: 2, controlWire: 0 },
+      { type: 'CZ', wireIndex: 2, position: 3, controlWire: 1 },
+      { type: 'RY', wireIndex: 0, position: 4, parameter: Math.PI / 3 },
+      { type: 'RY', wireIndex: 1, position: 4, parameter: Math.PI / 4 },
+      { type: 'RY', wireIndex: 2, position: 4, parameter: Math.PI / 2 },
     ],
   },
   {
@@ -146,6 +316,90 @@ export const ALGORITHM_PRESETS: AlgorithmPreset[] = [
       { type: 'H', wireIndex: 0, position: 9 },
       { type: 'H', wireIndex: 1, position: 9 },
       { type: 'H', wireIndex: 2, position: 9 },
+    ],
+  },
+
+  // === Quantum Communication ===
+  {
+    name: 'Quantum Teleportation',
+    description: 'Teleport qubit state using entanglement',
+    numQubits: 3,
+    category: 'communication',
+    gates: [
+      { type: 'RY', wireIndex: 0, position: 0, parameter: Math.PI / 3 },
+      { type: 'H', wireIndex: 1, position: 1 },
+      { type: 'CNOT', wireIndex: 2, position: 2, controlWire: 1 },
+      { type: 'CNOT', wireIndex: 1, position: 3, controlWire: 0 },
+      { type: 'H', wireIndex: 0, position: 4 },
+      { type: 'CNOT', wireIndex: 2, position: 5, controlWire: 1 },
+      { type: 'CZ', wireIndex: 2, position: 6, controlWire: 0 },
+    ],
+  },
+  {
+    name: 'Superdense Coding',
+    description: 'Send 2 classical bits using 1 qubit',
+    numQubits: 2,
+    category: 'communication',
+    gates: [
+      { type: 'H', wireIndex: 0, position: 0 },
+      { type: 'CNOT', wireIndex: 1, position: 1, controlWire: 0 },
+      { type: 'Z', wireIndex: 0, position: 2 },
+      { type: 'X', wireIndex: 0, position: 3 },
+      { type: 'CNOT', wireIndex: 1, position: 4, controlWire: 0 },
+      { type: 'H', wireIndex: 0, position: 5 },
+    ],
+  },
+  {
+    name: 'Entanglement Swapping',
+    description: 'Create entanglement between non-interacting qubits',
+    numQubits: 4,
+    category: 'communication',
+    gates: [
+      { type: 'H', wireIndex: 0, position: 0 },
+      { type: 'CNOT', wireIndex: 1, position: 1, controlWire: 0 },
+      { type: 'H', wireIndex: 2, position: 0 },
+      { type: 'CNOT', wireIndex: 3, position: 1, controlWire: 2 },
+      { type: 'CNOT', wireIndex: 2, position: 2, controlWire: 1 },
+      { type: 'H', wireIndex: 1, position: 3 },
+      { type: 'CZ', wireIndex: 3, position: 4, controlWire: 1 },
+      { type: 'CNOT', wireIndex: 3, position: 5, controlWire: 2 },
+    ],
+  },
+
+  // === Gate Demonstrations ===
+  {
+    name: 'Toffoli Demo',
+    description: 'Controlled-controlled-NOT gate demonstration',
+    numQubits: 3,
+    category: 'gates',
+    gates: [
+      { type: 'X', wireIndex: 0, position: 0 },
+      { type: 'X', wireIndex: 1, position: 0 },
+      { type: 'CCX', wireIndex: 2, position: 1, controlWire: 0, controlWire2: 1 },
+    ],
+  },
+  {
+    name: 'Fredkin Demo',
+    description: 'Controlled-SWAP gate demonstration',
+    numQubits: 3,
+    category: 'gates',
+    gates: [
+      { type: 'X', wireIndex: 0, position: 0 },
+      { type: 'X', wireIndex: 2, position: 0 },
+      { type: 'CSWAP', wireIndex: 2, position: 1, controlWire: 0, controlWire2: 1 },
+    ],
+  },
+  {
+    name: 'SWAP Test',
+    description: 'Compare two quantum states',
+    numQubits: 3,
+    category: 'gates',
+    gates: [
+      { type: 'H', wireIndex: 0, position: 0 },
+      { type: 'RY', wireIndex: 1, position: 0, parameter: Math.PI / 4 },
+      { type: 'RY', wireIndex: 2, position: 0, parameter: Math.PI / 3 },
+      { type: 'CSWAP', wireIndex: 2, position: 1, controlWire: 0, controlWire2: 1 },
+      { type: 'H', wireIndex: 0, position: 2 },
     ],
   },
 ];
