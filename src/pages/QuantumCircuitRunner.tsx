@@ -1,8 +1,14 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Plus, RotateCcw, GripVertical, Zap, Circle, BarChart3, ArrowLeft, Sparkles, Target } from 'lucide-react';
+import { Play, Plus, RotateCcw, GripVertical, Zap, Circle, BarChart3, ArrowLeft, Sparkles, Target, Download, Upload } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SedenionVisualizer from '@/components/SedenionVisualizer';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 // Seeded random for deterministic behavior
 const seededRandom = (seed: number) => {
@@ -98,16 +104,56 @@ interface MeasurementResult {
   counts: Record<string, number>;
   collapsed: string;
 }
-// Gate definitions with colors and descriptions
+// Gate definitions with colors, descriptions, and unitary matrices
 const GATE_DEFINITIONS = {
-  H: { name: 'Hadamard', color: 'bg-blue-500', description: 'Creates superposition' },
-  X: { name: 'Pauli-X', color: 'bg-red-500', description: 'Bit flip (NOT)' },
-  Y: { name: 'Pauli-Y', color: 'bg-green-500', description: 'Bit & phase flip' },
-  Z: { name: 'Pauli-Z', color: 'bg-purple-500', description: 'Phase flip' },
-  S: { name: 'S Gate', color: 'bg-cyan-500', description: 'π/2 phase' },
-  T: { name: 'T Gate', color: 'bg-orange-500', description: 'π/4 phase' },
-  CNOT: { name: 'CNOT', color: 'bg-pink-500', description: 'Controlled NOT' },
-  SWAP: { name: 'SWAP', color: 'bg-yellow-500', description: 'Swap qubits' },
+  H: { 
+    name: 'Hadamard', 
+    color: 'bg-blue-500', 
+    description: 'Creates superposition',
+    matrix: '1/√2 × [[1, 1], [1, -1]]'
+  },
+  X: { 
+    name: 'Pauli-X', 
+    color: 'bg-red-500', 
+    description: 'Bit flip (NOT)',
+    matrix: '[[0, 1], [1, 0]]'
+  },
+  Y: { 
+    name: 'Pauli-Y', 
+    color: 'bg-green-500', 
+    description: 'Bit & phase flip',
+    matrix: '[[0, -i], [i, 0]]'
+  },
+  Z: { 
+    name: 'Pauli-Z', 
+    color: 'bg-purple-500', 
+    description: 'Phase flip',
+    matrix: '[[1, 0], [0, -1]]'
+  },
+  S: { 
+    name: 'S Gate', 
+    color: 'bg-cyan-500', 
+    description: 'π/2 phase',
+    matrix: '[[1, 0], [0, i]]'
+  },
+  T: { 
+    name: 'T Gate', 
+    color: 'bg-orange-500', 
+    description: 'π/4 phase',
+    matrix: '[[1, 0], [0, e^(iπ/4)]]'
+  },
+  CNOT: { 
+    name: 'CNOT', 
+    color: 'bg-pink-500', 
+    description: 'Controlled NOT',
+    matrix: '[[1,0,0,0], [0,1,0,0], [0,0,0,1], [0,0,1,0]]'
+  },
+  SWAP: { 
+    name: 'SWAP', 
+    color: 'bg-yellow-500', 
+    description: 'Swap qubits',
+    matrix: '[[1,0,0,0], [0,0,1,0], [0,1,0,0], [0,0,0,1]]'
+  },
 };
 
 type GateType = keyof typeof GATE_DEFINITIONS;
@@ -284,23 +330,32 @@ const coherence = stateVector.coherence();`;
 
 const GatePalette = ({ onDragStart }: { onDragStart: (gate: GateType) => void }) => {
   return (
-    <div className="grid grid-cols-4 gap-2">
-      {(Object.keys(GATE_DEFINITIONS) as GateType[]).map((gateType) => {
-        const gate = GATE_DEFINITIONS[gateType];
-        return (
-          <div
-            key={gateType}
-            draggable
-            onDragStart={() => onDragStart(gateType)}
-            className={`${gate.color} text-white p-3 rounded-lg text-center cursor-grab hover:opacity-90 transition-all hover:-translate-y-0.5 select-none`}
-            title={gate.description}
-          >
-            <div className="font-bold text-lg">{gateType}</div>
-            <div className="text-[10px] opacity-80">{gate.name}</div>
-          </div>
-        );
-      })}
-    </div>
+    <TooltipProvider delayDuration={200}>
+      <div className="grid grid-cols-4 gap-2">
+        {(Object.keys(GATE_DEFINITIONS) as GateType[]).map((gateType) => {
+          const gate = GATE_DEFINITIONS[gateType];
+          return (
+            <Tooltip key={gateType}>
+              <TooltipTrigger asChild>
+                <div
+                  draggable
+                  onDragStart={() => onDragStart(gateType)}
+                  className={`${gate.color} text-white p-3 rounded-lg text-center cursor-grab hover:opacity-90 transition-all hover:-translate-y-0.5 select-none`}
+                >
+                  <div className="font-bold text-lg">{gateType}</div>
+                  <div className="text-[10px] opacity-80">{gate.name}</div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-[200px]">
+                <p className="font-semibold">{gate.name}</p>
+                <p className="text-xs text-muted-foreground">{gate.description}</p>
+                <p className="text-xs font-mono mt-1 text-primary">{gate.matrix}</p>
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
+      </div>
+    </TooltipProvider>
   );
 };
 
@@ -358,16 +413,26 @@ const WireDisplay = ({
                   : 'border-border/50 hover:border-primary/50 hover:bg-primary/10'
               }`}
             >
-              {gateAtSlot ? (
-                <div
-                  className={`${GATE_DEFINITIONS[gateAtSlot.type].color} text-white w-10 h-10 rounded flex items-center justify-center font-bold cursor-pointer hover:scale-105 transition-transform relative group`}
-                  onClick={() => onRemoveGate(gateAtSlot.id)}
-                >
-                  {gateAtSlot.type}
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    ×
-                  </div>
-                </div>
+            {gateAtSlot ? (
+                <TooltipProvider delayDuration={300}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div
+                        className={`${GATE_DEFINITIONS[gateAtSlot.type].color} text-white w-10 h-10 rounded flex items-center justify-center font-bold cursor-pointer hover:scale-105 transition-transform relative group`}
+                        onClick={() => onRemoveGate(gateAtSlot.id)}
+                      >
+                        {gateAtSlot.type}
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          ×
+                        </div>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="font-semibold">{GATE_DEFINITIONS[gateAtSlot.type].name}</p>
+                      <p className="text-xs font-mono text-primary">{GATE_DEFINITIONS[gateAtSlot.type].matrix}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               ) : (
                 <span className="text-muted-foreground/30 text-xs">{slotIdx}</span>
               )}
@@ -603,6 +668,64 @@ const QuantumCircuitRunner = () => {
     setHistory(prev => [...prev, 'Reset circuit']);
   }, []);
 
+  // Export circuit as JSON
+  const exportCircuit = useCallback(() => {
+    const circuitData = {
+      version: '1.0',
+      numQubits: wires.length,
+      gates: gates.map(g => ({
+        type: g.type,
+        wireIndex: g.wireIndex,
+        position: g.position,
+        controlWire: g.controlWire,
+      })),
+    };
+    const blob = new Blob([JSON.stringify(circuitData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'quantum-circuit.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    setHistory(prev => [...prev, 'Exported circuit to JSON']);
+  }, [wires.length, gates]);
+
+  // Import circuit from JSON
+  const importCircuit = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        if (data.numQubits && data.gates) {
+          const newWires = Array.from({ length: data.numQubits }, (_, i) => ({
+            id: i + 1,
+            label: `q[${i}]`,
+          }));
+          setWires(newWires);
+
+          const newGates: GateInstance[] = data.gates.map((g: any, i: number) => ({
+            id: `gate-${nextGateId.current++}`,
+            type: g.type as GateType,
+            wireIndex: g.wireIndex,
+            position: g.position,
+            controlWire: g.controlWire,
+          }));
+          setGates(newGates);
+          setExecutedState(null);
+          setMeasurementResult(null);
+          setHistory(prev => [...prev, `Imported circuit: ${data.numQubits} qubits, ${data.gates.length} gates`]);
+        }
+      } catch (err) {
+        setHistory(prev => [...prev, 'Failed to import circuit: invalid JSON']);
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = ''; // Reset file input
+  }, []);
+
   const sedenionState = useMemo(() => {
     if (!executedState) return Array(16).fill(0);
     return stateToSedenion(executedState);
@@ -681,6 +804,24 @@ const QuantumCircuitRunner = () => {
                 <Button onClick={resetCircuit} variant="destructive" className="w-full">
                   <RotateCcw className="w-4 h-4 mr-2" /> Reset
                 </Button>
+                <div className="flex gap-2 pt-2 border-t border-border mt-2">
+                  <Button onClick={exportCircuit} variant="outline" size="sm" className="flex-1" disabled={gates.length === 0}>
+                    <Download className="w-4 h-4 mr-1" /> Export
+                  </Button>
+                  <label className="flex-1">
+                    <Button variant="outline" size="sm" className="w-full" asChild>
+                      <span>
+                        <Upload className="w-4 h-4 mr-1" /> Import
+                      </span>
+                    </Button>
+                    <input
+                      type="file"
+                      accept=".json"
+                      onChange={importCircuit}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
               </div>
             </div>
 
