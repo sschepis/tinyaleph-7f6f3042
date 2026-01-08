@@ -64,6 +64,24 @@ const ALGORITHM_PRESETS: AlgorithmPreset[] = [
     ],
   },
   {
+    name: 'Teleportation',
+    description: 'Quantum teleportation: transfers state from q[0] to q[2]',
+    numQubits: 3,
+    gates: [
+      // Prepare state to teleport (e.g., |+⟩ on q0)
+      { type: 'H', wireIndex: 0, position: 0 },
+      // Create Bell pair between q1 and q2
+      { type: 'H', wireIndex: 1, position: 1 },
+      { type: 'CNOT', wireIndex: 2, position: 2, controlWire: 1 },
+      // Bell measurement on q0, q1
+      { type: 'CNOT', wireIndex: 1, position: 3, controlWire: 0 },
+      { type: 'H', wireIndex: 0, position: 4 },
+      // Corrections (conditioned on measurement - simplified)
+      { type: 'CNOT', wireIndex: 2, position: 5, controlWire: 1 },
+      { type: 'Z', wireIndex: 2, position: 6 },
+    ],
+  },
+  {
     name: 'Superposition',
     description: 'Equal superposition of all basis states',
     numQubits: 3,
@@ -687,19 +705,82 @@ const QuantumCircuitRunner = () => {
             <h2 className="text-lg font-semibold text-primary mb-4 flex items-center gap-2">
               <GripVertical className="w-5 h-5" /> Circuit
             </h2>
-            <div className="space-y-3 min-h-[300px]">
-              {wires.map((wire, idx) => (
-                <WireDisplay
-                  key={wire.id}
-                  wire={wire}
-                  wireIndex={idx}
-                  gates={gates.filter(g => g.wireIndex === idx)}
-                  onDropGate={(pos) => handleDropGate(idx, pos)}
-                  onRemoveGate={removeGate}
-                  isActive={draggedGate !== null}
-                  numWires={wires.length}
-                />
-              ))}
+            <div className="relative min-h-[300px]">
+              {/* CNOT Control Lines Overlay */}
+              <svg className="absolute inset-0 pointer-events-none z-20" style={{ overflow: 'visible' }}>
+                {gates.filter(g => g.type === 'CNOT' && g.controlWire !== undefined).map((gate) => {
+                  const controlY = (gate.controlWire! * 66) + 33; // 66px per wire row, centered
+                  const targetY = (gate.wireIndex * 66) + 33;
+                  const slotX = 80 + (gate.position * 52) + 24; // 80px offset + slot width + center
+                  const minY = Math.min(controlY, targetY);
+                  const maxY = Math.max(controlY, targetY);
+                  
+                  return (
+                    <g key={`cnot-line-${gate.id}`}>
+                      {/* Vertical line connecting control to target */}
+                      <line
+                        x1={slotX}
+                        y1={minY + 12}
+                        x2={slotX}
+                        y2={maxY - 12}
+                        stroke="hsl(var(--primary))"
+                        strokeWidth="2"
+                        strokeDasharray="4 2"
+                      />
+                      {/* Control dot */}
+                      <circle
+                        cx={slotX}
+                        cy={controlY}
+                        r="6"
+                        fill="hsl(var(--primary))"
+                        stroke="hsl(var(--primary-foreground))"
+                        strokeWidth="1"
+                      />
+                      {/* Target indicator (⊕ symbol approximation) */}
+                      <circle
+                        cx={slotX}
+                        cy={targetY}
+                        r="8"
+                        fill="none"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth="2"
+                      />
+                      <line
+                        x1={slotX - 6}
+                        y1={targetY}
+                        x2={slotX + 6}
+                        y2={targetY}
+                        stroke="hsl(var(--primary))"
+                        strokeWidth="2"
+                      />
+                      <line
+                        x1={slotX}
+                        y1={targetY - 6}
+                        x2={slotX}
+                        y2={targetY + 6}
+                        stroke="hsl(var(--primary))"
+                        strokeWidth="2"
+                      />
+                    </g>
+                  );
+                })}
+              </svg>
+              
+              {/* Wire rows */}
+              <div className="space-y-3">
+                {wires.map((wire, idx) => (
+                  <WireDisplay
+                    key={wire.id}
+                    wire={wire}
+                    wireIndex={idx}
+                    gates={gates.filter(g => g.wireIndex === idx)}
+                    onDropGate={(pos) => handleDropGate(idx, pos)}
+                    onRemoveGate={removeGate}
+                    isActive={draggedGate !== null}
+                    numWires={wires.length}
+                  />
+                ))}
+              </div>
             </div>
             
             {gates.length === 0 && (
