@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Plus, X } from 'lucide-react';
-import { Play, Languages, Grid3X3, Wand2, RotateCcw, Zap, Sparkles, Scale, Layers, Circle } from 'lucide-react';
+import { Play, Languages, Grid3X3, Wand2, RotateCcw, Zap, Sparkles, Scale, Layers, Circle, Loader2 } from 'lucide-react';
 import ExamplePageWrapper, { ExampleConfig } from '../components/ExamplePageWrapper';
 import SedenionVisualizer from '../components/SedenionVisualizer';
 
@@ -66,7 +66,7 @@ const primesToSedenion = (primes: number[]) => {
   return c.map(v => v / norm);
 };
 
-// Sedenion multiplication (simplified Cayley-Dickson)
+// Sedenion multiplication (simplified Cayley-Dickson) - normalized for most uses
 const sedenionMul = (a: number[], b: number[]): number[] => {
   const result = new Array(16).fill(0);
   for (let i = 0; i < 16; i++) {
@@ -78,6 +78,19 @@ const sedenionMul = (a: number[], b: number[]): number[] => {
   }
   const norm = Math.sqrt(result.reduce((s, v) => s + v * v, 0)) || 1;
   return result.map(v => v / norm);
+};
+
+// Sedenion multiplication WITHOUT normalization - for zero divisor detection
+const sedenionMulRaw = (a: number[], b: number[]): number[] => {
+  const result = new Array(16).fill(0);
+  for (let i = 0; i < 16; i++) {
+    for (let j = 0; j < 16; j++) {
+      const k = (i + j) % 16;
+      const sign = ((i & j) & 8) ? -1 : 1;
+      result[k] += sign * a[i] * b[j];
+    }
+  }
+  return result;
 };
 
 // Sedenion conjugate (negate indices 1-15)
@@ -586,27 +599,108 @@ const WordTransformation = () => {
 };
 
 const ZeroDivisorSearch = () => {
-  const [seed, setSeed] = useState(1);
+  const [isSearching, setIsSearching] = useState(false);
+  const [attempts, setAttempts] = useState(0);
   const [results, setResults] = useState<{ word1: string; word2: string; product: number; isZero: boolean }[]>([]);
+  const [foundZero, setFoundZero] = useState<{ word1: string; word2: string; product: number } | null>(null);
+  const searchRef = useRef<number | null>(null);
 
-  const search = useCallback(() => {
-    const words = ['FIRE', 'WATER', 'AIR', 'EARTH', 'LIGHT', 'DARK', 'CHAOS', 'ORDER'];
-    const newResults: typeof results = [];
-    
-    for (let i = 0; i < words.length; i++) {
-      for (let j = i + 1; j < words.length; j++) {
-        const s1 = primesToSedenion(words[i].split('').map(letterToPrime));
-        const s2 = primesToSedenion(words[j].split('').map(letterToPrime));
-        const product = sedenionMul(s1, s2);
-        const magnitude = Math.sqrt(product.reduce((s, v) => s + v * v, 0));
-        const isZero = magnitude < 0.1;
-        newResults.push({ word1: words[i], word2: words[j], product: magnitude, isZero });
-      }
+  // Generate a random Enochian word of given length
+  const generateWord = useCallback((length: number, seed: number): string => {
+    const letters = ENOCHIAN_ALPHABET.map(e => e.letter);
+    let word = '';
+    let s = seed;
+    for (let i = 0; i < length; i++) {
+      s = (s * 1103515245 + 12345) & 0x7fffffff;
+      word += letters[s % letters.length];
     }
+    return word;
+  }, []);
+
+  // Create unnormalized sedenion for zero-divisor detection
+  const wordToSedenionRaw = useCallback((word: string): number[] => {
+    const c = new Array(16).fill(0);
+    word.split('').forEach((letter, i) => {
+      const p = letterToPrime(letter);
+      const idx = p % 16;
+      c[idx] += 1 / (1 + i * 0.1);
+    });
+    return c; // No normalization!
+  }, []);
+
+  const searchOnce = useCallback((seed: number): { word1: string; word2: string; product: number; isZero: boolean } => {
+    // Generate words of varying lengths
+    const len1 = 3 + (seed % 4);
+    const len2 = 3 + ((seed * 7) % 4);
+    const word1 = generateWord(len1, seed);
+    const word2 = generateWord(len2, seed * 31337);
     
-    newResults.sort((a, b) => a.product - b.product);
-    setResults(newResults);
-    setSeed(s => s + 1);
+    const s1 = wordToSedenionRaw(word1);
+    const s2 = wordToSedenionRaw(word2);
+    const product = sedenionMulRaw(s1, s2);
+    const magnitude = Math.sqrt(product.reduce((s, v) => s + v * v, 0));
+    
+    // Threshold relative to input magnitudes
+    const norm1 = Math.sqrt(s1.reduce((s, v) => s + v * v, 0));
+    const norm2 = Math.sqrt(s2.reduce((s, v) => s + v * v, 0));
+    const expectedMag = norm1 * norm2;
+    const ratio = magnitude / expectedMag;
+    
+    return { word1, word2, product: ratio, isZero: ratio < 0.15 };
+  }, [generateWord, wordToSedenionRaw]);
+
+  const startSearch = useCallback(() => {
+    setIsSearching(true);
+    setFoundZero(null);
+    setResults([]);
+    setAttempts(0);
+    
+    let currentAttempt = 0;
+    const allResults: typeof results = [];
+    
+    const runBatch = () => {
+      const batchSize = 100;
+      
+      for (let i = 0; i < batchSize; i++) {
+        currentAttempt++;
+        const result = searchOnce(Date.now() + currentAttempt * 17);
+        allResults.push(result);
+        
+        if (result.isZero) {
+          setFoundZero({ word1: result.word1, word2: result.word2, product: result.product });
+          setAttempts(currentAttempt);
+          allResults.sort((a, b) => a.product - b.product);
+          setResults(allResults.slice(0, 10));
+          setIsSearching(false);
+          return;
+        }
+      }
+      
+      setAttempts(currentAttempt);
+      allResults.sort((a, b) => a.product - b.product);
+      setResults(allResults.slice(0, 10));
+      
+      if (currentAttempt < 10000) {
+        searchRef.current = requestAnimationFrame(runBatch);
+      } else {
+        setIsSearching(false);
+      }
+    };
+    
+    searchRef.current = requestAnimationFrame(runBatch);
+  }, [searchOnce]);
+
+  const stopSearch = useCallback(() => {
+    if (searchRef.current) {
+      cancelAnimationFrame(searchRef.current);
+    }
+    setIsSearching(false);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (searchRef.current) cancelAnimationFrame(searchRef.current);
+    };
   }, []);
 
   return (
@@ -617,18 +711,53 @@ const ZeroDivisorSearch = () => {
       </div>
       <p className="text-sm text-muted-foreground">
         Sedenions contain zero divisors: non-zero elements that multiply to (near) zero. These represent "semantic cancellation."
+        The search loops automatically until it finds one.
       </p>
-      <button onClick={search} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground">
-        <Zap className="w-4 h-4" /> Search (Seed #{seed})
-      </button>
+      
+      <div className="flex items-center gap-3">
+        <button 
+          onClick={isSearching ? stopSearch : startSearch} 
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg ${isSearching ? 'bg-destructive text-destructive-foreground' : 'bg-primary text-primary-foreground'}`}
+        >
+          {isSearching ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" /> Stop Search
+            </>
+          ) : (
+            <>
+              <Zap className="w-4 h-4" /> Start Search
+            </>
+          )}
+        </button>
+        {attempts > 0 && (
+          <span className="text-sm text-muted-foreground">
+            {attempts.toLocaleString()} pairs tested
+          </span>
+        )}
+      </div>
+
+      {foundZero && (
+        <div className="p-4 rounded-lg bg-green-500/20 border border-green-500/50">
+          <div className="flex items-center gap-2 text-green-400 font-semibold mb-2">
+            <Sparkles className="w-4 h-4" /> Zero Divisor Found!
+          </div>
+          <div className="font-mono text-lg">
+            {foundZero.word1} × {foundZero.word2}
+          </div>
+          <div className="font-mono text-sm text-muted-foreground">
+            ||A×B|| / (||A|| × ||B||) = {foundZero.product.toFixed(6)}
+          </div>
+        </div>
+      )}
 
       {results.length > 0 && (
         <div className="space-y-2 max-h-64 overflow-y-auto">
-          {results.slice(0, 10).map((r, i) => (
-            <div key={i} className={`p-3 rounded-lg flex justify-between items-center ${r.isZero ? 'bg-destructive/20 border border-destructive/50' : 'bg-muted/50'}`}>
+          <div className="text-xs text-muted-foreground mb-2">Closest pairs (lowest product ratio):</div>
+          {results.map((r, i) => (
+            <div key={i} className={`p-3 rounded-lg flex justify-between items-center ${r.isZero ? 'bg-green-500/20 border border-green-500/50' : 'bg-muted/50'}`}>
               <span className="font-mono text-sm">{r.word1} × {r.word2}</span>
-              <span className={`font-mono ${r.isZero ? 'text-destructive' : 'text-muted-foreground'}`}>
-                ||A×B|| = {r.product.toFixed(4)}
+              <span className={`font-mono text-sm ${r.isZero ? 'text-green-400' : 'text-muted-foreground'}`}>
+                ratio = {r.product.toFixed(4)}
               </span>
             </div>
           ))}
