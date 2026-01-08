@@ -84,6 +84,7 @@ const ReasoningDemo = () => {
   };
 
   const runQuery = () => {
+    if (!query.trim()) return;
     const queryEmbed = textToSedenion(query);
     const scored = facts.map(f => ({
       statement: f.statement,
@@ -91,7 +92,8 @@ const ReasoningDemo = () => {
       confidence: f.confidence
     }));
     scored.sort((a, b) => b.similarity * b.confidence - a.similarity * a.confidence);
-    setResults(scored.filter(r => r.similarity > 0.3));
+    // Always show top results, even if similarity is low
+    setResults(scored.slice(0, 5));
   };
 
   const runInference = () => {
@@ -172,12 +174,14 @@ const ReasoningDemo = () => {
           
           {results.length > 0 && (
             <div className="mt-4 space-y-2">
-              <h4 className="text-sm font-medium">Results:</h4>
+              <h4 className="text-sm font-medium">Results (ranked by relevance):</h4>
               {results.map((r, i) => (
-                <Card key={i} className="p-2">
+                <Card key={i} className={`p-2 ${r.similarity > 0.5 ? 'border-primary/50' : ''}`}>
                   <p className="text-sm">{r.statement}</p>
                   <div className="flex gap-4 text-xs text-muted-foreground mt-1">
-                    <span>Similarity: {(r.similarity * 100).toFixed(1)}%</span>
+                    <span className={r.similarity > 0.5 ? 'text-green-500' : ''}>
+                      Similarity: {(r.similarity * 100).toFixed(1)}%
+                    </span>
                     <span>Confidence: {(r.confidence * 100).toFixed(0)}%</span>
                   </div>
                 </Card>
@@ -1075,13 +1079,15 @@ const RAGDemo = () => {
   const [generatedPrompt, setGeneratedPrompt] = useState('');
 
   const retrieve = () => {
+    if (!query.trim()) return;
     const queryEmbed = textToSedenion(query);
     const scored = documents.map(d => ({
       ...d,
       score: similarity(queryEmbed, textToSedenion(d.content))
     }));
     scored.sort((a, b) => b.score - a.score);
-    setRetrievedDocs(scored.filter(d => d.score > 0.3));
+    // Always show top docs ranked by relevance
+    setRetrievedDocs(scored.slice(0, 3));
     
     // Generate prompt
     const context = scored.slice(0, 2).map(d => `${d.title}: ${d.content}`).join('\n');
