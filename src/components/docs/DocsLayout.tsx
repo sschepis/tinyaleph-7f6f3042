@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import DocsSidebar from './DocsSidebar';
+import { DocsSidebar, MobileDocsSidebar } from './DocsSidebar';
 import BackToTop from './BackToTop';
 
 interface DocsLayoutProps {
@@ -17,6 +17,7 @@ const DocsLayout = ({ children }: DocsLayoutProps) => {
           </main>
         </div>
       </div>
+      <MobileDocsSidebar />
       <BackToTop />
     </div>
   );

@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { 
   BookOpen, Zap, Package, Lightbulb, Code2, FileText, 
-  Brain, Atom, Dna, Calculator, ChevronRight
+  Brain, Atom, Dna, Calculator, ChevronRight, Menu, X
 } from 'lucide-react';
+import { Sheet, SheetContent, SheetTrigger, SheetClose } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
 
 interface DocSection {
   id: string;
@@ -62,62 +65,101 @@ const docsStructure: DocsPage[] = [
   },
 ];
 
-const DocsSidebar = () => {
+interface SidebarContentProps {
+  onSectionClick?: () => void;
+}
+
+const SidebarContent = ({ onSectionClick }: SidebarContentProps) => {
   const location = useLocation();
   const currentPath = location.pathname;
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
-      const offset = 100; // Account for fixed header
+      const offset = 100;
       const elementPosition = element.getBoundingClientRect().top + window.scrollY;
       window.scrollTo({
         top: elementPosition - offset,
         behavior: 'smooth',
       });
     }
+    onSectionClick?.();
   };
 
   return (
-    <aside className="hidden lg:block w-64 shrink-0">
-      <div className="sticky top-24 space-y-6">
-        <div className="text-sm font-semibold text-foreground mb-4">Documentation</div>
+    <div className="space-y-6">
+      <div className="text-sm font-semibold text-foreground mb-4">Documentation</div>
+      
+      {docsStructure.map((page) => {
+        const isCurrentPage = currentPath === page.path;
         
-        {docsStructure.map((page) => {
-          const isCurrentPage = currentPath === page.path;
-          
-          return (
-            <div key={page.path} className="space-y-2">
-              <Link
-                to={page.path}
-                className={cn(
-                  "block text-sm font-medium transition-colors",
-                  isCurrentPage ? "text-primary" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {page.title}
-              </Link>
-              
-              {isCurrentPage && (
-                <nav className="pl-3 border-l border-border space-y-1">
-                  {page.sections.map((section) => (
-                    <button
-                      key={section.id}
-                      onClick={() => scrollToSection(section.id)}
-                      className="flex items-center gap-2 w-full text-left text-sm text-muted-foreground hover:text-foreground transition-colors py-1"
-                    >
-                      <section.icon className="w-3.5 h-3.5" />
-                      <span>{section.title}</span>
-                    </button>
-                  ))}
-                </nav>
+        return (
+          <div key={page.path} className="space-y-2">
+            <Link
+              to={page.path}
+              onClick={onSectionClick}
+              className={cn(
+                "block text-sm font-medium transition-colors",
+                isCurrentPage ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )}
-            </div>
-          );
-        })}
+            >
+              {page.title}
+            </Link>
+            
+            {isCurrentPage && (
+              <nav className="pl-3 border-l border-border space-y-1">
+                {page.sections.map((section) => (
+                  <button
+                    key={section.id}
+                    onClick={() => scrollToSection(section.id)}
+                    className="flex items-center gap-2 w-full text-left text-sm text-muted-foreground hover:text-foreground transition-colors py-1"
+                  >
+                    <section.icon className="w-3.5 h-3.5" />
+                    <span>{section.title}</span>
+                  </button>
+                ))}
+              </nav>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// Desktop sidebar
+const DocsSidebar = () => {
+  return (
+    <aside className="hidden lg:block w-64 shrink-0">
+      <div className="sticky top-24">
+        <SidebarContent />
       </div>
     </aside>
   );
 };
 
+// Mobile sidebar trigger and sheet
+const MobileDocsSidebar = () => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="lg:hidden fixed bottom-20 left-4 z-50">
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          <Button 
+            size="icon" 
+            className="rounded-full shadow-lg bg-primary hover:bg-primary/90"
+          >
+            <Menu className="w-5 h-5" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="w-72 pt-12">
+          <SidebarContent onSectionClick={() => setOpen(false)} />
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+};
+
+export { DocsSidebar, MobileDocsSidebar };
 export default DocsSidebar;
