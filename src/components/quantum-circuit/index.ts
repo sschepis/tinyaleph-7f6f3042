@@ -2,6 +2,7 @@
 export { GatePalette } from './GatePalette';
 export { DebugPanel } from './DebugPanel';
 export { WireDisplay } from './WireDisplay';
+export { HelpDialog, useFirstRun } from './HelpDialog';
 
 // Visualizations
 export { BlochSphere } from './visualizations/BlochSphere';
