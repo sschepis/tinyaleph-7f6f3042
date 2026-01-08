@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Plus, RotateCcw, GripVertical, Zap, Circle, BarChart3, ArrowLeft, Sparkles, Target, Download, Upload, Wand2, Layers } from 'lucide-react';
+import { Play, Plus, RotateCcw, GripVertical, Zap, Circle, BarChart3, ArrowLeft, Sparkles, Target, Download, Upload, Wand2, Layers, GitBranch } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SedenionVisualizer from '@/components/SedenionVisualizer';
 import {
@@ -201,6 +201,18 @@ const GATE_DEFINITIONS = {
     description: 'Swap qubits',
     matrix: '[[1,0,0,0], [0,0,1,0], [0,1,0,0], [0,0,0,1]]'
   },
+  CCX: { 
+    name: 'Toffoli', 
+    color: 'bg-rose-600', 
+    description: 'Controlled-Controlled-X (3-qubit)',
+    matrix: 'I⊗I⊗|11⟩⟨11| + X⊗|11⟩⟨11|'
+  },
+  CSWAP: { 
+    name: 'Fredkin', 
+    color: 'bg-amber-600', 
+    description: 'Controlled-SWAP (3-qubit)',
+    matrix: 'I⊗I + SWAP⊗|1⟩⟨1|'
+  },
 };
 
 type GateType = keyof typeof GATE_DEFINITIONS;
@@ -211,6 +223,7 @@ interface GateInstance {
   wireIndex: number;
   position: number;
   controlWire?: number; // For controlled gates
+  controlWire2?: number; // Second control for 3-qubit gates (CCX, CSWAP)
 }
 
 interface Wire {
@@ -229,7 +242,8 @@ const applyGateToState = (
   gateType: GateType,
   wireIndex: number,
   numWires: number,
-  controlWire?: number
+  controlWire?: number,
+  controlWire2?: number
 ): ComplexNumber[] => {
   const newState = state.map(s => ({ ...s }));
   const wirePositionMask = 1 << (numWires - 1 - wireIndex);
@@ -351,6 +365,40 @@ const applyGateToState = (
             const j = i ^ wirePositionMask ^ otherWireMask;
             if (i < j) {
               [newState[i], newState[j]] = [{ ...state[j] }, { ...state[i] }];
+            }
+          }
+        }
+      }
+      break;
+    
+    case 'CCX': // Toffoli gate
+      if (controlWire !== undefined && controlWire2 !== undefined) {
+        const control1Mask = 1 << (numWires - 1 - controlWire);
+        const control2Mask = 1 << (numWires - 1 - controlWire2);
+        for (let i = 0; i < state.length; i++) {
+          // Apply X when both controls are |1⟩
+          if ((i & control1Mask) !== 0 && (i & control2Mask) !== 0 && (i & wirePositionMask) === 0) {
+            const j = i | wirePositionMask;
+            [newState[i], newState[j]] = [{ ...state[j] }, { ...state[i] }];
+          }
+        }
+      }
+      break;
+    
+    case 'CSWAP': // Fredkin gate
+      if (controlWire !== undefined && wireIndex < numWires - 1) {
+        const controlMask = 1 << (numWires - 1 - controlWire);
+        const target2Mask = 1 << (numWires - 2 - wireIndex); // Second swap target
+        for (let i = 0; i < state.length; i++) {
+          // Swap targets when control is |1⟩
+          if ((i & controlMask) !== 0) {
+            const bit1 = (i & wirePositionMask) !== 0;
+            const bit2 = (i & target2Mask) !== 0;
+            if (bit1 !== bit2) {
+              const j = i ^ wirePositionMask ^ target2Mask;
+              if (i < j) {
+                [newState[i], newState[j]] = [{ ...state[j] }, { ...state[i] }];
+              }
             }
           }
         }
@@ -636,7 +684,17 @@ const QuantumCircuitRunner = () => {
     
     // Controlled gates get a control wire (one qubit above if possible)
     const isControlledGate = ['CNOT', 'CZ', 'CPHASE'].includes(draggedGate);
-    const controlWire = isControlledGate && wireIndex > 0 ? wireIndex - 1 : undefined;
+    const is3QubitGate = ['CCX', 'CSWAP'].includes(draggedGate);
+    
+    let controlWire: number | undefined;
+    let controlWire2: number | undefined;
+    
+    if (is3QubitGate && wireIndex >= 2) {
+      controlWire = wireIndex - 2;
+      controlWire2 = wireIndex - 1;
+    } else if (isControlledGate && wireIndex > 0) {
+      controlWire = wireIndex - 1;
+    }
     
     const newGate: GateInstance = {
       id: `gate-${nextGateId.current++}`,
@@ -644,6 +702,7 @@ const QuantumCircuitRunner = () => {
       wireIndex,
       position,
       controlWire,
+      controlWire2,
     };
     
     setGates(prev => [...prev, newGate]);
@@ -696,7 +755,7 @@ const QuantumCircuitRunner = () => {
     const sortedGates = [...gates].sort((a, b) => a.position - b.position);
     
     for (const gate of sortedGates) {
-      state = applyGateToState(state, gate.type, gate.wireIndex, numWires, gate.controlWire);
+      state = applyGateToState(state, gate.type, gate.wireIndex, numWires, gate.controlWire, gate.controlWire2);
     }
     
     setExecutedState(state);
@@ -904,6 +963,146 @@ const QuantumCircuitRunner = () => {
     }
   }, [gates]);
 
+  // Transpile circuit to universal gate set (H, T, CNOT)
+  const transpileCircuit = useCallback(() => {
+    if (gates.length === 0) return;
+    
+    const transpiled: GateInstance[] = [];
+    let pos = 0;
+    
+    const addGate = (type: GateType, wireIndex: number, controlWire?: number, controlWire2?: number) => {
+      transpiled.push({
+        id: `gate-${nextGateId.current++}`,
+        type,
+        wireIndex,
+        position: pos,
+        controlWire,
+        controlWire2,
+      });
+      pos++;
+    };
+    
+    for (const gate of [...gates].sort((a, b) => a.position - b.position)) {
+      switch (gate.type) {
+        case 'H':
+        case 'T':
+        case 'CNOT':
+          // Already in universal set
+          addGate(gate.type, gate.wireIndex, gate.controlWire, gate.controlWire2);
+          break;
+          
+        case 'X':
+          // X = H·Z·H, and Z = S·S = T·T·T·T, so X ≈ H·T·T·T·T·H
+          addGate('H', gate.wireIndex);
+          addGate('T', gate.wireIndex);
+          addGate('T', gate.wireIndex);
+          addGate('T', gate.wireIndex);
+          addGate('T', gate.wireIndex);
+          addGate('H', gate.wireIndex);
+          break;
+          
+        case 'Z':
+          // Z = T^4 (four T gates = π phase)
+          addGate('T', gate.wireIndex);
+          addGate('T', gate.wireIndex);
+          addGate('T', gate.wireIndex);
+          addGate('T', gate.wireIndex);
+          break;
+          
+        case 'S':
+          // S = T^2 (two T gates = π/2 phase)
+          addGate('T', gate.wireIndex);
+          addGate('T', gate.wireIndex);
+          break;
+          
+        case 'Y':
+          // Y = S·X·S† ≈ T·T·(H·T·T·T·T·H)·T†·T† 
+          // Simplified: Y ≈ S·H·Z·H·S†
+          addGate('T', gate.wireIndex);
+          addGate('T', gate.wireIndex);
+          addGate('H', gate.wireIndex);
+          addGate('T', gate.wireIndex);
+          addGate('T', gate.wireIndex);
+          addGate('T', gate.wireIndex);
+          addGate('T', gate.wireIndex);
+          addGate('H', gate.wireIndex);
+          break;
+          
+        case 'CZ':
+          // CZ = (I⊗H)·CNOT·(I⊗H)
+          if (gate.controlWire !== undefined) {
+            addGate('H', gate.wireIndex);
+            addGate('CNOT', gate.wireIndex, gate.controlWire);
+            addGate('H', gate.wireIndex);
+          }
+          break;
+          
+        case 'CPHASE':
+          // CPHASE(π/4) ≈ controlled-T, decomposed to CNOTs and T
+          if (gate.controlWire !== undefined) {
+            addGate('CNOT', gate.wireIndex, gate.controlWire);
+            addGate('T', gate.wireIndex);
+            addGate('CNOT', gate.wireIndex, gate.controlWire);
+          }
+          break;
+          
+        case 'SWAP':
+          // SWAP = CNOT·CNOT·CNOT (alternating control/target)
+          const swapTarget = gate.wireIndex < wires.length - 1 ? gate.wireIndex + 1 : gate.wireIndex - 1;
+          addGate('CNOT', swapTarget, gate.wireIndex);
+          addGate('CNOT', gate.wireIndex, swapTarget);
+          addGate('CNOT', swapTarget, gate.wireIndex);
+          break;
+          
+        case 'CCX': // Toffoli decomposition (simplified)
+          // Toffoli requires many gates; simplified decomposition
+          if (gate.controlWire !== undefined && gate.controlWire2 !== undefined) {
+            addGate('H', gate.wireIndex);
+            addGate('CNOT', gate.wireIndex, gate.controlWire2);
+            addGate('T', gate.wireIndex);
+            addGate('CNOT', gate.wireIndex, gate.controlWire);
+            addGate('T', gate.wireIndex);
+            addGate('CNOT', gate.wireIndex, gate.controlWire2);
+            addGate('T', gate.wireIndex);
+            addGate('CNOT', gate.wireIndex, gate.controlWire);
+            addGate('T', gate.wireIndex);
+            addGate('H', gate.wireIndex);
+            addGate('T', gate.controlWire2);
+            addGate('CNOT', gate.controlWire2, gate.controlWire);
+            addGate('T', gate.controlWire2);
+            addGate('CNOT', gate.controlWire2, gate.controlWire);
+          }
+          break;
+          
+        case 'CSWAP': // Fredkin = CNOT + Toffoli + CNOT (simplified)
+          if (gate.controlWire !== undefined) {
+            const target2 = gate.wireIndex < wires.length - 1 ? gate.wireIndex + 1 : gate.wireIndex - 1;
+            addGate('CNOT', target2, gate.wireIndex);
+            // Simplified Toffoli in middle
+            addGate('H', gate.wireIndex);
+            addGate('CNOT', gate.wireIndex, target2);
+            addGate('T', gate.wireIndex);
+            addGate('CNOT', gate.wireIndex, gate.controlWire);
+            addGate('T', gate.wireIndex);
+            addGate('CNOT', gate.wireIndex, target2);
+            addGate('H', gate.wireIndex);
+            addGate('CNOT', target2, gate.wireIndex);
+          }
+          break;
+          
+        default:
+          // Keep unknown gates as-is
+          addGate(gate.type, gate.wireIndex, gate.controlWire, gate.controlWire2);
+      }
+    }
+    
+    const originalCount = gates.length;
+    setGates(transpiled);
+    setExecutedState(null);
+    setMeasurementResult(null);
+    setHistory(prev => [...prev, `Transpiled: ${originalCount} gates → ${transpiled.length} gates (H, T, CNOT)`]);
+  }, [gates, wires.length]);
+
   const sedenionState = useMemo(() => {
     if (!executedState) return Array(16).fill(0);
     return stateToSedenion(executedState);
@@ -1013,6 +1212,9 @@ const QuantumCircuitRunner = () => {
                 <Button onClick={optimizeCircuit} variant="outline" className="w-full" disabled={gates.length < 2}>
                   <Wand2 className="w-4 h-4 mr-2" /> Optimize
                 </Button>
+                <Button onClick={transpileCircuit} variant="outline" className="w-full" disabled={gates.length === 0}>
+                  <GitBranch className="w-4 h-4 mr-2" /> Transpile (H,T,CNOT)
+                </Button>
                 <Button onClick={resetCircuit} variant="destructive" className="w-full">
                   <RotateCcw className="w-4 h-4 mr-2" /> Reset
                 </Button>
@@ -1059,12 +1261,13 @@ const QuantumCircuitRunner = () => {
               <GripVertical className="w-5 h-5" /> Circuit
             </h2>
             <div className="relative min-h-[300px]">
-              {/* Control Lines Overlay for CNOT, CZ, CPHASE */}
+              {/* Control Lines Overlay for controlled gates */}
               <svg className="absolute inset-0 pointer-events-none z-20" style={{ overflow: 'visible' }}>
+                {/* 2-qubit controlled gates */}
                 {gates.filter(g => ['CNOT', 'CZ', 'CPHASE'].includes(g.type) && g.controlWire !== undefined).map((gate) => {
-                  const controlY = (gate.controlWire! * 66) + 33; // 66px per wire row, centered
+                  const controlY = (gate.controlWire! * 66) + 33;
                   const targetY = (gate.wireIndex * 66) + 33;
-                  const slotX = 80 + (gate.position * 52) + 24; // 80px offset + slot width + center
+                  const slotX = 80 + (gate.position * 52) + 24;
                   const minY = Math.min(controlY, targetY);
                   const maxY = Math.max(controlY, targetY);
                   
@@ -1075,63 +1278,60 @@ const QuantumCircuitRunner = () => {
                   
                   return (
                     <g key={`control-line-${gate.id}`}>
-                      {/* Vertical line connecting control to target */}
-                      <line
-                        x1={slotX}
-                        y1={minY + 12}
-                        x2={slotX}
-                        y2={maxY - 12}
-                        stroke={strokeColor}
-                        strokeWidth="2"
-                        strokeDasharray="4 2"
-                      />
-                      {/* Control dot */}
-                      <circle
-                        cx={slotX}
-                        cy={controlY}
-                        r="6"
-                        fill={strokeColor}
-                        stroke="hsl(var(--primary-foreground))"
-                        strokeWidth="1"
-                      />
+                      <line x1={slotX} y1={minY + 12} x2={slotX} y2={maxY - 12}
+                        stroke={strokeColor} strokeWidth="2" strokeDasharray="4 2" />
+                      <circle cx={slotX} cy={controlY} r="6" fill={strokeColor}
+                        stroke="hsl(var(--primary-foreground))" strokeWidth="1" />
                       {isCNOT ? (
                         <>
-                          {/* Target indicator (⊕ symbol) for CNOT */}
-                          <circle
-                            cx={slotX}
-                            cy={targetY}
-                            r="8"
-                            fill="none"
-                            stroke={strokeColor}
-                            strokeWidth="2"
-                          />
-                          <line
-                            x1={slotX - 6}
-                            y1={targetY}
-                            x2={slotX + 6}
-                            y2={targetY}
-                            stroke={strokeColor}
-                            strokeWidth="2"
-                          />
-                          <line
-                            x1={slotX}
-                            y1={targetY - 6}
-                            x2={slotX}
-                            y2={targetY + 6}
-                            stroke={strokeColor}
-                            strokeWidth="2"
-                          />
+                          <circle cx={slotX} cy={targetY} r="8" fill="none" stroke={strokeColor} strokeWidth="2" />
+                          <line x1={slotX - 6} y1={targetY} x2={slotX + 6} y2={targetY} stroke={strokeColor} strokeWidth="2" />
+                          <line x1={slotX} y1={targetY - 6} x2={slotX} y2={targetY + 6} stroke={strokeColor} strokeWidth="2" />
                         </>
                       ) : (
-                        /* Target dot for CZ/CPHASE */
-                        <circle
-                          cx={slotX}
-                          cy={targetY}
-                          r="6"
-                          fill={strokeColor}
-                          stroke="hsl(var(--primary-foreground))"
-                          strokeWidth="1"
-                        />
+                        <circle cx={slotX} cy={targetY} r="6" fill={strokeColor}
+                          stroke="hsl(var(--primary-foreground))" strokeWidth="1" />
+                      )}
+                    </g>
+                  );
+                })}
+                
+                {/* 3-qubit controlled gates (CCX, CSWAP) */}
+                {gates.filter(g => ['CCX', 'CSWAP'].includes(g.type) && g.controlWire !== undefined).map((gate) => {
+                  const control1Y = (gate.controlWire! * 66) + 33;
+                  const control2Y = gate.controlWire2 !== undefined ? (gate.controlWire2 * 66) + 33 : control1Y;
+                  const targetY = (gate.wireIndex * 66) + 33;
+                  const slotX = 80 + (gate.position * 52) + 24;
+                  const minY = Math.min(control1Y, control2Y, targetY);
+                  const maxY = Math.max(control1Y, control2Y, targetY);
+                  
+                  const isCCX = gate.type === 'CCX';
+                  const strokeColor = isCCX ? 'hsl(351, 74%, 47%)' : 'hsl(38, 92%, 50%)';
+                  
+                  return (
+                    <g key={`control-line-${gate.id}`}>
+                      <line x1={slotX} y1={minY + 12} x2={slotX} y2={maxY - 12}
+                        stroke={strokeColor} strokeWidth="2" strokeDasharray="4 2" />
+                      {/* First control dot */}
+                      <circle cx={slotX} cy={control1Y} r="6" fill={strokeColor}
+                        stroke="hsl(var(--primary-foreground))" strokeWidth="1" />
+                      {/* Second control dot */}
+                      {gate.controlWire2 !== undefined && (
+                        <circle cx={slotX} cy={control2Y} r="6" fill={strokeColor}
+                          stroke="hsl(var(--primary-foreground))" strokeWidth="1" />
+                      )}
+                      {isCCX ? (
+                        <>
+                          <circle cx={slotX} cy={targetY} r="8" fill="none" stroke={strokeColor} strokeWidth="2" />
+                          <line x1={slotX - 6} y1={targetY} x2={slotX + 6} y2={targetY} stroke={strokeColor} strokeWidth="2" />
+                          <line x1={slotX} y1={targetY - 6} x2={slotX} y2={targetY + 6} stroke={strokeColor} strokeWidth="2" />
+                        </>
+                      ) : (
+                        /* CSWAP - show X markers for swap targets */
+                        <>
+                          <line x1={slotX - 5} y1={targetY - 5} x2={slotX + 5} y2={targetY + 5} stroke={strokeColor} strokeWidth="2" />
+                          <line x1={slotX - 5} y1={targetY + 5} x2={slotX + 5} y2={targetY - 5} stroke={strokeColor} strokeWidth="2" />
+                        </>
                       )}
                     </g>
                   );
