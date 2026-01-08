@@ -2,12 +2,12 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import CodeBlock from "@/components/CodeBlock";
-import { ArrowRight, Package, Terminal, Zap, BookOpen } from "lucide-react";
+import { ArrowRight, Package, Zap, BookOpen } from "lucide-react";
+import DocsLayout from "@/components/docs/DocsLayout";
 
 const GettingStarted = () => {
   return (
-    <div className="pt-20">
-      <div className="max-w-5xl mx-auto px-4 py-12 space-y-12">
+    <DocsLayout>
       {/* Hero */}
       <section className="text-center space-y-4">
         <Badge variant="outline" className="mb-4">Documentation</Badge>
@@ -20,7 +20,7 @@ const GettingStarted = () => {
       </section>
 
       {/* Installation */}
-      <section className="space-y-6">
+      <section id="installation" className="space-y-6 scroll-mt-24">
         <div className="flex items-center gap-3">
           <Package className="w-6 h-6 text-primary" />
           <h2 className="text-2xl font-bold">Installation</h2>
@@ -47,7 +47,7 @@ pnpm add @aleph-ai/tinyaleph`}
       </section>
 
       {/* Quick Start */}
-      <section className="space-y-6">
+      <section id="quick-start" className="space-y-6 scroll-mt-24">
         <div className="flex items-center gap-3">
           <Zap className="w-6 h-6 text-primary" />
           <h2 className="text-2xl font-bold">Quick Start</h2>
@@ -135,7 +135,7 @@ console.log('Network sync:', sync.toFixed(4));`}
       </section>
 
       {/* Core Concepts */}
-      <section className="space-y-6">
+      <section id="core-concepts" className="space-y-6 scroll-mt-24">
         <div className="flex items-center gap-3">
           <BookOpen className="w-6 h-6 text-primary" />
           <h2 className="text-2xl font-bold">Core Concepts</h2>
@@ -185,7 +185,7 @@ console.log('Network sync:', sync.toFixed(4));`}
       </section>
 
       {/* Next Steps */}
-      <section className="space-y-6">
+      <section id="next-steps" className="space-y-6 scroll-mt-24">
         <h2 className="text-2xl font-bold">Next Steps</h2>
         <div className="grid md:grid-cols-3 gap-4">
           <Link to="/docs/user-guide" className="group">
@@ -214,8 +214,7 @@ console.log('Network sync:', sync.toFixed(4));`}
           </Link>
         </div>
       </section>
-      </div>
-    </div>
+    </DocsLayout>
   );
 };
 

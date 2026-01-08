@@ -6,6 +6,7 @@ import {
   BookOpen, Tags, AlertTriangle, Music, Gamepad2, Bot, Dna, Atom,
   Lock, Calculator, Lightbulb, Layers, Zap, Globe, HeartPulse, Code2
 } from "lucide-react";
+import DocsLayout from "@/components/docs/DocsLayout";
 
 const appIdeas = [
   // === AI & Machine Learning ===
@@ -14,6 +15,7 @@ const appIdeas = [
     description: "Build a character-level language model using the ResoFormer architecture with prime-encoded attention and coherence-gated halting.",
     icon: Brain,
     difficulty: "Advanced",
+    category: "ai-ml",
     tags: ["ResoFormer", "Text Generation", "ML"],
     features: [
       "Prime-encoded token embeddings",
@@ -27,6 +29,7 @@ const appIdeas = [
     description: "Create an autonomous agent that maintains long-term semantic memory using PR-Graph storage and quaternion-based state composition.",
     icon: Bot,
     difficulty: "Advanced",
+    category: "ai-ml",
     tags: ["Agents", "Memory", "Quaternions"],
     features: [
       "Hamilton product state mixing",
@@ -40,6 +43,7 @@ const appIdeas = [
     description: "Build a Retrieval-Augmented Generation system using prime-encoded document embeddings for precise semantic matching.",
     icon: FileText,
     difficulty: "Intermediate",
+    category: "ai-ml",
     tags: ["RAG", "Search", "Documents"],
     features: [
       "Document chunking with prime signatures",
@@ -53,6 +57,7 @@ const appIdeas = [
     description: "Visualize how AI learns new concepts by mapping them to prime Hilbert space and tracking entropy reduction over time.",
     icon: Lightbulb,
     difficulty: "Intermediate",
+    category: "ai-ml",
     tags: ["Visualization", "Learning", "Entropy"],
     features: [
       "Real-time concept embedding visualization",
@@ -68,6 +73,7 @@ const appIdeas = [
     description: "Interactive platform for learning quantum computing with step-by-step circuit visualization and Bloch sphere animations.",
     icon: Atom,
     difficulty: "Intermediate",
+    category: "quantum",
     tags: ["Quantum", "Education", "Circuits"],
     features: [
       "Drag-and-drop gate construction",
@@ -81,6 +87,7 @@ const appIdeas = [
     description: "Generate cryptographically secure random numbers using quantum measurement simulation with verifiable entropy.",
     icon: Lock,
     difficulty: "Beginner",
+    category: "quantum",
     tags: ["Quantum", "Cryptography", "Random"],
     features: [
       "True random bit generation",
@@ -94,6 +101,7 @@ const appIdeas = [
     description: "Compare classical vs quantum algorithm performance with visual complexity analysis and speedup demonstrations.",
     icon: Zap,
     difficulty: "Advanced",
+    category: "quantum",
     tags: ["Quantum", "Algorithms", "Benchmarking"],
     features: [
       "Deutsch-Jozsa speedup demo",
@@ -109,6 +117,7 @@ const appIdeas = [
     description: "Analyze DNA sequences using hypercomplex encoding to detect patterns, mutations, and structural features.",
     icon: Dna,
     difficulty: "Intermediate",
+    category: "bioinformatics",
     tags: ["Bioinformatics", "DNA", "Analysis"],
     features: [
       "Nucleotide to sedenion encoding",
@@ -122,6 +131,7 @@ const appIdeas = [
     description: "Simulate Watson-Crick base pairing and molecular hybridization using coherence-based affinity calculations.",
     icon: HeartPulse,
     difficulty: "Advanced",
+    category: "bioinformatics",
     tags: ["Molecular", "Simulation", "Biology"],
     features: [
       "Complementary strand matching",
@@ -135,6 +145,7 @@ const appIdeas = [
     description: "Solve NP-hard problems like Hamiltonian Path using Adleman's DNA computing algorithm with strand pool visualization.",
     icon: Network,
     difficulty: "Advanced",
+    category: "bioinformatics",
     tags: ["DNA Computing", "Algorithms", "NP-hard"],
     features: [
       "Strand pool generation",
@@ -150,6 +161,7 @@ const appIdeas = [
     description: "Advanced calculator supporting quaternions, octonions, and sedenions with visualization of algebraic operations.",
     icon: Calculator,
     difficulty: "Beginner",
+    category: "mathematics",
     tags: ["Math", "Calculator", "Hypercomplex"],
     features: [
       "Quaternion rotation calculator",
@@ -163,6 +175,7 @@ const appIdeas = [
     description: "Explore dynamical systems with Kuramoto oscillator networks, Lyapunov stability analysis, and entropy dynamics.",
     icon: Layers,
     difficulty: "Intermediate",
+    category: "mathematics",
     tags: ["Physics", "Chaos", "Oscillators"],
     features: [
       "Real-time Kuramoto synchronization",
@@ -176,6 +189,7 @@ const appIdeas = [
     description: "Visualize quantum-like states in prime basis, apply resonance operators, and observe entropy-driven evolution.",
     icon: Sparkles,
     difficulty: "Advanced",
+    category: "mathematics",
     tags: ["Quantum Semantics", "Primes", "Hilbert Space"],
     features: [
       "Prime basis state visualization",
@@ -191,6 +205,7 @@ const appIdeas = [
     description: "Build a search that understands meaning using prime signature matching. Find documents by concept even when exact terms don't match.",
     icon: Search,
     difficulty: "Beginner",
+    category: "ai-ml",
     tags: ["NLP", "Search", "Documents"],
     features: [
       "Query expansion via semantic neighbors",
@@ -204,6 +219,7 @@ const appIdeas = [
     description: "Automatically construct knowledge graphs from text using prime resonance identity for entity linking and relationship extraction.",
     icon: Network,
     difficulty: "Intermediate",
+    category: "ai-ml",
     tags: ["Knowledge Graph", "NLP", "Entities"],
     features: [
       "Entity extraction with prime signatures",
@@ -217,6 +233,7 @@ const appIdeas = [
     description: "Combine neural pattern recognition with symbolic logic using the prime resonance framework for explainable AI.",
     icon: Code2,
     difficulty: "Advanced",
+    category: "ai-ml",
     tags: ["Neuro-Symbolic", "Reasoning", "AI"],
     features: [
       "Symbol grounding in prime space",
@@ -230,6 +247,7 @@ const appIdeas = [
     description: "Notes that automatically link related ideas using semantic similarity and surface relevant past entries.",
     icon: FileText,
     difficulty: "Beginner",
+    category: "ai-ml",
     tags: ["Productivity", "Notes", "PKM"],
     features: [
       "Auto-linking by prime resonance",
@@ -243,6 +261,7 @@ const appIdeas = [
     description: "Recommend articles, products, or media based on user preferences modeled in sedenion semantic space.",
     icon: Sparkles,
     difficulty: "Intermediate",
+    category: "ai-ml",
     tags: ["Recommendations", "E-commerce", "Media"],
     features: [
       "User taste modeling in sedenion space",
@@ -256,6 +275,7 @@ const appIdeas = [
     description: "Generate branching narratives where story elements maintain semantic coherence using entropy constraints.",
     icon: Gamepad2,
     difficulty: "Advanced",
+    category: "ai-ml",
     tags: ["Gaming", "Narrative", "Creative"],
     features: [
       "Plot consistency via coherence gating",
@@ -269,6 +289,7 @@ const appIdeas = [
     description: "Analyze and organize music by emotional content using oscillator synchronization for smooth playlist transitions.",
     icon: Music,
     difficulty: "Advanced",
+    category: "ai-ml",
     tags: ["Music", "Emotion", "Playlists"],
     features: [
       "Lyric semantic analysis",
@@ -282,6 +303,7 @@ const appIdeas = [
     description: "Create cross-language semantic mappings using prime resonance to find concept equivalents across languages.",
     icon: Globe,
     difficulty: "Advanced",
+    category: "ai-ml",
     tags: ["Translation", "NLP", "Multi-language"],
     features: [
       "Language-agnostic prime signatures",
@@ -299,9 +321,50 @@ const difficultyColors = {
 };
 
 const AppIdeas = () => {
+  const aiMlIdeas = appIdeas.filter(app => app.category === 'ai-ml');
+  const quantumIdeas = appIdeas.filter(app => app.category === 'quantum');
+  const bioIdeas = appIdeas.filter(app => app.category === 'bioinformatics');
+  const mathIdeas = appIdeas.filter(app => app.category === 'mathematics');
+
+  const renderAppCard = (app: typeof appIdeas[0]) => (
+    <Card key={app.title} className="flex flex-col hover:border-primary/50 transition-colors">
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div className="p-2 rounded-lg bg-primary/10 w-fit">
+            <app.icon className="w-6 h-6 text-primary" />
+          </div>
+          <Badge className={difficultyColors[app.difficulty as keyof typeof difficultyColors]}>
+            {app.difficulty}
+          </Badge>
+        </div>
+        <CardTitle className="mt-4">{app.title}</CardTitle>
+        <CardDescription>{app.description}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex-1 flex flex-col">
+        <div className="flex flex-wrap gap-1 mb-4">
+          {app.tags.map(tag => (
+            <Badge key={tag} variant="secondary" className="text-xs">
+              {tag}
+            </Badge>
+          ))}
+        </div>
+        <div className="mt-auto">
+          <p className="text-sm font-medium mb-2">Key Features:</p>
+          <ul className="text-sm text-muted-foreground space-y-1">
+            {app.features.map((feature, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <span className="text-primary">•</span>
+                {feature}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
-    <div className="pt-20">
-      <div className="max-w-5xl mx-auto px-4 py-12 space-y-12">
+    <DocsLayout>
       {/* Hero */}
       <section className="text-center space-y-4">
         <Badge variant="outline" className="mb-4">Documentation</Badge>
@@ -311,19 +374,6 @@ const AppIdeas = () => {
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
           Inspiration for what you can build with TinyAleph. From quantum circuits to AI agents to DNA computing.
         </p>
-      </section>
-
-      {/* Category Sections */}
-      <section className="space-y-2">
-        <h2 className="text-lg font-semibold text-muted-foreground">Categories</h2>
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary">AI & ML</Badge>
-          <Badge variant="secondary">Quantum</Badge>
-          <Badge variant="secondary">Bioinformatics</Badge>
-          <Badge variant="secondary">Mathematics</Badge>
-          <Badge variant="secondary">NLP</Badge>
-          <Badge variant="secondary">Creative</Badge>
-        </div>
       </section>
 
       {/* Filter Legend */}
@@ -342,44 +392,48 @@ const AppIdeas = () => {
         </div>
       </section>
 
-      {/* App Ideas Grid */}
-      <section className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {appIdeas.map((app) => (
-          <Card key={app.title} className="flex flex-col hover:border-primary/50 transition-colors">
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="p-2 rounded-lg bg-primary/10 w-fit">
-                  <app.icon className="w-6 h-6 text-primary" />
-                </div>
-                <Badge className={difficultyColors[app.difficulty as keyof typeof difficultyColors]}>
-                  {app.difficulty}
-                </Badge>
-              </div>
-              <CardTitle className="mt-4">{app.title}</CardTitle>
-              <CardDescription>{app.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col">
-              <div className="flex flex-wrap gap-1 mb-4">
-                {app.tags.map(tag => (
-                  <Badge key={tag} variant="secondary" className="text-xs">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-              <div className="mt-auto">
-                <p className="text-sm font-medium mb-2">Key Features:</p>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  {app.features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <span className="text-primary">•</span>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      {/* AI & ML Section */}
+      <section id="ai-ml" className="space-y-6 scroll-mt-24">
+        <div className="flex items-center gap-3">
+          <Brain className="w-6 h-6 text-primary" />
+          <h2 className="text-2xl font-bold">AI & Machine Learning</h2>
+        </div>
+        <div className="grid md:grid-cols-2 gap-6">
+          {aiMlIdeas.map(renderAppCard)}
+        </div>
+      </section>
+
+      {/* Quantum Section */}
+      <section id="quantum" className="space-y-6 scroll-mt-24">
+        <div className="flex items-center gap-3">
+          <Atom className="w-6 h-6 text-primary" />
+          <h2 className="text-2xl font-bold">Quantum Computing</h2>
+        </div>
+        <div className="grid md:grid-cols-2 gap-6">
+          {quantumIdeas.map(renderAppCard)}
+        </div>
+      </section>
+
+      {/* Bioinformatics Section */}
+      <section id="bioinformatics" className="space-y-6 scroll-mt-24">
+        <div className="flex items-center gap-3">
+          <Dna className="w-6 h-6 text-primary" />
+          <h2 className="text-2xl font-bold">Bioinformatics</h2>
+        </div>
+        <div className="grid md:grid-cols-2 gap-6">
+          {bioIdeas.map(renderAppCard)}
+        </div>
+      </section>
+
+      {/* Mathematics Section */}
+      <section id="mathematics" className="space-y-6 scroll-mt-24">
+        <div className="flex items-center gap-3">
+          <Calculator className="w-6 h-6 text-primary" />
+          <h2 className="text-2xl font-bold">Mathematics & Physics</h2>
+        </div>
+        <div className="grid md:grid-cols-2 gap-6">
+          {mathIdeas.map(renderAppCard)}
+        </div>
       </section>
 
       {/* Call to Action */}
@@ -425,11 +479,10 @@ const AppIdeas = () => {
           ← User Guide
         </Link>
         <Link to="/docs/reference" className="text-primary hover:underline">
-        Reference Guide →
+          Reference Guide →
         </Link>
       </section>
-      </div>
-    </div>
+    </DocsLayout>
   );
 };
 

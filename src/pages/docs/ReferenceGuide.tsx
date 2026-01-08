@@ -4,11 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CodeBlock from "@/components/CodeBlock";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import DocsLayout from "@/components/docs/DocsLayout";
 
 const ReferenceGuide = () => {
   return (
-    <div className="pt-20">
-      <div className="max-w-5xl mx-auto px-4 py-12 space-y-12">
+    <DocsLayout>
       {/* Hero */}
       <section className="text-center space-y-4">
         <Badge variant="outline" className="mb-4">Documentation</Badge>
@@ -21,7 +21,7 @@ const ReferenceGuide = () => {
       </section>
 
       {/* Quick Reference */}
-      <section className="space-y-6">
+      <section id="quick-reference" className="space-y-6 scroll-mt-24">
         <h2 className="text-2xl font-bold">Quick Reference</h2>
         <div className="overflow-x-auto">
           <Table>
@@ -59,7 +59,7 @@ const ReferenceGuide = () => {
       </section>
 
       {/* AlephEngine */}
-      <section className="space-y-6">
+      <section id="aleph-engine" className="space-y-6 scroll-mt-24">
         <h2 className="text-2xl font-bold">AlephEngine</h2>
         <p className="text-muted-foreground">
           The main orchestration class that coordinates semantic operations.
@@ -168,7 +168,7 @@ console.log(\`Network is \${(sync * 100).toFixed(1)}% synchronized\`);`}
       </section>
 
       {/* Backend Interface */}
-      <section className="space-y-6">
+      <section id="backend" className="space-y-6 scroll-mt-24">
         <h2 className="text-2xl font-bold">Backend Interface</h2>
         <p className="text-muted-foreground">
           All backends implement this interface for consistent behavior.
@@ -257,7 +257,7 @@ console.log(\`Network is \${(sync * 100).toFixed(1)}% synchronized\`);`}
       </section>
 
       {/* Types */}
-      <section className="space-y-6">
+      <section id="types" className="space-y-6 scroll-mt-24">
         <h2 className="text-2xl font-bold">Type Definitions</h2>
 
         <Card>
@@ -314,7 +314,7 @@ console.log(\`Network is \${(sync * 100).toFixed(1)}% synchronized\`);`}
       </section>
 
       {/* Constants */}
-      <section className="space-y-6">
+      <section id="constants" className="space-y-6 scroll-mt-24">
         <h2 className="text-2xl font-bold">Constants</h2>
         <div className="overflow-x-auto">
           <Table>
@@ -355,8 +355,7 @@ console.log(\`Network is \${(sync * 100).toFixed(1)}% synchronized\`);`}
           Try Examples →
         </Link>
       </section>
-      </div>
-    </div>
+    </DocsLayout>
   );
 };
 
