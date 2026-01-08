@@ -25,6 +25,7 @@ import ChatExamples from "./pages/ChatExamples";
 import EnochianExamples from "./pages/EnochianExamples";
 import DNAComputerExamples from "./pages/DNAComputerExamples";
 import SymbolicAIExamples from "./pages/SymbolicAIExamples";
+import AIExamples from "./pages/AIExamples";
 import NotFound from "./pages/NotFound";
 // Docs pages
 import GettingStarted from "./pages/docs/GettingStarted";
@@ -68,6 +69,7 @@ const App = () => (
             <Route path="/enochian" element={<EnochianExamples />} />
             <Route path="/dna-computer" element={<DNAComputerExamples />} />
             <Route path="/symbolic" element={<SymbolicAIExamples />} />
+            <Route path="/ai" element={<AIExamples />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
