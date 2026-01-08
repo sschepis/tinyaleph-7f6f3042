@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo } from 'react';
-import { Play, Languages, Grid3X3, Wand2, RotateCcw, Zap, Sparkles, Scale, Layers } from 'lucide-react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { Play, Languages, Grid3X3, Wand2, RotateCcw, Zap, Sparkles, Scale, Layers, Circle } from 'lucide-react';
 import ExamplePageWrapper, { ExampleConfig } from '../components/ExamplePageWrapper';
 import SedenionVisualizer from '../components/SedenionVisualizer';
 
@@ -34,6 +34,14 @@ const ELEMENT_COLORS: Record<string, string> = {
   'Fire': 'text-red-400',
   'Water': 'text-blue-400',
   'Spirit': 'text-purple-400',
+};
+
+const ELEMENT_HEX: Record<string, string> = {
+  'Air': '#facc15',
+  'Earth': '#4ade80',
+  'Fire': '#f87171',
+  'Water': '#60a5fa',
+  'Spirit': '#c084fc',
 };
 
 const ELEMENT_BG: Record<string, string> = {
@@ -617,6 +625,234 @@ const ZeroDivisorSearch = () => {
   );
 };
 
+const GlyphMandala = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [selectedLetter, setSelectedLetter] = useState<typeof ENOCHIAN_ALPHABET[0] | null>(null);
+  const [showConnections, setShowConnections] = useState(true);
+  const [animating, setAnimating] = useState(true);
+  const animationRef = useRef<number>(0);
+  const rotationRef = useRef(0);
+
+  const elementGroups = useMemo(() => ({
+    Spirit: ENOCHIAN_ALPHABET.filter(l => l.element === 'Spirit'),
+    Fire: ENOCHIAN_ALPHABET.filter(l => l.element === 'Fire'),
+    Air: ENOCHIAN_ALPHABET.filter(l => l.element === 'Air'),
+    Water: ENOCHIAN_ALPHABET.filter(l => l.element === 'Water'),
+    Earth: ENOCHIAN_ALPHABET.filter(l => l.element === 'Earth'),
+  }), []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const size = 400;
+    canvas.width = size;
+    canvas.height = size;
+    const cx = size / 2;
+    const cy = size / 2;
+
+    const drawMandala = (rotation: number) => {
+      ctx.clearRect(0, 0, size, size);
+      
+      // Background glow
+      const bgGradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, size / 2);
+      bgGradient.addColorStop(0, 'rgba(139, 92, 246, 0.1)');
+      bgGradient.addColorStop(0.5, 'rgba(59, 130, 246, 0.05)');
+      bgGradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = bgGradient;
+      ctx.fillRect(0, 0, size, size);
+
+      // Draw concentric rings
+      const rings = [40, 90, 130, 170];
+      rings.forEach((r, i) => {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(139, 92, 246, ${0.15 - i * 0.03})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+
+      // Position letters
+      const letterPositions: { letter: typeof ENOCHIAN_ALPHABET[0]; x: number; y: number }[] = [];
+      
+      // Spirit in center
+      elementGroups.Spirit.forEach((l) => {
+        letterPositions.push({ letter: l, x: cx, y: cy });
+      });
+
+      // Fire ring (radius 50)
+      elementGroups.Fire.forEach((l, i, arr) => {
+        const angle = (i / arr.length) * Math.PI * 2 + rotation;
+        letterPositions.push({ letter: l, x: cx + Math.cos(angle) * 50, y: cy + Math.sin(angle) * 50 });
+      });
+
+      // Air ring (radius 90)
+      elementGroups.Air.forEach((l, i, arr) => {
+        const angle = (i / arr.length) * Math.PI * 2 - rotation * 0.7;
+        letterPositions.push({ letter: l, x: cx + Math.cos(angle) * 90, y: cy + Math.sin(angle) * 90 });
+      });
+
+      // Water ring (radius 130)
+      elementGroups.Water.forEach((l, i, arr) => {
+        const angle = (i / arr.length) * Math.PI * 2 + rotation * 0.5;
+        letterPositions.push({ letter: l, x: cx + Math.cos(angle) * 130, y: cy + Math.sin(angle) * 130 });
+      });
+
+      // Earth ring (radius 170)
+      elementGroups.Earth.forEach((l, i, arr) => {
+        const angle = (i / arr.length) * Math.PI * 2 - rotation * 0.3;
+        letterPositions.push({ letter: l, x: cx + Math.cos(angle) * 170, y: cy + Math.sin(angle) * 170 });
+      });
+
+      // Draw connections between same-element letters
+      if (showConnections) {
+        Object.values(elementGroups).forEach(group => {
+          if (group.length > 1) {
+            const positions = letterPositions.filter(p => group.includes(p.letter));
+            ctx.beginPath();
+            ctx.strokeStyle = ELEMENT_HEX[group[0].element] + '40';
+            ctx.lineWidth = 1;
+            positions.forEach((p, i) => {
+              positions.slice(i + 1).forEach(p2 => {
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(p2.x, p2.y);
+              });
+            });
+            ctx.stroke();
+          }
+        });
+      }
+
+      // Draw prime-based connections (letters whose primes differ by 2 - twin primes)
+      if (showConnections) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.lineWidth = 0.5;
+        letterPositions.forEach((p1, i) => {
+          letterPositions.slice(i + 1).forEach(p2 => {
+            if (Math.abs(p1.letter.prime - p2.letter.prime) === 2) {
+              ctx.beginPath();
+              ctx.moveTo(p1.x, p1.y);
+              ctx.lineTo(p2.x, p2.y);
+              ctx.stroke();
+            }
+          });
+        });
+      }
+
+      // Draw letters
+      letterPositions.forEach(({ letter, x, y }) => {
+        const isSelected = selectedLetter?.letter === letter.letter;
+        const primeScale = 0.3 + (letter.prime / 89) * 0.7;
+        const radius = 12 * primeScale + (isSelected ? 4 : 0);
+        
+        // Glow effect
+        const glow = ctx.createRadialGradient(x, y, 0, x, y, radius * 2);
+        glow.addColorStop(0, ELEMENT_HEX[letter.element] + (isSelected ? '80' : '40'));
+        glow.addColorStop(1, 'transparent');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(x, y, radius * 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Letter circle
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = isSelected ? ELEMENT_HEX[letter.element] : ELEMENT_HEX[letter.element] + '60';
+        ctx.fill();
+        ctx.strokeStyle = ELEMENT_HEX[letter.element];
+        ctx.lineWidth = isSelected ? 2 : 1;
+        ctx.stroke();
+
+        // Letter text
+        ctx.fillStyle = isSelected ? '#000' : '#fff';
+        ctx.font = `${isSelected ? 'bold ' : ''}${10 + primeScale * 4}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(letter.letter, x, y);
+      });
+    };
+
+    const animate = () => {
+      if (animating) {
+        rotationRef.current += 0.003;
+      }
+      drawMandala(rotationRef.current);
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      cancelAnimationFrame(animationRef.current);
+    };
+  }, [elementGroups, selectedLetter, showConnections, animating]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-4">
+        <Circle className="w-5 h-5 text-primary" />
+        <h3 className="font-semibold">Glyph Mandala</h3>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Sacred geometry: 21 letters arranged by element (Spirit→Fire→Air→Water→Earth). Size reflects prime magnitude.
+      </p>
+      
+      <div className="flex gap-2 flex-wrap">
+        <button 
+          onClick={() => setShowConnections(!showConnections)} 
+          className={`px-3 py-1 rounded-md text-xs ${showConnections ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}
+        >
+          {showConnections ? 'Hide' : 'Show'} Connections
+        </button>
+        <button 
+          onClick={() => setAnimating(!animating)} 
+          className={`px-3 py-1 rounded-md text-xs ${animating ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}
+        >
+          {animating ? 'Pause' : 'Animate'}
+        </button>
+      </div>
+
+      <div className="flex justify-center">
+        <canvas 
+          ref={canvasRef} 
+          className="rounded-xl border border-border bg-background/50"
+          style={{ maxWidth: '100%', height: 'auto' }}
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-1 justify-center">
+        {ENOCHIAN_ALPHABET.map((l, i) => (
+          <button 
+            key={i}
+            onClick={() => setSelectedLetter(selectedLetter?.letter === l.letter ? null : l)}
+            className={`w-8 h-8 rounded text-xs font-mono transition-colors ${
+              selectedLetter?.letter === l.letter 
+                ? 'bg-primary text-primary-foreground' 
+                : 'bg-secondary hover:bg-secondary/80'
+            }`}
+          >
+            {l.letter}
+          </button>
+        ))}
+      </div>
+
+      {selectedLetter && (
+        <div className="p-3 rounded-lg bg-muted/50 text-center">
+          <span className="font-mono text-primary text-lg">{selectedLetter.letter}</span>
+          <span className="mx-2 text-muted-foreground">•</span>
+          <span className="text-sm">{selectedLetter.enochian}</span>
+          <span className="mx-2 text-muted-foreground">•</span>
+          <span className={`text-sm ${ELEMENT_COLORS[selectedLetter.element]}`}>{selectedLetter.element}</span>
+          <span className="mx-2 text-muted-foreground">•</span>
+          <span className="font-mono text-xs">p={selectedLetter.prime}</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const examples: ExampleConfig[] = [
   { 
     id: 'alphabet', 
@@ -771,6 +1007,30 @@ for (let i = 0; i < words.length; i++) {
 }`, 
     codeTitle: 'enochian/08-zerodivisors.js' 
   },
+  { 
+    id: 'mandala', 
+    number: '9', 
+    title: 'Glyph Mandala', 
+    subtitle: 'Geometric visualization', 
+    description: 'A sacred geometric representation of the 21 Enochian letters arranged by elemental affinity with prime-based sizing.', 
+    concepts: ['Sacred Geometry', 'Visualization', 'Elemental Patterns'], 
+    code: `// Arrange letters in concentric rings by element
+const rings = {
+  center: letters.filter(l => l.element === 'Spirit'),
+  ring1: letters.filter(l => l.element === 'Fire'),
+  ring2: letters.filter(l => l.element === 'Air'),
+  ring3: letters.filter(l => l.element === 'Water'),
+  ring4: letters.filter(l => l.element === 'Earth'),
+};
+
+// Size each glyph based on its prime magnitude
+const primeScale = letter.prime / 89;  // 89 is max
+const radius = baseRadius * (0.3 + primeScale * 0.7);
+
+// Draw connections between same-element letters
+// and between twin primes (primes differing by 2)`, 
+    codeTitle: 'enochian/09-mandala.js' 
+  },
 ];
 
 const exampleComponents: Record<string, React.FC> = { 
@@ -782,6 +1042,7 @@ const exampleComponents: Record<string, React.FC> = {
   'balance': ElementalBalance,
   'transformations': WordTransformation,
   'zerodivisors': ZeroDivisorSearch,
+  'mandala': GlyphMandala,
 };
 
 export default function EnochianExamplesPage() {
