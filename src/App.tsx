@@ -52,7 +52,7 @@ const App = () => (
             <Route path="/engine" element={<EngineExamples />} />
             <Route path="/api" element={<ApiExamples />} />
             <Route path="/quantum" element={<QuantumExamples />} />
-            <Route path="/quantum/circuit" element={<QuantumCircuitRunner />} />
+            <Route path="/circuit-runner" element={<QuantumCircuitRunner />} />
             <Route path="/kuramoto" element={<KuramotoExamples />} />
             <Route path="/quickstart" element={<QuickstartExamples />} />
             <Route path="/semantic" element={<SemanticExamples />} />
