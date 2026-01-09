@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import heroImage from '@/assets/hero-neural-network.png';
 import { 
   Zap, 
   Shield, 
@@ -121,7 +122,32 @@ const BizLanding = () => {
               and advanced mathematics infrastructure that powers the next generation 
               of intelligent applications.
             </p>
-            
+          </motion.div>
+          
+          {/* Hero Image */}
+          <motion.div
+            className="mt-16 relative"
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 1, delay: 0.3 }}
+          >
+            <div className="relative rounded-2xl overflow-hidden border border-primary/20 shadow-2xl shadow-primary/10">
+              <motion.img
+                src={heroImage}
+                alt="Neural network visualization representing intelligent computing"
+                className="w-full h-auto"
+                animate={{ 
+                  scale: [1, 1.02, 1],
+                }}
+                transition={{
+                  duration: 8,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-primary/10" />
+            </div>
           </motion.div>
         </div>
       </section>
