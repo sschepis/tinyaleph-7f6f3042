@@ -158,11 +158,11 @@ const Navigation = () => {
                   
                   {openDropdown === group.label && (
                     <div 
-                      className="absolute top-full left-0 mt-1 py-2 min-w-[220px] rounded-xl border border-border bg-background/95 backdrop-blur-xl shadow-xl"
+                      className="absolute top-full left-0 mt-1 py-2 w-[320px] rounded-xl border border-border bg-background backdrop-blur-xl shadow-xl z-50"
                       onMouseEnter={() => handleMouseEnter(group.label)}
                       onMouseLeave={handleMouseLeave}
                     >
-                      <div className="px-3 py-2 border-b border-border mb-1">
+                      <div className="px-4 py-2 border-b border-border mb-1">
                         <p className="text-xs font-medium text-muted-foreground">{group.description}</p>
                       </div>
                       {group.items.map(item => (
@@ -170,7 +170,7 @@ const Navigation = () => {
                           key={item.id}
                           to={item.path}
                           className={`
-                            flex items-center justify-between px-3 py-2 mx-1 rounded-lg text-sm transition-all
+                            flex items-center justify-between gap-4 px-4 py-2.5 mx-2 rounded-lg text-sm transition-all
                             ${location.pathname === item.path 
                               ? 'text-primary bg-primary/10' 
                               : 'text-foreground hover:bg-secondary'
@@ -178,7 +178,7 @@ const Navigation = () => {
                           `}
                         >
                           <span className="font-medium">{item.label}</span>
-                          <span className="text-xs text-muted-foreground">{item.desc}</span>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">{item.desc}</span>
                         </Link>
                       ))}
                     </div>
