@@ -5,6 +5,12 @@ import {
   Circle, AlertCircle, Target, Trash2, Plus
 } from 'lucide-react';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   DebugSession,
   BreakCondition,
   stepForward,
@@ -65,36 +71,89 @@ export const DebugPanel = ({ session, onSessionChange, onExit }: DebugPanelProps
   
   return (
     <div className="space-y-4">
+      {/* Debug Mode Banner */}
+      <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+          <span className="font-semibold text-yellow-500 text-sm">Debug Mode Active</span>
+        </div>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          {isAtStart && session.gates.length > 0 ? (
+            <>Use <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">Step →</kbd> to execute gates one at a time, or click any gate in the circuit to set a breakpoint.</>
+          ) : isAtEnd ? (
+            <>Circuit complete! Use <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">← Step</kbd> to go back or <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">Reset</kbd> to start over.</>
+          ) : (
+            <>Stepping through circuit. Click gates to toggle breakpoints, or use <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">Run ▶</kbd> to continue to next breakpoint.</>
+          )}
+        </p>
+      </div>
+
       {/* Transport Controls */}
-      <div className="flex items-center gap-2 justify-center">
-        <Button variant="outline" size="sm" onClick={handleReset} title="Reset">
-          <SkipBack className="w-4 h-4" />
-        </Button>
-        <Button variant="outline" size="sm" onClick={handleStepBack} disabled={isAtStart} title="Step Back">
-          <StepBack className="w-4 h-4" />
-        </Button>
-        <Button variant="default" size="sm" onClick={handleRun} disabled={isAtEnd} title="Run to breakpoint">
-          <Play className="w-4 h-4" />
-        </Button>
-        <Button variant="outline" size="sm" onClick={handleStep} disabled={isAtEnd} title="Step Forward">
-          <StepForward className="w-4 h-4" />
-        </Button>
-        <Button variant="outline" size="sm" onClick={onExit} title="Exit Debug">
-          <Pause className="w-4 h-4" />
-        </Button>
+      <div className="space-y-2">
+        <p className="text-[10px] text-muted-foreground uppercase font-semibold">Controls</p>
+        <div className="grid grid-cols-5 gap-1">
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={handleReset} className="w-full">
+                  <SkipBack className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Reset to beginning</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={handleStepBack} disabled={isAtStart} className="w-full">
+                  <StepBack className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Step backward</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="default" size="sm" onClick={handleRun} disabled={isAtEnd} className="w-full">
+                  <Play className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Run until breakpoint</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={handleStep} disabled={isAtEnd} className="w-full">
+                  <StepForward className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Step forward</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="destructive" size="sm" onClick={onExit} className="w-full">
+                  <Pause className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Exit debug mode</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </div>
       
       {/* Progress */}
-      <div className="text-center">
-        <div className="text-sm text-muted-foreground">
-          Step {session.currentStep} / {session.gates.length}
+      <div>
+        <div className="flex justify-between items-center mb-1">
+          <span className="text-[10px] text-muted-foreground uppercase font-semibold">Progress</span>
+          <span className="text-sm font-mono text-primary">
+            {session.currentStep} / {session.gates.length}
+          </span>
         </div>
-        <div className="w-full h-2 bg-muted rounded-full mt-1 overflow-hidden">
+        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
           <div 
             className="h-full bg-primary transition-all duration-200"
             style={{ width: `${session.gates.length > 0 ? (session.currentStep / session.gates.length) * 100 : 0}%` }}
           />
         </div>
+        <p className="text-[10px] text-muted-foreground mt-1">
+          {isAtStart ? 'Not started' : isAtEnd ? 'Complete' : 'In progress'}
+        </p>
       </div>
       
       {/* Current Gate Info */}
@@ -168,14 +227,20 @@ export const DebugPanel = ({ session, onSessionChange, onExit }: DebugPanelProps
       </div>
       
       {/* Breakpoints List */}
-      {session.breakpoints.size > 0 && (
-        <div className="space-y-1">
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase">Breakpoints</h4>
-          <div className="text-xs text-muted-foreground">
-            {session.breakpoints.size} gate breakpoint(s) set
+      <div className="space-y-2">
+        <h4 className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1">
+          <Circle className="w-3 h-3 text-red-500 fill-red-500" /> Gate Breakpoints
+        </h4>
+        {session.breakpoints.size > 0 ? (
+          <div className="text-xs text-muted-foreground p-2 bg-red-500/5 rounded border border-red-500/20">
+            {session.breakpoints.size} breakpoint(s) set — execution will pause before these gates
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="text-xs text-muted-foreground p-2 bg-muted/30 rounded border border-dashed border-border">
+            <span className="text-yellow-500">Tip:</span> Click any gate in the circuit to set a breakpoint
+          </div>
+        )}
+      </div>
       
       {/* Conditional Breaks */}
       <div className="space-y-2">
