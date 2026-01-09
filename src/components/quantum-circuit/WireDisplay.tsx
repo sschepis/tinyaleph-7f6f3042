@@ -88,23 +88,56 @@ export const WireDisplay = ({
                         className={`${GATE_DEFINITIONS[gateAtSlot.type].color} text-white w-10 h-10 rounded flex items-center justify-center font-bold cursor-pointer hover:scale-105 transition-transform relative group`}
                         onClick={(e) => handleGateClick(gateAtSlot, e)}
                       >
-                        {gateAtSlot.type}
+                        {/* Rotation angle arc indicator for RX, RY, RZ gates */}
+                        {['RX', 'RY', 'RZ'].includes(gateAtSlot.type) && gateAtSlot.parameter !== undefined && (
+                          <>
+                            {/* Background ring */}
+                            <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 40 40">
+                              <circle
+                                cx="20"
+                                cy="20"
+                                r="18"
+                                fill="none"
+                                stroke="rgba(255,255,255,0.2)"
+                                strokeWidth="2"
+                              />
+                              {/* Progress arc showing rotation angle (normalized to 2π) */}
+                              <circle
+                                cx="20"
+                                cy="20"
+                                r="18"
+                                fill="none"
+                                stroke="rgba(255,255,255,0.9)"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeDasharray={`${(Math.abs(gateAtSlot.parameter) / (2 * Math.PI)) * 113.1} 113.1`}
+                                className="drop-shadow-[0_0_3px_rgba(255,255,255,0.5)]"
+                              />
+                            </svg>
+                            {/* Angle value badge */}
+                            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-background/90 text-[8px] font-mono px-1 rounded text-foreground border border-border/50 whitespace-nowrap">
+                              {(gateAtSlot.parameter / Math.PI).toFixed(1)}π
+                            </div>
+                          </>
+                        )}
+                        
+                        <span className="relative z-10 text-xs">{gateAtSlot.type}</span>
                         
                         {/* Breakpoint indicator */}
                         {hasBreakpoint && (
-                          <Circle className="absolute -left-1 -top-1 w-3 h-3 text-red-500 fill-red-500" />
+                          <Circle className="absolute -left-1 -top-1 w-3 h-3 text-red-500 fill-red-500 z-20" />
                         )}
                         
                         {/* Remove button (only in non-debug mode) */}
                         {!debugMode && (
-                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20">
                             ×
                           </div>
                         )}
                         
                         {/* Debug mode: toggle breakpoint hint */}
                         {debugMode && (
-                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500/80 rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500/80 rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20">
                             <Circle className="w-2 h-2" />
                           </div>
                         )}
@@ -114,7 +147,7 @@ export const WireDisplay = ({
                       <p className="font-semibold">{GATE_DEFINITIONS[gateAtSlot.type].name}</p>
                       <p className="text-xs font-mono text-primary">{GATE_DEFINITIONS[gateAtSlot.type].matrix}</p>
                       {gateAtSlot.parameter !== undefined && (
-                        <p className="text-xs text-muted-foreground">θ = {gateAtSlot.parameter.toFixed(3)}</p>
+                        <p className="text-xs text-muted-foreground">θ = {gateAtSlot.parameter.toFixed(3)} rad ({(gateAtSlot.parameter / Math.PI).toFixed(2)}π)</p>
                       )}
                       {debugMode && (
                         <p className="text-xs text-yellow-500 mt-1">
