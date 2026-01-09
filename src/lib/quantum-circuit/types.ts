@@ -78,6 +78,18 @@ export const GATE_DEFINITIONS = {
     description: 'Z-rotation by θ',
     matrix: '[[1, 0], [0, e^(iθ)]]'
   },
+  RY: {
+    name: 'Ry(θ)',
+    color: 'bg-lime-500',
+    description: 'Y-rotation by θ',
+    matrix: '[[cos(θ/2), -sin(θ/2)], [sin(θ/2), cos(θ/2)]]'
+  },
+  RX: {
+    name: 'Rx(θ)',
+    color: 'bg-fuchsia-500',
+    description: 'X-rotation by θ',
+    matrix: '[[cos(θ/2), -i·sin(θ/2)], [-i·sin(θ/2), cos(θ/2)]]'
+  },
 } as const;
 
 export type GateType = keyof typeof GATE_DEFINITIONS;
