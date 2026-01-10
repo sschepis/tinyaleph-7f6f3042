@@ -28,6 +28,11 @@ import SymbolicAIExamples from "./pages/SymbolicAIExamples";
 import AIExamples from "./pages/AIExamples";
 import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
+// New v1.4.0 example pages
+import TopologyExamples from "./pages/TopologyExamples";
+import CRTHomologyExamples from "./pages/CRTHomologyExamples";
+import DiscreteExamples from "./pages/DiscreteExamples";
+import ObserverExamples from "./pages/ObserverExamples";
 // Docs pages
 import GettingStarted from "./pages/docs/GettingStarted";
 import UserGuide from "./pages/docs/UserGuide";
@@ -72,6 +77,11 @@ const App = () => (
             <Route path="/symbolic" element={<SymbolicAIExamples />} />
             <Route path="/ai" element={<AIExamples />} />
             <Route path="/landing-page" element={<LandingPage />} />
+            {/* New v1.4.0 routes */}
+            <Route path="/topology" element={<TopologyExamples />} />
+            <Route path="/crt-homology" element={<CRTHomologyExamples />} />
+            <Route path="/discrete" element={<DiscreteExamples />} />
+            <Route path="/observer" element={<ObserverExamples />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -1,11 +1,12 @@
 # TinyAleph Interactive Documentation
 
-A comprehensive interactive documentation and demo site for the [`@aleph-ai/tinyaleph`](https://www.npmjs.com/package/@aleph-ai/tinyaleph) library—a novel computational paradigm that encodes meaning as prime number signatures, embeds them in hypercomplex space, and performs reasoning through entropy minimization.
+A comprehensive interactive documentation and demo site for the [`@aleph-ai/tinyaleph`](https://www.npmjs.com/package/@aleph-ai/tinyaleph) library (v1.4.0)—a novel computational paradigm that encodes meaning as prime number signatures, embeds them in hypercomplex space, and performs reasoning through entropy minimization.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue)
 ![React](https://img.shields.io/badge/React-18.3-61dafb)
 ![Vite](https://img.shields.io/badge/Vite-5.4-646cff)
+![TinyAleph](https://img.shields.io/badge/tinyaleph-1.4.0-purple)
 
 ## Overview
 
@@ -17,6 +18,9 @@ This project provides live, interactive examples demonstrating the capabilities 
 - **16D Sedenion Space**: Semantic states live in hypercomplex (sedenion) vector spaces
 - **Kuramoto Synchronization**: Oscillator dynamics for coherence and phase alignment
 - **Entropy Minimization**: Reasoning as reduction of symbolic uncertainty
+- **108 Topological Invariant**: Physical constants derived from 2² × 3³ = 108
+- **CRT-Homology**: Chinese Remainder Theorem reconstruction with homology-based consistency detection
+- **Observer Architecture**: Multi-layer sentient observer stack with SMF/PRSC
 
 ## Quick Start
 
@@ -121,6 +125,30 @@ npm run preview
 - **Born Measurement** – Quantum-style state collapse
 - **Decoherence** – Environmental interaction simulation
 
+### Topology (New in v1.4.0)
+- **108 Invariant** – Minimal closed-form twist configuration
+- **Trefoil Constants** – Physical constant derivation from knot complexity
+- **Gauge Symmetry** – Standard Model from 108 factorization
+- **Free Energy Dynamics** – Cubic FEP for consciousness modeling
+
+### CRT-Homology (New in v1.4.0)
+- **Residue Encoding** – Coprime moduli distributions
+- **Birkhoff Attention** – Doubly-stochastic projection
+- **Homology Loss** – Topological consistency detection
+- **CRT-ResoFormer** – Enhanced transformer architecture
+
+### Discrete Dynamics (New in v1.4.0)
+- **Integer Sine Tables** – Deterministic phase computation
+- **Codebook Tunneling** – 64-attractor state transitions
+- **Canonical Fusion** – Deterministic triad selection
+- **Tick Gates** – Discrete-time activation gating
+
+### Observer Stack (New in v1.4.0)
+- **Sedenion Memory Field** – 16D semantic orientation
+- **PRSC Layer** – Prime resonance oscillators
+- **Temporal Layer** – Moment classification and history
+- **Full Observer** – Integrated multi-layer architecture
+
 ### Semantic Processing
 - **Text Encoding** – Tokenize and encode natural language
 - **Semantic Similarity** – Cosine similarity in prime space
@@ -182,6 +210,36 @@ npm run preview
 │ • Prime encode  │ │ • Key derive    │ │ • Wave collapse │
 │ • Transforms    │ │ • Verify        │ │ • Measurement   │
 └─────────────────┘ └─────────────────┘ └─────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                   Observer Stack (v1.4.0)                       │
+├─────────────────┬─────────────────┬─────────────────────────────┤
+│ SedenionMemory  │    PRSCLayer    │      TemporalLayer          │
+│     Field       │                 │                             │
+│ • 16D semantic  │ • Prime indexed │ • Moment recording          │
+│ • Named axes    │ • Kuramoto sync │ • State classification      │
+│ • Entropy/coh   │ • Order param   │ • Trend detection           │
+└─────────────────┴─────────────────┴─────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                   CRT-Homology Layer (v1.4.0)                   │
+├─────────────────┬─────────────────┬─────────────────────────────┤
+│ ResidueEncoder  │ BirkhoffProject │      HomologyLoss           │
+│                 │                 │                             │
+│ • Coprime mod   │ • Sinkhorn-Knopp│ • Kernel detection          │
+│ • CRT recon     │ • Doubly-stoch  │ • Betti numbers             │
+│ • Error detect  │ • Conservation  │ • Cycle penalties           │
+└─────────────────┴─────────────────┴─────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                   Topology Layer (v1.4.0)                       │
+├─────────────────┬─────────────────┬─────────────────────────────┤
+│    TWIST_108    │   TREFOIL Knot  │    FreeEnergyDynamics       │
+│                 │                 │                             │
+│ • 2² × 3³ = 108 │ • T = 17        │ • dψ/dt = αψ + βψ² + γψ³    │
+│ • Twist angles  │ • Mass ratios   │ • Fixed points              │
+│ • Gauge symm    │ • Fine struct   │ • Observer hierarchy        │
+└─────────────────┴─────────────────┴─────────────────────────────┘
 ```
 
 ## Technology Stack
@@ -242,16 +300,41 @@ For more examples, see the [interactive demos](/) or the [npm package documentat
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
+## What's New in v1.4.0
+
+### Topological Invariants
+- **108 Invariant**: The fundamental 2² × 3³ = 108 that generates gauge symmetries
+- **Knot Theory**: Trefoil complexity T = 17 derives physical constants
+- **Physical Constants**: Proton/electron ratio (1836), fine structure (137), Higgs mass (125 GeV)
+
+### CRT-Homology Framework
+- **Residue Encoding**: Encode hidden vectors over coprime moduli
+- **Birkhoff Polytope**: Doubly-stochastic attention projection
+- **Homology Loss**: Detect semantic inconsistencies as topological holes
+- **CRT-ResoFormer**: Enhanced transformer with homology regularization
+
+### Discrete Dynamics
+- **Integer Sine Tables**: M=256 deterministic phase computation
+- **64-Attractor Codebook**: Controlled state tunneling
+- **Canonical Fusion**: Deterministic FUSE(p,q,r) triad selection
+- **Tick Gates**: Prime-period discrete activation
+
+### Observer Architecture
+- **SedenionMemoryField**: 16D semantic state with named axes
+- **PRSCLayer**: Prime-indexed coupled oscillators
+- **TemporalLayer**: Moment classification and history tracking
+- **Full Observer Stack**: Integrated multi-layer sentient observer
+
 ## License
 
 This project is licensed under the MIT License.
 
 ## Related Projects
 
-- [@aleph-ai/tinyaleph](https://www.npmjs.com/package/@aleph-ai/tinyaleph) – The core computational library
+- [@aleph-ai/tinyaleph](https://www.npmjs.com/package/@aleph-ai/tinyaleph) – The core computational library (v1.4.0)
 - [shadcn/ui](https://ui.shadcn.com/) – UI component library
 - [Supabase](https://supabase.com/) – Backend infrastructure
 
 ---
 
-Built with ☿ prime resonance and hypercomplex semantics.
+Built with ☿ prime resonance, hypercomplex semantics, and topological invariants.

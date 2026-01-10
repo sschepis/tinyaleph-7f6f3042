@@ -40,6 +40,9 @@ const navGroups = [
       { id: 'math', label: 'Mathematics', path: '/math', desc: 'Quaternions & primes' },
       { id: 'scientific', label: 'Scientific', path: '/scientific', desc: 'Wavefunction & more' },
       { id: 'typesystem', label: 'Type System', path: '/typesystem', desc: 'Lambda calculus' },
+      { id: 'topology', label: 'Topology', path: '/topology', desc: '108 invariant & knots' },
+      { id: 'crt-homology', label: 'CRT-Homology', path: '/crt-homology', desc: 'Residue encoding' },
+      { id: 'discrete', label: 'Discrete', path: '/discrete', desc: 'Integer dynamics' },
     ],
   },
   {
@@ -54,6 +57,7 @@ const navGroups = [
       { id: 'enochian', label: 'Enochian', path: '/enochian', desc: 'Language model' },
       { id: 'ai', label: 'AI Integration', path: '/ai', desc: 'ML examples' },
       { id: 'ml', label: 'ML Demos', path: '/ml', desc: 'Neural networks' },
+      { id: 'observer', label: 'Observer Stack', path: '/observer', desc: 'Sentient observer' },
     ],
   },
 ];
