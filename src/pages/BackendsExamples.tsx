@@ -1,433 +1,25 @@
 import { useState, useCallback } from 'react';
-import { Play, Hash, Server, Cpu, Brain, Zap, Database, Shield, Activity, Code2, Layers } from 'lucide-react';
+import { Play, Hash, Dna, FlaskConical, Brain, AtomIcon, Shield, Sparkles, BookOpen, Zap } from 'lucide-react';
 import CodeBlock from '../components/CodeBlock';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   SemanticBackend,
   hash,
+  deriveKey,
 } from '@aleph-ai/tinyaleph';
 import { minimalConfig } from '@/lib/tinyaleph-config';
-import { supabase } from '@/integrations/supabase/client';
 
-// TinyAleph Compute Demo
-const TinyAlephComputeDemo = () => {
-  const [operation, setOperation] = useState('hypercomplex.create');
-  const [params, setParams] = useState('{"components": [1, 0, 0, 0, 0.5, 0.5, 0, 0]}');
-  const [result, setResult] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const runOperation = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('tinyaleph-compute', {
-        body: { operation, params: JSON.parse(params) },
-      });
-      if (error) throw error;
-      setResult(data);
-    } catch (e: any) {
-      setResult({ error: e.message });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const operations = [
-    { value: 'hypercomplex.create', label: 'Create Hypercomplex', example: '{"components": [1, 0, 0, 0, 0.5, 0.5, 0, 0]}' },
-    { value: 'hypercomplex.multiply', label: 'Multiply', example: '{"a": [1, 0, 0, 0], "b": [0, 1, 0, 0]}' },
-    { value: 'hypercomplex.normalize', label: 'Normalize', example: '{"components": [3, 4, 0, 0]}' },
-    { value: 'prime.check', label: 'Is Prime?', example: '{"n": 17}' },
-    { value: 'prime.factorize', label: 'Factorize', example: '{"n": 360}' },
-    { value: 'prime.upTo', label: 'Primes Up To', example: '{"limit": 100}' },
-    { value: 'engine.run', label: 'Semantic Engine', example: '{"input": "love and wisdom", "dims": 16, "maxSteps": 50}' },
-  ];
-
-  return (
-    <div className="space-y-6">
-      <div className="p-6 rounded-xl border border-border bg-card">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-            <Cpu className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold">tinyaleph-compute</h3>
-            <p className="text-sm text-muted-foreground">Hypercomplex algebra & prime operations</p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Operation</label>
-              <select
-                value={operation}
-                onChange={(e) => {
-                  setOperation(e.target.value);
-                  const op = operations.find(o => o.value === e.target.value);
-                  if (op) setParams(op.example);
-                }}
-                className="w-full px-4 py-2 rounded-lg bg-secondary border border-border text-foreground"
-              >
-                {operations.map(op => (
-                  <option key={op.value} value={op.value}>{op.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">Parameters (JSON)</label>
-              <input
-                type="text"
-                value={params}
-                onChange={(e) => setParams(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg bg-secondary border border-border text-foreground font-mono text-sm"
-              />
-            </div>
-          </div>
-          
-          <Button onClick={runOperation} disabled={isLoading} className="gap-2">
-            <Play className="w-4 h-4" />
-            {isLoading ? 'Running...' : 'Execute'}
-          </Button>
-
-          {result && (
-            <div className="p-4 rounded-lg bg-muted/50 overflow-auto max-h-64">
-              <pre className="text-xs font-mono whitespace-pre-wrap">
-                {JSON.stringify(result, null, 2)}
-              </pre>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="grid md:grid-cols-3 gap-4">
-        <div className="p-4 rounded-lg border border-border bg-card">
-          <h4 className="font-medium mb-2 flex items-center gap-2">
-            <Layers className="w-4 h-4 text-primary" /> Hypercomplex Ops
-          </h4>
-          <ul className="text-xs text-muted-foreground space-y-1">
-            <li>• Create quaternions/octonions/sedenions</li>
-            <li>• Cayley-Dickson multiplication</li>
-            <li>• Normalization & conjugation</li>
-            <li>• Entropy & coherence metrics</li>
-          </ul>
-        </div>
-        <div className="p-4 rounded-lg border border-border bg-card">
-          <h4 className="font-medium mb-2 flex items-center gap-2">
-            <Hash className="w-4 h-4 text-primary" /> Prime Operations
-          </h4>
-          <ul className="text-xs text-muted-foreground space-y-1">
-            <li>• Primality testing</li>
-            <li>• Prime factorization</li>
-            <li>• Sieve of Eratosthenes</li>
-            <li>• Nth prime computation</li>
-          </ul>
-        </div>
-        <div className="p-4 rounded-lg border border-border bg-card">
-          <h4 className="font-medium mb-2 flex items-center gap-2">
-            <Brain className="w-4 h-4 text-primary" /> Semantic Engine
-          </h4>
-          <ul className="text-xs text-muted-foreground space-y-1">
-            <li>• Text → hypercomplex state</li>
-            <li>• Iterative evolution</li>
-            <li>• Coherence collapse</li>
-            <li>• Dominant axis extraction</li>
-          </ul>
-        </div>
-      </div>
-
-      <CodeBlock
-        code={`// Call tinyaleph-compute edge function
-const { data, error } = await supabase.functions.invoke('tinyaleph-compute', {
-  body: {
-    operation: 'hypercomplex.multiply',
-    params: {
-      a: [1, 0, 0, 0],  // Quaternion 1
-      b: [0, 1, 0, 0],  // Quaternion i
-    }
-  }
-});
-
-console.log(data.result);
-// { components: [0, 0, 0, -1, 0, 0, 0, 0], norm: 1, entropy: 0, ... }
-
-// Semantic engine
-const engineResult = await supabase.functions.invoke('tinyaleph-compute', {
-  body: {
-    operation: 'engine.run',
-    params: { input: 'love and wisdom', dims: 16, maxSteps: 100 }
-  }
-});`}
-        language="typescript"
-        title="tinyaleph-compute-example.ts"
-      />
-    </div>
-  );
-};
-
-// TensorFlow Compute Demo
-const TensorFlowComputeDemo = () => {
-  const [operation, setOperation] = useState('tensor.random');
-  const [params, setParams] = useState('{"shape": [3, 3]}');
-  const [result, setResult] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const runOperation = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('tensorflow-compute', {
-        body: { operation, params: JSON.parse(params) },
-      });
-      if (error) throw error;
-      setResult(data);
-    } catch (e: any) {
-      setResult({ error: e.message });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const operations = [
-    { value: 'tensor.random', label: 'Random Tensor', example: '{"shape": [3, 3]}' },
-    { value: 'tensor.zeros', label: 'Zeros', example: '{"shape": [4, 4]}' },
-    { value: 'tensor.ones', label: 'Ones', example: '{"shape": [2, 5]}' },
-    { value: 'activation.softmax', label: 'Softmax', example: '{"data": [1, 2, 3, 4]}' },
-    { value: 'activation.relu', label: 'ReLU', example: '{"data": [-1, 0, 1, 2, -0.5]}' },
-    { value: 'nn.dense', label: 'Dense Layer', example: '{"inputSize": 4, "outputSize": 2, "activation": "relu", "input": [1, 0.5, -1, 2]}' },
-    { value: 'decomposition.pca', label: 'PCA', example: '{"data": [[1,2],[2,3],[3,5],[4,6],[5,8]], "shape": [5, 2], "numComponents": 1}' },
-    { value: 'stats.describe', label: 'Statistics', example: '{"data": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}' },
-  ];
-
-  return (
-    <div className="space-y-6">
-      <div className="p-6 rounded-xl border border-border bg-card">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
-            <Activity className="w-5 h-5 text-orange-500" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold">tensorflow-compute</h3>
-            <p className="text-sm text-muted-foreground">ML operations: tensors, activations, neural networks</p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Operation</label>
-              <select
-                value={operation}
-                onChange={(e) => {
-                  setOperation(e.target.value);
-                  const op = operations.find(o => o.value === e.target.value);
-                  if (op) setParams(op.example);
-                }}
-                className="w-full px-4 py-2 rounded-lg bg-secondary border border-border text-foreground"
-              >
-                {operations.map(op => (
-                  <option key={op.value} value={op.value}>{op.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">Parameters (JSON)</label>
-              <input
-                type="text"
-                value={params}
-                onChange={(e) => setParams(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg bg-secondary border border-border text-foreground font-mono text-sm"
-              />
-            </div>
-          </div>
-          
-          <Button onClick={runOperation} disabled={isLoading} variant="secondary" className="gap-2">
-            <Play className="w-4 h-4" />
-            {isLoading ? 'Running...' : 'Execute'}
-          </Button>
-
-          {result && (
-            <div className="p-4 rounded-lg bg-muted/50 overflow-auto max-h-64">
-              <pre className="text-xs font-mono whitespace-pre-wrap">
-                {JSON.stringify(result, null, 2)}
-              </pre>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="grid md:grid-cols-4 gap-4">
-        <div className="p-4 rounded-lg border border-border bg-card">
-          <h4 className="font-medium mb-2 flex items-center gap-2">
-            <Database className="w-4 h-4 text-orange-500" /> Tensor Ops
-          </h4>
-          <ul className="text-xs text-muted-foreground space-y-1">
-            <li>• Create/zeros/ones/random</li>
-            <li>• Add/sub/mul/matmul</li>
-            <li>• Transpose/reshape</li>
-            <li>• Sum/mean/max/argmax</li>
-          </ul>
-        </div>
-        <div className="p-4 rounded-lg border border-border bg-card">
-          <h4 className="font-medium mb-2 flex items-center gap-2">
-            <Zap className="w-4 h-4 text-orange-500" /> Activations
-          </h4>
-          <ul className="text-xs text-muted-foreground space-y-1">
-            <li>• ReLU / Leaky ReLU</li>
-            <li>• Sigmoid</li>
-            <li>• Tanh</li>
-            <li>• Softmax</li>
-          </ul>
-        </div>
-        <div className="p-4 rounded-lg border border-border bg-card">
-          <h4 className="font-medium mb-2 flex items-center gap-2">
-            <Layers className="w-4 h-4 text-orange-500" /> Neural Nets
-          </h4>
-          <ul className="text-xs text-muted-foreground space-y-1">
-            <li>• Dense layers</li>
-            <li>• Sequential models</li>
-            <li>• Conv1D/Pooling</li>
-            <li>• MSE/CrossEntropy loss</li>
-          </ul>
-        </div>
-        <div className="p-4 rounded-lg border border-border bg-card">
-          <h4 className="font-medium mb-2 flex items-center gap-2">
-            <Activity className="w-4 h-4 text-orange-500" /> Analysis
-          </h4>
-          <ul className="text-xs text-muted-foreground space-y-1">
-            <li>• SVD decomposition</li>
-            <li>• PCA</li>
-            <li>• Descriptive stats</li>
-          </ul>
-        </div>
-      </div>
-
-      <CodeBlock
-        code={`// TensorFlow-like operations via edge function
-const { data } = await supabase.functions.invoke('tensorflow-compute', {
-  body: {
-    operation: 'nn.sequential',
-    params: {
-      layers: [
-        { inputSize: 4, outputSize: 8, activation: 'relu' },
-        { inputSize: 8, outputSize: 2, activation: 'softmax' }
-      ],
-      input: [1, 0.5, -1, 2]
-    }
-  }
-});
-
-// PCA dimensionality reduction
-const pcaResult = await supabase.functions.invoke('tensorflow-compute', {
-  body: {
-    operation: 'decomposition.pca',
-    params: {
-      data: [[1,2,3], [2,4,5], [3,5,6], [4,6,8]],
-      shape: [4, 3],
-      numComponents: 2
-    }
-  }
-});`}
-        language="typescript"
-        title="tensorflow-compute-example.ts"
-      />
-    </div>
-  );
-};
-
-// Aleph Chat Backend Demo
-const AlephChatDemo = () => {
-  return (
-    <div className="space-y-6">
-      <div className="p-6 rounded-xl border border-border bg-card">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
-            <Brain className="w-5 h-5 text-green-500" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold">aleph-chat</h3>
-            <p className="text-sm text-muted-foreground">Semantic AI chat with prime-based meaning encoding</p>
-          </div>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <h4 className="font-medium">How It Works</h4>
-            <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-              <li>User message is encoded to a <strong>prime signature</strong></li>
-              <li>Primes are mapped to a <strong>16D sedenion state</strong></li>
-              <li>Semantic metrics (entropy, coherence) are computed</li>
-              <li>A contextual system prompt is built from the encoding</li>
-              <li>AI response is generated with semantic grounding</li>
-              <li>Response is also encoded for <strong>cross-coherence</strong> analysis</li>
-            </ol>
-          </div>
-          <div className="space-y-4">
-            <h4 className="font-medium">Semantic Metrics</h4>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-lg bg-muted/50">
-                <p className="text-xs text-muted-foreground">Entropy</p>
-                <p className="font-mono text-lg">H(ψ)</p>
-                <p className="text-xs text-muted-foreground mt-1">Measures semantic focus/dispersion</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50">
-                <p className="text-xs text-muted-foreground">Coherence</p>
-                <p className="font-mono text-lg">C(ψ)</p>
-                <p className="text-xs text-muted-foreground mt-1">Meaning alignment (1 - H/H_max)</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50">
-                <p className="text-xs text-muted-foreground">Cross-Coherence</p>
-                <p className="font-mono text-lg">⟨ψ_u|ψ_r⟩</p>
-                <p className="text-xs text-muted-foreground mt-1">User-response semantic overlap</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50">
-                <p className="text-xs text-muted-foreground">Prime Signature</p>
-                <p className="font-mono text-lg">[p₁, p₂, ...]</p>
-                <p className="text-xs text-muted-foreground mt-1">Word → prime mapping</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-6 p-4 rounded-lg bg-green-500/10 border border-green-500/30">
-          <p className="text-sm">
-            <strong>Try it:</strong> Visit the <a href="/chat" className="text-primary hover:underline">Aleph Chat</a> page to interact with the semantic AI assistant.
-          </p>
-        </div>
-      </div>
-
-      <CodeBlock
-        code={`// Call aleph-chat edge function
-const { data, error } = await supabase.functions.invoke('aleph-chat', {
-  body: {
-    messages: [
-      { role: 'user', content: 'What is the relationship between wisdom and truth?' }
-    ],
-    temperature: 0.7,
-  }
-});
-
-console.log(data.content);       // AI response text
-console.log(data.semantic.user); // { primes: [...], entropy: 1.23, coherence: 0.85 }
-console.log(data.semantic.response);
-console.log(data.semantic.crossCoherence); // 0.72 - semantic similarity
-
-// The system prompt includes semantic context:
-// "Prime signature: [7, 11, 13, 17, 19, 23]"
-// "Semantic entropy: 1.234 (focused)"
-// "Coherence: 0.856 (high)"`}
-        language="typescript"
-        title="aleph-chat-example.ts"
-      />
-    </div>
-  );
-};
-
-// Client-side Backends Demo
-const ClientBackendsDemo = () => {
+// ==========================================
+// SEMANTIC BACKEND DEMO
+// ==========================================
+const SemanticBackendDemo = () => {
   const [input, setInput] = useState('love and wisdom');
   const [result, setResult] = useState<{
     tokens: any[];
     primes: number[];
     entropy: number;
+    coherence: number;
     stateComponents: number[];
   } | null>(null);
   const [backend] = useState(() => new SemanticBackend(minimalConfig));
@@ -442,6 +34,7 @@ const ClientBackendsDemo = () => {
         tokens,
         primes,
         entropy: state.entropy(),
+        coherence: (state as any).coherence?.() ?? 1 - state.entropy() / Math.log2(16),
         stateComponents: state.components?.slice(0, 16) || (state as any).c?.slice(0, 16) || [],
       });
     } catch (e) {
@@ -449,205 +42,709 @@ const ClientBackendsDemo = () => {
     }
   }, [input, backend]);
 
+  const [compareA, setCompareA] = useState('love');
+  const [compareB, setCompareB] = useState('affection');
+  const [similarity, setSimilarity] = useState<number | null>(null);
+
+  const runCompare = useCallback(() => {
+    try {
+      const primesA = backend.encode(compareA);
+      const primesB = backend.encode(compareB);
+      const stateA = backend.primesToState(primesA);
+      const stateB = backend.primesToState(primesB);
+      const coherence = (stateA as any).coherence?.(stateB) ?? 0;
+      setSimilarity(coherence);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [compareA, compareB, backend]);
+
   return (
     <div className="space-y-6">
       <div className="p-6 rounded-xl border border-border bg-card">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-            <Code2 className="w-5 h-5 text-purple-500" />
+          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+            <Brain className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold">Client-Side Backends</h3>
-            <p className="text-sm text-muted-foreground">Run tinyaleph directly in the browser</p>
+            <h3 className="text-lg font-semibold">SemanticBackend</h3>
+            <p className="text-sm text-muted-foreground">Natural language understanding via prime encoding</p>
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              className="flex-1 px-4 py-2 rounded-lg bg-secondary border border-border text-foreground"
-              placeholder="Enter text to encode..."
-            />
-            <Button onClick={runEncode} variant="secondary" className="gap-2">
-              <Play className="w-4 h-4" /> Encode
-            </Button>
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Encoding Demo */}
+          <div className="space-y-4">
+            <h4 className="font-medium">Text Encoding</h4>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                className="flex-1 px-4 py-2 rounded-lg bg-secondary border border-border text-foreground"
+                placeholder="Enter text to encode..."
+              />
+              <Button onClick={runEncode} className="gap-2">
+                <Play className="w-4 h-4" /> Encode
+              </Button>
+            </div>
+
+            {result && (
+              <div className="space-y-3">
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <h5 className="text-xs font-medium text-muted-foreground mb-2">Tokens</h5>
+                  <div className="flex flex-wrap gap-1">
+                    {result.tokens.map((token, i) => (
+                      <span 
+                        key={i}
+                        className={`px-2 py-0.5 rounded text-xs font-mono ${
+                          token.known 
+                            ? 'bg-primary/20 text-primary' 
+                            : 'bg-muted text-muted-foreground'
+                        }`}
+                      >
+                        {token.word}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <h5 className="text-xs font-medium text-muted-foreground mb-2">Prime Signature</h5>
+                  <div className="flex flex-wrap gap-1">
+                    {result.primes.slice(0, 12).map((p, i) => (
+                      <span key={i} className="px-1.5 py-0.5 rounded bg-primary/20 text-primary font-mono text-xs">
+                        {p}
+                      </span>
+                    ))}
+                    {result.primes.length > 12 && (
+                      <span className="text-muted-foreground text-xs">+{result.primes.length - 12}</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-3 rounded-lg bg-muted/50 text-center">
+                    <p className="text-xs text-muted-foreground">Entropy</p>
+                    <p className="text-xl font-mono text-primary">{result.entropy.toFixed(3)}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50 text-center">
+                    <p className="text-xs text-muted-foreground">Coherence</p>
+                    <p className="text-xl font-mono text-primary">{result.coherence.toFixed(3)}</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          {result && (
-            <div className="space-y-4">
-              <div className="p-4 rounded-lg bg-muted/50">
-                <h4 className="text-sm font-medium text-muted-foreground mb-2">Tokens</h4>
-                <div className="flex flex-wrap gap-2">
-                  {result.tokens.map((token, i) => (
-                    <span 
-                      key={i}
-                      className={`px-3 py-1 rounded-full text-sm font-mono ${
-                        token.known 
-                          ? 'bg-primary/20 text-primary' 
-                          : 'bg-muted text-muted-foreground'
-                      }`}
-                    >
-                      {token.word}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="p-4 rounded-lg bg-muted/50">
-                <h4 className="text-sm font-medium text-muted-foreground mb-2">Prime Encoding</h4>
-                <div className="flex flex-wrap gap-2">
-                  {result.primes.slice(0, 15).map((p, i) => (
-                    <span key={i} className="px-2 py-1 rounded bg-primary/20 text-primary font-mono text-sm">
-                      {p}
-                    </span>
-                  ))}
-                  {result.primes.length > 15 && (
-                    <span className="text-muted-foreground text-sm">+{result.primes.length - 15} more</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 rounded-lg bg-muted/50">
-                  <h4 className="text-sm font-medium text-muted-foreground mb-2">Entropy</h4>
-                  <p className="text-2xl font-mono text-primary">{result.entropy.toFixed(4)} bits</p>
-                </div>
-                <div className="p-4 rounded-lg bg-muted/50">
-                  <h4 className="text-sm font-medium text-muted-foreground mb-2">Prime Count</h4>
-                  <p className="text-2xl font-mono text-primary">{result.primes.length}</p>
-                </div>
-              </div>
+          {/* Similarity Demo */}
+          <div className="space-y-4">
+            <h4 className="font-medium">Semantic Similarity</h4>
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={compareA}
+                onChange={(e) => setCompareA(e.target.value)}
+                className="w-full px-4 py-2 rounded-lg bg-secondary border border-border text-foreground"
+                placeholder="Word A"
+              />
+              <input
+                type="text"
+                value={compareB}
+                onChange={(e) => setCompareB(e.target.value)}
+                className="w-full px-4 py-2 rounded-lg bg-secondary border border-border text-foreground"
+                placeholder="Word B"
+              />
+              <Button onClick={runCompare} variant="secondary" className="w-full gap-2">
+                <Sparkles className="w-4 h-4" /> Compare
+              </Button>
             </div>
-          )}
+
+            {similarity !== null && (
+              <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 text-center">
+                <p className="text-sm text-muted-foreground mb-1">Coherence</p>
+                <p className="text-3xl font-mono text-primary">{similarity.toFixed(4)}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {similarity > 0.7 ? 'High similarity' : similarity > 0.3 ? 'Moderate' : 'Low similarity'}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid md:grid-cols-4 gap-4">
         <div className="p-4 rounded-lg border border-border bg-card">
-          <h4 className="font-medium mb-2 flex items-center gap-2">
-            <Brain className="w-4 h-4 text-purple-500" /> SemanticBackend
-          </h4>
-          <ul className="text-xs text-muted-foreground space-y-1">
-            <li>• Text tokenization with vocabulary</li>
-            <li>• Prime signature encoding</li>
-            <li>• Sedenion state mapping</li>
-            <li>• Entropy & coherence calculation</li>
-          </ul>
+          <h4 className="font-medium mb-2 text-primary">tokenize()</h4>
+          <p className="text-xs text-muted-foreground">Split text into tokens with vocabulary lookup</p>
         </div>
         <div className="p-4 rounded-lg border border-border bg-card">
-          <h4 className="font-medium mb-2 flex items-center gap-2">
-            <Shield className="w-4 h-4 text-purple-500" /> CryptographicBackend
-          </h4>
-          <ul className="text-xs text-muted-foreground space-y-1">
-            <li>• Semantic hashing (similar → similar)</li>
-            <li>• Key derivation (PBKDF2-like)</li>
-            <li>• HMAC for message authentication</li>
-            <li>• Content integrity verification</li>
-          </ul>
+          <h4 className="font-medium mb-2 text-primary">encode()</h4>
+          <p className="text-xs text-muted-foreground">Convert text to prime signature array</p>
+        </div>
+        <div className="p-4 rounded-lg border border-border bg-card">
+          <h4 className="font-medium mb-2 text-primary">primesToState()</h4>
+          <p className="text-xs text-muted-foreground">Map primes to hypercomplex sedenion</p>
+        </div>
+        <div className="p-4 rounded-lg border border-border bg-card">
+          <h4 className="font-medium mb-2 text-primary">coherence()</h4>
+          <p className="text-xs text-muted-foreground">Measure semantic similarity between states</p>
         </div>
       </div>
 
       <CodeBlock
-        code={`import { SemanticBackend, CryptographicBackend, hash } from '@aleph-ai/tinyaleph';
+        code={`import { SemanticBackend } from '@aleph-ai/tinyaleph';
 import config from '@aleph-ai/tinyaleph/data.json';
 
-// Semantic encoding
-const semantic = new SemanticBackend(config);
-const primes = semantic.encode('love and wisdom');
-const state = semantic.primesToState(primes);
-console.log('Entropy:', state.entropy());
-console.log('Coherence:', state.coherence());
+const backend = new SemanticBackend(config);
 
-// Semantic similarity
-const s1 = semantic.primesToState(semantic.encode('love'));
-const s2 = semantic.primesToState(semantic.encode('affection'));
-console.log('Coherence:', s1.coherence(s2)); // High for similar meanings
+// Tokenize text (with stop word filtering)
+const tokens = backend.tokenize('love and wisdom', true);
+// [{ word: 'love', known: true, primes: [2,3,5] }, ...]
 
-// Cryptographic hashing
-const h = hash('secret message', 32);
-console.log(h); // Semantic-aware hash
+// Encode to prime signature
+const primes = backend.encode('love and wisdom');
+// [2, 3, 5, 7, 11, 13]
 
-// Similar meanings produce similar hashes
-console.log(hash('love', 16));
-console.log(hash('loving', 16)); // Similar to 'love'`}
+// Convert to hypercomplex state (16D sedenion)
+const state = backend.primesToState(primes);
+console.log('Entropy:', state.entropy());   // Semantic focus
+console.log('Norm:', state.norm());         // State magnitude
+
+// Compare concepts via coherence
+const s1 = backend.primesToState(backend.encode('love'));
+const s2 = backend.primesToState(backend.encode('affection'));
+console.log('Coherence:', s1.coherence(s2)); // ~0.85 (high)`}
         language="javascript"
-        title="client-backends-example.js"
+        title="semantic-backend.js"
       />
     </div>
   );
 };
 
+// ==========================================
+// CRYPTOGRAPHIC BACKEND DEMO
+// ==========================================
+const CryptographicBackendDemo = () => {
+  const [hashInput, setHashInput] = useState('secret message');
+  const [hashResult, setHashResult] = useState<string | null>(null);
+  const [compareInputs, setCompareInputs] = useState(['love', 'loving', 'hate']);
+  const [compareResults, setCompareResults] = useState<string[]>([]);
+
+  const runHash = useCallback(() => {
+    try {
+      const h = hash(hashInput, 32);
+      setHashResult(h);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [hashInput]);
+
+  const runCompare = useCallback(() => {
+    try {
+      const results = compareInputs.map(text => hash(text, 32));
+      setCompareResults(results);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [compareInputs]);
+
+  const [keyInput, setKeyInput] = useState('password123');
+  const [keySalt, setKeySalt] = useState('random-salt');
+  const [keyResult, setKeyResult] = useState<string | null>(null);
+
+  const runDeriveKey = useCallback(() => {
+    try {
+      const key = deriveKey(keyInput, keySalt, 32, 10000);
+      // deriveKey may return a state object or string
+      const keyStr = typeof key === 'string' ? key : JSON.stringify((key as any).components?.slice(0, 8) ?? key);
+      setKeyResult(keyStr);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [keyInput, keySalt]);
+
+  return (
+    <div className="space-y-6">
+      <div className="p-6 rounded-xl border border-border bg-card">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
+            <Shield className="w-5 h-5 text-orange-500" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold">CryptographicBackend</h3>
+            <p className="text-sm text-muted-foreground">Semantic-aware hashing & key derivation</p>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Hash Demo */}
+          <div className="space-y-4">
+            <h4 className="font-medium">Semantic Hash</h4>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={hashInput}
+                onChange={(e) => setHashInput(e.target.value)}
+                className="flex-1 px-4 py-2 rounded-lg bg-secondary border border-border text-foreground"
+                placeholder="Enter text to hash..."
+              />
+              <Button onClick={runHash} variant="secondary" className="gap-2">
+                <Hash className="w-4 h-4" /> Hash
+              </Button>
+            </div>
+
+            {hashResult && (
+              <div className="p-3 rounded-lg bg-muted/50">
+                <h5 className="text-xs font-medium text-muted-foreground mb-2">Hash Output</h5>
+                <code className="text-xs font-mono text-primary break-all">{hashResult}</code>
+              </div>
+            )}
+
+            <div className="pt-4 border-t border-border">
+              <h5 className="text-sm font-medium mb-3">Semantic Similarity in Hashes</h5>
+              <p className="text-xs text-muted-foreground mb-3">Similar meanings produce similar hashes:</p>
+              <div className="flex gap-2 mb-3">
+                {compareInputs.map((text, i) => (
+                  <input
+                    key={i}
+                    type="text"
+                    value={text}
+                    onChange={(e) => {
+                      const newInputs = [...compareInputs];
+                      newInputs[i] = e.target.value;
+                      setCompareInputs(newInputs);
+                    }}
+                    className="flex-1 px-2 py-1 rounded bg-secondary border border-border text-foreground text-sm"
+                  />
+                ))}
+                <Button onClick={runCompare} size="sm" variant="outline">Compare</Button>
+              </div>
+              {compareResults.length > 0 && (
+                <div className="space-y-1">
+                  {compareResults.map((h, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="w-14 font-mono text-xs">{compareInputs[i]}</span>
+                      <code className="text-[10px] font-mono text-muted-foreground truncate flex-1">{h}</code>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Key Derivation Demo */}
+          <div className="space-y-4">
+            <h4 className="font-medium">Key Derivation</h4>
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={keyInput}
+                onChange={(e) => setKeyInput(e.target.value)}
+                className="w-full px-4 py-2 rounded-lg bg-secondary border border-border text-foreground"
+                placeholder="Password"
+              />
+              <input
+                type="text"
+                value={keySalt}
+                onChange={(e) => setKeySalt(e.target.value)}
+                className="w-full px-4 py-2 rounded-lg bg-secondary border border-border text-foreground"
+                placeholder="Salt"
+              />
+              <Button onClick={runDeriveKey} variant="secondary" className="w-full gap-2">
+                <Zap className="w-4 h-4" /> Derive Key
+              </Button>
+            </div>
+
+            {keyResult && (
+              <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                <h5 className="text-xs font-medium text-muted-foreground mb-2">Derived Key</h5>
+                <code className="text-xs font-mono text-orange-500 break-all">{keyResult}</code>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-4 gap-4">
+        <div className="p-4 rounded-lg border border-border bg-card">
+          <h4 className="font-medium mb-2 text-orange-500">hash()</h4>
+          <p className="text-xs text-muted-foreground">Semantic-aware hash function</p>
+        </div>
+        <div className="p-4 rounded-lg border border-border bg-card">
+          <h4 className="font-medium mb-2 text-orange-500">deriveKey()</h4>
+          <p className="text-xs text-muted-foreground">PBKDF2-style key derivation</p>
+        </div>
+        <div className="p-4 rounded-lg border border-border bg-card">
+          <h4 className="font-medium mb-2 text-orange-500">hmac()</h4>
+          <p className="text-xs text-muted-foreground">Message authentication codes</p>
+        </div>
+        <div className="p-4 rounded-lg border border-border bg-card">
+          <h4 className="font-medium mb-2 text-orange-500">verify()</h4>
+          <p className="text-xs text-muted-foreground">Content integrity verification</p>
+        </div>
+      </div>
+
+      <CodeBlock
+        code={`import { CryptographicBackend, hash, deriveKey } from '@aleph-ai/tinyaleph';
+
+// Quick semantic hash (similar meanings → similar hashes)
+const h1 = hash('love', 32);
+const h2 = hash('loving', 32);  // Similar to h1!
+const h3 = hash('hate', 32);    // Different from h1
+
+// Key derivation (PBKDF2-style with prime resonance)
+const key = deriveKey('password', 'salt', 32, 10000);
+console.log(key);
+
+// Full backend for more control
+const backend = new CryptographicBackend({ dimension: 32 });
+const semanticHash = backend.hash('hello world');
+
+// HMAC for message authentication
+const mac = backend.hmac('message', 'secret-key');
+const isValid = backend.verify('message', mac, 'secret-key');`}
+        language="javascript"
+        title="cryptographic-backend.js"
+      />
+    </div>
+  );
+};
+
+// ==========================================
+// SCIENTIFIC BACKEND DEMO
+// ==========================================
+const ScientificBackendDemo = () => {
+  return (
+    <div className="space-y-6">
+      <div className="p-6 rounded-xl border border-border bg-card">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+            <AtomIcon className="w-5 h-5 text-purple-500" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold">ScientificBackend</h3>
+            <p className="text-sm text-muted-foreground">Quantum computing & physics simulation</p>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <h4 className="font-medium">Capabilities</h4>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li className="flex items-start gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-2" />
+                <span><strong>Quantum states:</strong> Encode |0⟩, |1⟩, |+⟩, |-⟩, Bell states</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-2" />
+                <span><strong>Gate operations:</strong> H, X, Y, Z, CNOT, T, S, RZ</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-2" />
+                <span><strong>Measurement:</strong> Born rule collapse, expectation values</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-2" />
+                <span><strong>Entanglement:</strong> Create and analyze Bell pairs</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="font-medium">Quantum State Encoding</h4>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="p-3 rounded-lg bg-muted/50 text-center">
+                <code className="text-lg font-mono text-purple-500">|0⟩</code>
+                <p className="text-xs text-muted-foreground mt-1">[1, 0]</p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/50 text-center">
+                <code className="text-lg font-mono text-purple-500">|1⟩</code>
+                <p className="text-xs text-muted-foreground mt-1">[0, 1]</p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/50 text-center">
+                <code className="text-lg font-mono text-purple-500">|+⟩</code>
+                <p className="text-xs text-muted-foreground mt-1">[0.707, 0.707]</p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/50 text-center">
+                <code className="text-lg font-mono text-purple-500">|Φ⁺⟩</code>
+                <p className="text-xs text-muted-foreground mt-1">Bell state</p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+              <p className="text-sm">
+                <strong>Try it:</strong> Visit <a href="/quantum" className="text-primary hover:underline">Quantum Examples</a> or the <a href="/quantum-circuit" className="text-primary hover:underline">Circuit Runner</a> for interactive demos.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-4 gap-4">
+        <div className="p-4 rounded-lg border border-border bg-card">
+          <h4 className="font-medium mb-2 text-purple-500">encode()</h4>
+          <p className="text-xs text-muted-foreground">Encode quantum state notation</p>
+        </div>
+        <div className="p-4 rounded-lg border border-border bg-card">
+          <h4 className="font-medium mb-2 text-purple-500">applyGate()</h4>
+          <p className="text-xs text-muted-foreground">Apply quantum gates to states</p>
+        </div>
+        <div className="p-4 rounded-lg border border-border bg-card">
+          <h4 className="font-medium mb-2 text-purple-500">measure()</h4>
+          <p className="text-xs text-muted-foreground">Collapse state via Born rule</p>
+        </div>
+        <div className="p-4 rounded-lg border border-border bg-card">
+          <h4 className="font-medium mb-2 text-purple-500">createEntangledPair()</h4>
+          <p className="text-xs text-muted-foreground">Generate Bell states</p>
+        </div>
+      </div>
+
+      <CodeBlock
+        code={`import { ScientificBackend, Hypercomplex } from '@aleph-ai/tinyaleph';
+
+const backend = new ScientificBackend({ dimension: 4 });
+
+// Encode quantum states
+const ket0 = backend.encode('|0⟩');  // [1, 0]
+const ket1 = backend.encode('|1⟩');  // [0, 1]
+const plus = backend.encode('|+⟩');  // [0.707, 0.707]
+
+// Create Bell state |Φ+⟩ = (|00⟩ + |11⟩) / √2
+const bell = backend.createEntangledPair('Φ+');
+console.log('Bell state:', bell);
+
+// Apply Hadamard gate
+const state = new Hypercomplex([1, 0]);  // |0⟩
+const hadamard = [[1, 1], [1, -1]].map(r => r.map(v => v / Math.sqrt(2)));
+const superposition = backend.applyGate(state, 'H');
+
+// Measure (Born rule collapse)
+const result = backend.measure(superposition);
+console.log('Collapsed to:', result); // '0' or '1' with equal probability`}
+        language="javascript"
+        title="scientific-backend.js"
+      />
+    </div>
+  );
+};
+
+// ==========================================
+// BIOINFORMATICS BACKEND DEMO
+// ==========================================
+const BioinformaticsBackendDemo = () => {
+  return (
+    <div className="space-y-6">
+      <div className="p-6 rounded-xl border border-border bg-card">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
+            <Dna className="w-5 h-5 text-green-500" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold">BioinformaticsBackend</h3>
+            <p className="text-sm text-muted-foreground">DNA/RNA/protein analysis with prime encoding</p>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <h4 className="font-medium">Central Dogma Operations</h4>
+            <div className="space-y-3">
+              <div className="p-3 rounded-lg bg-muted/50">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-medium text-green-500">DNA → RNA</span>
+                  <span className="text-xs text-muted-foreground">(Transcription)</span>
+                </div>
+                <code className="text-xs font-mono">ATGCGATCG → AUGCGAUCG</code>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/50">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-medium text-green-500">RNA → Protein</span>
+                  <span className="text-xs text-muted-foreground">(Translation)</span>
+                </div>
+                <code className="text-xs font-mono">AUGCGAUCG → Met-Arg-Ser</code>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/50">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-medium text-green-500">Complement</span>
+                  <span className="text-xs text-muted-foreground">(Base pairing)</span>
+                </div>
+                <code className="text-xs font-mono">ATGC → TACG</code>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="font-medium">Prime Encoding</h4>
+            <p className="text-sm text-muted-foreground mb-3">
+              Nucleotides map to primes for semantic analysis:
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
+                <code className="text-lg font-bold text-green-500">A</code>
+                <span className="text-xs text-muted-foreground ml-2">→ 7</span>
+              </div>
+              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
+                <code className="text-lg font-bold text-green-500">T</code>
+                <span className="text-xs text-muted-foreground ml-2">→ 2</span>
+              </div>
+              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
+                <code className="text-lg font-bold text-green-500">G</code>
+                <span className="text-xs text-muted-foreground ml-2">→ 11</span>
+              </div>
+              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
+                <code className="text-lg font-bold text-green-500">C</code>
+                <span className="text-xs text-muted-foreground ml-2">→ 3</span>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+              <p className="text-sm">
+                <strong>Try it:</strong> Visit <a href="/dna-computer" className="text-primary hover:underline">DNA Computer</a> for interactive sequence analysis.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-4 gap-4">
+        <div className="p-4 rounded-lg border border-border bg-card">
+          <h4 className="font-medium mb-2 text-green-500">transcribe()</h4>
+          <p className="text-xs text-muted-foreground">DNA → RNA transcription</p>
+        </div>
+        <div className="p-4 rounded-lg border border-border bg-card">
+          <h4 className="font-medium mb-2 text-green-500">translate()</h4>
+          <p className="text-xs text-muted-foreground">RNA → Protein translation</p>
+        </div>
+        <div className="p-4 rounded-lg border border-border bg-card">
+          <h4 className="font-medium mb-2 text-green-500">complement()</h4>
+          <p className="text-xs text-muted-foreground">Generate complementary strand</p>
+        </div>
+        <div className="p-4 rounded-lg border border-border bg-card">
+          <h4 className="font-medium mb-2 text-green-500">findORFs()</h4>
+          <p className="text-xs text-muted-foreground">Locate open reading frames</p>
+        </div>
+      </div>
+
+      <CodeBlock
+        code={`import { BioinformaticsBackend } from '@aleph-ai/tinyaleph/bio';
+
+const bio = new BioinformaticsBackend();
+
+// Central dogma operations
+const dna = 'ATGCGATCGATCG';
+const rna = bio.transcribe(dna);        // 'AUGCGAUCGAUCG'
+const protein = bio.translate(rna);      // 'Met-Arg-Ser-Ile'
+const complement = bio.complement(dna);  // 'TACGCTAGCTAGC'
+
+// Prime encoding for semantic analysis
+const primes = bio.encode(dna);          // [7, 2, 11, 3, ...]
+const state = bio.primesToState(primes);
+console.log('Entropy:', state.entropy());
+
+// GC content analysis
+const gcContent = bio.gcContent(dna);    // 0.538
+
+// Find restriction sites
+const sites = bio.findRestrictionSites(dna, 'EcoRI');
+
+// Open reading frame detection
+const orfs = bio.findORFs(dna);`}
+        language="javascript"
+        title="bioinformatics-backend.js"
+      />
+    </div>
+  );
+};
+
+// ==========================================
+// MAIN PAGE
+// ==========================================
 const BackendsExamplesPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-6xl mx-auto px-4 py-12">
         <div className="mb-8">
           <a href="/" className="text-primary hover:underline text-sm">← Back to Examples</a>
-          <h1 className="text-3xl font-display font-bold mt-4 mb-2">Backend Services</h1>
+          <h1 className="text-3xl font-display font-bold mt-4 mb-2">Library Backends</h1>
           <p className="text-muted-foreground max-w-3xl">
-            tinyaleph provides both client-side libraries and serverless edge functions for semantic computing, 
-            machine learning operations, and AI-powered chat.
+            The @aleph-ai/tinyaleph library provides four specialized backends for different domains, 
+            all unified by prime-based hypercomplex algebra.
           </p>
         </div>
 
         {/* Architecture Overview */}
         <div className="mb-10 p-6 rounded-xl border border-border bg-card">
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <Server className="w-5 h-5 text-primary" /> Architecture Overview
+            <BookOpen className="w-5 h-5 text-primary" /> Backend Architecture
           </h2>
           <div className="grid md:grid-cols-4 gap-4">
             <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
-              <h4 className="font-semibold text-primary mb-2">tinyaleph-compute</h4>
-              <p className="text-xs text-muted-foreground">Hypercomplex algebra, prime operations, semantic engine</p>
+              <div className="flex items-center gap-2 mb-2">
+                <Brain className="w-4 h-4 text-primary" />
+                <h4 className="font-semibold text-primary">semantic</h4>
+              </div>
+              <p className="text-xs text-muted-foreground">NLP, concept mapping, semantic similarity</p>
             </div>
             <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/20">
-              <h4 className="font-semibold text-orange-500 mb-2">tensorflow-compute</h4>
-              <p className="text-xs text-muted-foreground">Tensor operations, neural networks, ML primitives</p>
-            </div>
-            <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-              <h4 className="font-semibold text-green-500 mb-2">aleph-chat</h4>
-              <p className="text-xs text-muted-foreground">Semantic AI chat with Lovable AI integration</p>
+              <div className="flex items-center gap-2 mb-2">
+                <Shield className="w-4 h-4 text-orange-500" />
+                <h4 className="font-semibold text-orange-500">cryptographic</h4>
+              </div>
+              <p className="text-xs text-muted-foreground">Hashing, key derivation, HMAC</p>
             </div>
             <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/20">
-              <h4 className="font-semibold text-purple-500 mb-2">Client Libraries</h4>
-              <p className="text-xs text-muted-foreground">Browser-side semantic & crypto backends</p>
+              <div className="flex items-center gap-2 mb-2">
+                <AtomIcon className="w-4 h-4 text-purple-500" />
+                <h4 className="font-semibold text-purple-500">scientific</h4>
+              </div>
+              <p className="text-xs text-muted-foreground">Quantum states, gates, measurement</p>
+            </div>
+            <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Dna className="w-4 h-4 text-green-500" />
+                <h4 className="font-semibold text-green-500">bioinformatics</h4>
+              </div>
+              <p className="text-xs text-muted-foreground">DNA/RNA/protein analysis</p>
             </div>
           </div>
+          <p className="text-sm text-muted-foreground mt-4">
+            All backends share a common interface: <code className="px-1 py-0.5 bg-muted rounded text-xs">encode()</code> → primes, 
+            <code className="px-1 py-0.5 bg-muted rounded text-xs mx-1">primesToState()</code> → hypercomplex state,
+            <code className="px-1 py-0.5 bg-muted rounded text-xs">entropy()</code> / <code className="px-1 py-0.5 bg-muted rounded text-xs">coherence()</code> → analysis.
+          </p>
         </div>
 
-        <Tabs defaultValue="tinyaleph" className="space-y-6">
+        <Tabs defaultValue="semantic" className="space-y-6">
           <TabsList className="grid grid-cols-4 w-full max-w-2xl">
-            <TabsTrigger value="tinyaleph" className="gap-2">
-              <Cpu className="w-4 h-4" /> tinyaleph
+            <TabsTrigger value="semantic" className="gap-2">
+              <Brain className="w-4 h-4" /> Semantic
             </TabsTrigger>
-            <TabsTrigger value="tensorflow" className="gap-2">
-              <Activity className="w-4 h-4" /> tensorflow
+            <TabsTrigger value="cryptographic" className="gap-2">
+              <Shield className="w-4 h-4" /> Crypto
             </TabsTrigger>
-            <TabsTrigger value="chat" className="gap-2">
-              <Brain className="w-4 h-4" /> aleph-chat
+            <TabsTrigger value="scientific" className="gap-2">
+              <AtomIcon className="w-4 h-4" /> Scientific
             </TabsTrigger>
-            <TabsTrigger value="client" className="gap-2">
-              <Code2 className="w-4 h-4" /> Client
+            <TabsTrigger value="bioinformatics" className="gap-2">
+              <Dna className="w-4 h-4" /> Bio
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="tinyaleph">
-            <TinyAlephComputeDemo />
+          <TabsContent value="semantic">
+            <SemanticBackendDemo />
           </TabsContent>
 
-          <TabsContent value="tensorflow">
-            <TensorFlowComputeDemo />
+          <TabsContent value="cryptographic">
+            <CryptographicBackendDemo />
           </TabsContent>
 
-          <TabsContent value="chat">
-            <AlephChatDemo />
+          <TabsContent value="scientific">
+            <ScientificBackendDemo />
           </TabsContent>
 
-          <TabsContent value="client">
-            <ClientBackendsDemo />
+          <TabsContent value="bioinformatics">
+            <BioinformaticsBackendDemo />
           </TabsContent>
         </Tabs>
       </div>
