@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Bot, User, Sparkles, Activity, Loader2 } from 'lucide-react';
 import SedenionVisualizer from '../components/SedenionVisualizer';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 import { supabase } from '@/integrations/supabase/client';
 import { SemanticBackend } from '@aleph-ai/tinyaleph';
 import { minimalConfig } from '@/lib/tinyaleph-config';
@@ -193,7 +194,11 @@ const ChatExamples = () => {
                         : 'bg-secondary'
                       }
                     `}>
-                      <p className="whitespace-pre-wrap">{message.content}</p>
+                      {message.role === 'assistant' ? (
+                        <MarkdownRenderer content={message.content} />
+                      ) : (
+                        <p className="whitespace-pre-wrap">{message.content}</p>
+                      )}
                       {showSemantics && message.semantic && (
                         <div className={`
                           mt-2 pt-2 border-t text-xs flex gap-4
