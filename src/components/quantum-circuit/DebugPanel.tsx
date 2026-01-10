@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
   Play, Pause, SkipForward, SkipBack, StepForward, StepBack,
-  Circle, AlertCircle, Target, Trash2, Plus
+  Circle, AlertCircle, Target, Trash2, Plus, Eye, Keyboard, TrendingUp
 } from 'lucide-react';
 import {
   Tooltip,
@@ -11,17 +11,26 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
   DebugSession,
   BreakCondition,
+  WatchItem,
   stepForward,
   stepBackward,
   runUntilBreak,
   addBreakCondition,
   removeBreakCondition,
   getQubitProbability,
+  addWatch,
+  removeWatch,
 } from '@/lib/quantum-circuit/debugger';
 import { computeEntropy } from '@/lib/quantum-circuit/simulation';
 import { GATE_DEFINITIONS } from '@/lib/quantum-circuit/types';
+import { DEBUG_SHORTCUTS } from '@/hooks/useDebugKeyboardShortcuts';
 
 interface DebugPanelProps {
   session: DebugSession;
@@ -34,6 +43,12 @@ export const DebugPanel = ({ session, onSessionChange, onExit }: DebugPanelProps
   const [conditionQubit, setConditionQubit] = useState(0);
   const [conditionThreshold, setConditionThreshold] = useState(0.5);
   const [conditionComparison, setConditionComparison] = useState<'above' | 'below'>('above');
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  
+  // Watch list state
+  const [watchType, setWatchType] = useState<'qubit_prob' | 'entropy' | 'amplitude'>('qubit_prob');
+  const [watchQubit, setWatchQubit] = useState(0);
+  const [watchBasisState, setWatchBasisState] = useState(0);
   
   const currentState = session.history[session.history.length - 1];
   const isAtEnd = session.currentStep >= session.gates.length;
@@ -47,6 +62,8 @@ export const DebugPanel = ({ session, onSessionChange, onExit }: DebugPanelProps
     const newSession = initDebugSession(session.gates, session.numWires);
     newSession.breakpoints = session.breakpoints;
     newSession.breakConditions = session.breakConditions;
+    newSession.watchList = session.watchList;
+    newSession.watchValues = session.watchValues.map(wv => ({ ...wv, history: [wv.history[0] || 0] }));
     onSessionChange(newSession);
   };
   
@@ -62,6 +79,30 @@ export const DebugPanel = ({ session, onSessionChange, onExit }: DebugPanelProps
   
   const handleRemoveCondition = (index: number) => {
     onSessionChange(removeBreakCondition(session, index));
+  };
+  
+  // Watch handlers
+  const handleAddWatch = () => {
+    const numBasisStates = Math.pow(2, session.numWires);
+    let label = '';
+    const watch: Omit<WatchItem, 'id'> = { type: watchType, label: '' };
+    
+    if (watchType === 'qubit_prob') {
+      watch.qubit = watchQubit;
+      label = `P(q[${watchQubit}] = |1⟩)`;
+    } else if (watchType === 'entropy') {
+      label = 'System Entropy';
+    } else if (watchType === 'amplitude') {
+      watch.basisState = Math.min(watchBasisState, numBasisStates - 1);
+      label = `|${watch.basisState.toString(2).padStart(session.numWires, '0')}⟩ amplitude`;
+    }
+    
+    watch.label = label;
+    onSessionChange(addWatch(session, watch));
+  };
+  
+  const handleRemoveWatch = (watchId: string) => {
+    onSessionChange(removeWatch(session, watchId));
   };
   
   // Calculate qubit probabilities for current state
@@ -99,7 +140,10 @@ export const DebugPanel = ({ session, onSessionChange, onExit }: DebugPanelProps
                   <SkipBack className="w-4 h-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Reset to beginning</TooltipContent>
+              <TooltipContent>
+                <p>Reset to beginning</p>
+                <p className="text-[10px] text-muted-foreground">Ctrl+Home</p>
+              </TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -107,7 +151,10 @@ export const DebugPanel = ({ session, onSessionChange, onExit }: DebugPanelProps
                   <StepBack className="w-4 h-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Step backward</TooltipContent>
+              <TooltipContent>
+                <p>Step backward</p>
+                <p className="text-[10px] text-muted-foreground">Shift+F11</p>
+              </TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -115,7 +162,10 @@ export const DebugPanel = ({ session, onSessionChange, onExit }: DebugPanelProps
                   <Play className="w-4 h-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Run until breakpoint</TooltipContent>
+              <TooltipContent>
+                <p>Run until breakpoint</p>
+                <p className="text-[10px] text-muted-foreground">F5</p>
+              </TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -123,7 +173,10 @@ export const DebugPanel = ({ session, onSessionChange, onExit }: DebugPanelProps
                   <StepForward className="w-4 h-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Step forward</TooltipContent>
+              <TooltipContent>
+                <p>Step forward</p>
+                <p className="text-[10px] text-muted-foreground">F10</p>
+              </TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -131,7 +184,10 @@ export const DebugPanel = ({ session, onSessionChange, onExit }: DebugPanelProps
                   <Pause className="w-4 h-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Exit debug mode</TooltipContent>
+              <TooltipContent>
+                <p>Exit debug mode</p>
+                <p className="text-[10px] text-muted-foreground">Esc</p>
+              </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
@@ -309,6 +365,130 @@ export const DebugPanel = ({ session, onSessionChange, onExit }: DebugPanelProps
           </div>
         </div>
       </div>
+      
+      {/* Watch List */}
+      <div className="space-y-2">
+        <h4 className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1">
+          <Eye className="w-3 h-3" /> Watch List
+        </h4>
+        
+        {session.watchList.length > 0 ? (
+          <div className="space-y-2">
+            {session.watchList.map((watch) => {
+              const watchValue = session.watchValues.find(wv => wv.watchId === watch.id);
+              const value = watchValue?.value ?? 0;
+              const history = watchValue?.history ?? [];
+              const prevValue = history.length > 1 ? history[history.length - 2] : value;
+              const delta = value - prevValue;
+              
+              return (
+                <div key={watch.id} className="p-2 rounded bg-muted/30 border border-border">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium">{watch.label}</span>
+                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => handleRemoveWatch(watch.id)}>
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-mono text-primary">{value.toFixed(4)}</span>
+                    {delta !== 0 && (
+                      <span className={`text-xs flex items-center gap-0.5 ${delta > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        <TrendingUp className={`w-3 h-3 ${delta < 0 ? 'rotate-180' : ''}`} />
+                        {delta > 0 ? '+' : ''}{delta.toFixed(4)}
+                      </span>
+                    )}
+                  </div>
+                  {/* Mini sparkline */}
+                  {history.length > 1 && (
+                    <div className="mt-1 h-6 flex items-end gap-px">
+                      {history.slice(-20).map((v, i) => {
+                        const max = Math.max(...history.slice(-20), 0.001);
+                        const heightPct = (v / max) * 100;
+                        return (
+                          <div 
+                            key={i} 
+                            className="flex-1 bg-primary/40 rounded-t-sm"
+                            style={{ height: `${Math.max(heightPct, 5)}%` }}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-xs text-muted-foreground p-2 bg-muted/30 rounded border border-dashed border-border">
+            Add watches to track values across debug steps
+          </div>
+        )}
+        
+        {/* Add Watch Form */}
+        <div className="p-2 rounded border border-dashed border-border space-y-2">
+          <div className="flex gap-2">
+            <select 
+              className="flex-1 text-xs bg-background border border-input rounded px-2 py-1"
+              value={watchType}
+              onChange={(e) => setWatchType(e.target.value as 'qubit_prob' | 'entropy' | 'amplitude')}
+            >
+              <option value="qubit_prob">Qubit Probability</option>
+              <option value="entropy">Entropy</option>
+              <option value="amplitude">Basis Amplitude</option>
+            </select>
+            {watchType === 'qubit_prob' && (
+              <select
+                className="w-16 text-xs bg-background border border-input rounded px-2 py-1"
+                value={watchQubit}
+                onChange={(e) => setWatchQubit(parseInt(e.target.value))}
+              >
+                {Array.from({ length: session.numWires }, (_, i) => (
+                  <option key={i} value={i}>q[{i}]</option>
+                ))}
+              </select>
+            )}
+            {watchType === 'amplitude' && (
+              <input
+                type="number"
+                min="0"
+                max={Math.pow(2, session.numWires) - 1}
+                className="w-16 text-xs bg-background border border-input rounded px-2 py-1"
+                value={watchBasisState}
+                onChange={(e) => setWatchBasisState(parseInt(e.target.value) || 0)}
+                placeholder="State"
+              />
+            )}
+            <Button variant="outline" size="sm" className="h-7" onClick={handleAddWatch}>
+              <Plus className="w-3 h-3" />
+            </Button>
+          </div>
+        </div>
+      </div>
+      
+      {/* Keyboard Shortcuts */}
+      <Collapsible open={showShortcuts} onOpenChange={setShowShortcuts}>
+        <CollapsibleTrigger asChild>
+          <button className="w-full flex items-center justify-between p-2 rounded bg-muted/30 hover:bg-muted/50 transition-colors text-xs">
+            <span className="flex items-center gap-1 font-semibold text-muted-foreground uppercase">
+              <Keyboard className="w-3 h-3" /> Keyboard Shortcuts
+            </span>
+            <span className="text-muted-foreground">{showShortcuts ? '▲' : '▼'}</span>
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2">
+          <div className="grid gap-1.5">
+            {DEBUG_SHORTCUTS.map(({ key, action, description }) => (
+              <div key={key} className="flex items-center gap-2 text-xs">
+                <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono min-w-[60px] text-center border border-border">
+                  {key}
+                </kbd>
+                <span className="text-foreground font-medium">{action}</span>
+                <span className="text-muted-foreground ml-auto">{description}</span>
+              </div>
+            ))}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 };

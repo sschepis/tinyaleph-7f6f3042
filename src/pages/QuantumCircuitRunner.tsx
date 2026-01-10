@@ -60,6 +60,8 @@ import {
   toggleBreakpoint,
 } from '@/lib/quantum-circuit/debugger';
 
+import { useDebugKeyboardShortcuts } from '@/hooks/useDebugKeyboardShortcuts';
+
 const QuantumCircuitRunner = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   
@@ -481,6 +483,14 @@ const QuantumCircuitRunner = () => {
   const sedenionState = useMemo(() => displayState ? stateToSedenion(displayState) : Array(16).fill(0), [displayState]);
   const entropy = useMemo(() => displayState ? computeEntropy(displayState) : 0, [displayState]);
 
+  // Keyboard shortcuts for debug mode
+  useDebugKeyboardShortcuts({
+    debugMode,
+    debugSession,
+    gates,
+    onSessionChange: setDebugSession,
+    onExitDebug: exitDebugMode,
+  });
   return (
     <div className="min-h-screen bg-background">
       {/* Dialogs */}
