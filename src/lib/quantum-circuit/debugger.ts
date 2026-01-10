@@ -16,11 +16,27 @@ export interface BreakCondition {
   comparison: 'above' | 'below';
 }
 
+export interface WatchItem {
+  id: string;
+  type: 'qubit_prob' | 'entropy' | 'amplitude';
+  qubit?: number;
+  basisState?: number;
+  label: string;
+}
+
+export interface WatchValue {
+  watchId: string;
+  value: number;
+  history: number[];
+}
+
 export interface DebugSession {
   gates: GateInstance[];
   numWires: number;
   breakpoints: Set<string>; // gate IDs
   breakConditions: BreakCondition[];
+  watchList: WatchItem[];
+  watchValues: WatchValue[];
   history: DebugState[];
   currentStep: number;
   isRunning: boolean;
@@ -44,6 +60,8 @@ export const initDebugSession = (
     numWires,
     breakpoints: new Set(),
     breakConditions: [],
+    watchList: [],
+    watchValues: [],
     history: [{
       stepIndex: 0,
       state: initialState,
@@ -89,13 +107,18 @@ export const stepForward = (session: DebugSession): DebugSession => {
     probabilities: probs,
   };
   
-  return {
+  const updatedSession: DebugSession = {
     ...session,
     history: [...session.history, debugState],
     currentStep: session.currentStep + 1,
     hitBreakpoint: null,
     hitCondition: null,
   };
+  
+  // Update watch values
+  updatedSession.watchValues = updateWatchValues(updatedSession);
+  
+  return updatedSession;
 };
 
 // Step backward (use history)
@@ -243,4 +266,82 @@ export const getQubitProbability = (
     if ((i & mask) !== 0) prob1 += probs[i];
   }
   return { prob0: 1 - prob1, prob1 };
+};
+
+// Calculate a watch item's value for a given state
+export const calculateWatchValue = (
+  watch: WatchItem,
+  state: ComplexNumber[],
+  numWires: number
+): number => {
+  const probs = state.map(s => s.real * s.real + s.imag * s.imag);
+  
+  switch (watch.type) {
+    case 'qubit_prob':
+      if (watch.qubit !== undefined) {
+        const mask = 1 << (numWires - 1 - watch.qubit);
+        let prob1 = 0;
+        for (let i = 0; i < probs.length; i++) {
+          if ((i & mask) !== 0) prob1 += probs[i];
+        }
+        return prob1;
+      }
+      return 0;
+      
+    case 'entropy':
+      return computeEntropy(state);
+      
+    case 'amplitude':
+      if (watch.basisState !== undefined && watch.basisState < state.length) {
+        const amp = state[watch.basisState];
+        return Math.sqrt(amp.real * amp.real + amp.imag * amp.imag);
+      }
+      return 0;
+      
+    default:
+      return 0;
+  }
+};
+
+// Update all watch values for current state
+export const updateWatchValues = (session: DebugSession): WatchValue[] => {
+  const currentState = session.history[session.history.length - 1].state;
+  
+  return session.watchList.map(watch => {
+    const value = calculateWatchValue(watch, currentState, session.numWires);
+    const existing = session.watchValues.find(wv => wv.watchId === watch.id);
+    const history = existing ? [...existing.history, value] : [value];
+    
+    return {
+      watchId: watch.id,
+      value,
+      history: history.slice(-50), // Keep last 50 values
+    };
+  });
+};
+
+// Add a watch item
+export const addWatch = (
+  session: DebugSession,
+  watch: Omit<WatchItem, 'id'>
+): DebugSession => {
+  const id = `watch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const newWatch: WatchItem = { ...watch, id };
+  const currentState = session.history[session.history.length - 1].state;
+  const value = calculateWatchValue(newWatch, currentState, session.numWires);
+  
+  return {
+    ...session,
+    watchList: [...session.watchList, newWatch],
+    watchValues: [...session.watchValues, { watchId: id, value, history: [value] }],
+  };
+};
+
+// Remove a watch item
+export const removeWatch = (session: DebugSession, watchId: string): DebugSession => {
+  return {
+    ...session,
+    watchList: session.watchList.filter(w => w.id !== watchId),
+    watchValues: session.watchValues.filter(wv => wv.watchId !== watchId),
+  };
 };
