@@ -57,6 +57,82 @@ const ChatExamples = () => {
     }
   }, [backend]);
 
+  // Retry with exponential backoff
+  const invokeWithRetry = async (
+    body: { messages: { role: string; content: string }[]; temperature: number },
+    maxRetries = 3,
+    baseDelay = 1000
+  ): Promise<{ data: any; error: any }> => {
+    let lastError: any = null;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const result = await supabase.functions.invoke('aleph-chat', { body });
+        
+        if (!result.error) {
+          return result;
+        }
+        
+        // Don't retry on client errors (4xx)
+        const status = result.error?.status || result.error?.code;
+        if (status && status >= 400 && status < 500 && status !== 429) {
+          return result;
+        }
+        
+        lastError = result.error;
+      } catch (err) {
+        lastError = err;
+      }
+      
+      // Wait before retrying (exponential backoff with jitter)
+      if (attempt < maxRetries - 1) {
+        const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 500;
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+    
+    return { data: null, error: lastError };
+  };
+
+  // Format error message for display
+  const formatErrorMessage = (error: any): string => {
+    if (!error) return 'An unknown error occurred.';
+    
+    // Handle rate limiting
+    if (error.status === 429 || error.message?.includes('rate limit')) {
+      return '⏳ Rate limit exceeded. Please wait a moment before trying again.';
+    }
+    
+    // Handle network errors
+    if (error.message?.includes('fetch') || error.message?.includes('network') || error.name === 'TypeError') {
+      return '🌐 Network error. Please check your connection and try again.';
+    }
+    
+    // Handle service unavailable
+    if (error.status === 502 || error.status === 503 || error.message?.includes('unavailable')) {
+      return '🔧 The AI service is temporarily unavailable. Please try again in a few moments.';
+    }
+    
+    // Handle timeout
+    if (error.message?.includes('timeout')) {
+      return '⏱️ Request timed out. Please try again.';
+    }
+    
+    // Handle configuration errors
+    if (error.status === 500 && error.message?.includes('configuration')) {
+      return '⚙️ Service configuration error. Please contact support.';
+    }
+    
+    // Handle validation errors
+    if (error.status === 400) {
+      return `⚠️ Invalid request: ${error.message || 'Please check your input.'}`;
+    }
+    
+    // Generic error with details
+    const details = error.message || error.toString();
+    return `❌ Error: ${details.length > 100 ? details.substring(0, 100) + '...' : details}`;
+  };
+
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -77,14 +153,18 @@ const ChatExamples = () => {
         content: m.content,
       }));
 
-      const { data, error } = await supabase.functions.invoke('aleph-chat', {
-        body: {
-          messages: conversationHistory,
-          temperature: 0.7,
-        },
+      const { data, error } = await invokeWithRetry({
+        messages: conversationHistory,
+        temperature: 0.7,
       });
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
+
+      if (!data?.content) {
+        throw new Error('Empty response received from AI');
+      }
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -102,12 +182,12 @@ const ChatExamples = () => {
       setMessages(prev => [...prev, assistantMessage]);
       setLatestSemantic(data.semantic);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Chat error:', error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
+        content: formatErrorMessage(error),
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
