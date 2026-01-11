@@ -24,17 +24,20 @@ function tinyalephShimPlugin(): Plugin {
     resolveId(source, importer) {
       // Intercept known tinyaleph internal imports and map them to browser shims.
       // Note: during build, Rollup can rewrite some imports via CommonJS interop
-      // (e.g. "\0./profiling/primitives?commonjs-external"), so we cannot rely
-      // solely on the importer string containing "@aleph-ai/tinyaleph".
-      if (shimMap[source]) {
-        if (!importer) return shimMap[source];
+      // (e.g. "\0./transport?commonjs-external"), so we normalize those IDs.
 
-        const isTinyalephImporter = importer.includes("@aleph-ai/tinyaleph");
-        const isRollupInterop = importer.includes("commonjs-external") || importer.startsWith("\0");
+      const cleaned = source.startsWith("\0") ? source.slice(1) : source;
+      const withoutQuery = cleaned.replace(/\?commonjs-external.*$/, "").replace(/\?.*$/, "");
 
-        if (isTinyalephImporter || isRollupInterop) {
-          return shimMap[source];
-        }
+      const shim = shimMap[withoutQuery as keyof typeof shimMap];
+      if (!shim) return null;
+
+      const isTinyalephImporter = !!importer && importer.includes("@aleph-ai/tinyaleph");
+      const isRollupInterop = source.startsWith("\0") || source.includes("commonjs-external") || (!!importer && importer.includes("commonjs-external"));
+
+      // If this looks like Rollup interop or is coming from tinyaleph, always shim.
+      if (isTinyalephImporter || isRollupInterop || !importer) {
+        return shim;
       }
 
       return null;
