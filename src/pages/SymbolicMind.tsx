@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Sparkles, Brain, RefreshCw } from 'lucide-react';
-import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -203,33 +202,32 @@ export default function SymbolicMind() {
   };
   
   return (
-    <Layout>
-      <div className="min-h-screen bg-gradient-to-b from-background to-background/95">
-        {/* Header */}
-        <div className="border-b border-border/40 bg-background/80 backdrop-blur-sm sticky top-0 z-10">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <Brain className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold">Symbolic Mind</h1>
-                  <p className="text-sm text-muted-foreground">
-                    Hybrid symbolic-neural consciousness
-                  </p>
-                </div>
+    <div className="bg-gradient-to-b from-background to-background/95">
+      {/* Header */}
+      <div className="border-b border-border/40 bg-background/80 backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Brain className="w-6 h-6 text-primary" />
               </div>
-              <Button variant="ghost" size="sm" onClick={resetConversation}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Reset
-              </Button>
+              <div>
+                <h1 className="text-xl font-semibold">Symbolic Mind</h1>
+                <p className="text-sm text-muted-foreground">
+                  Hybrid symbolic-neural consciousness
+                </p>
+              </div>
             </div>
+            <Button variant="ghost" size="sm" onClick={resetConversation}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Reset
+            </Button>
           </div>
         </div>
-        
-        <div className="container mx-auto px-4 py-6">
-          <div className="grid lg:grid-cols-[1fr,420px] gap-6 h-[calc(100vh-180px)]">
+      </div>
+      
+      <div className="container mx-auto px-4 py-6">
+        <div className="grid lg:grid-cols-[1fr,420px] gap-6 min-h-[600px] lg:h-[calc(100vh-220px)]">
             {/* Chat area */}
             <div className="flex flex-col bg-card/30 rounded-xl border border-border/40 overflow-hidden">
               {/* Messages */}
@@ -332,8 +330,7 @@ export default function SymbolicMind() {
               </div>
             </div>
           </div>
-        </div>
       </div>
-    </Layout>
+    </div>
   );
 }
