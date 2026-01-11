@@ -22,12 +22,21 @@ function tinyalephShimPlugin(): Plugin {
     name: "tinyaleph-shim",
     enforce: "pre",
     resolveId(source, importer) {
-      // Only intercept imports from tinyaleph package
-      if (importer && importer.includes("@aleph-ai/tinyaleph")) {
-        if (shimMap[source]) {
+      // Intercept known tinyaleph internal imports and map them to browser shims.
+      // Note: during build, Rollup can rewrite some imports via CommonJS interop
+      // (e.g. "\0./profiling/primitives?commonjs-external"), so we cannot rely
+      // solely on the importer string containing "@aleph-ai/tinyaleph".
+      if (shimMap[source]) {
+        if (!importer) return shimMap[source];
+
+        const isTinyalephImporter = importer.includes("@aleph-ai/tinyaleph");
+        const isRollupInterop = importer.includes("commonjs-external") || importer.startsWith("\0");
+
+        if (isTinyalephImporter || isRollupInterop) {
           return shimMap[source];
         }
       }
+
       return null;
     },
   };
