@@ -9,8 +9,8 @@
  * incomplete relative to what's actually exported at runtime.
  */
 
-// Import the entire module as default (CJS interop)
-import tinyalephModule from '@aleph-ai/tinyaleph';
+// Import the entire module as namespace (handles both CJS and ESM)
+import * as tinyalephModule from '@aleph-ai/tinyaleph';
 
 // Cast to any for accessing runtime exports not in type definitions
 const tinyaleph = tinyalephModule as any;
