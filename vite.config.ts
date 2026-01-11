@@ -18,6 +18,7 @@ export default defineConfig(({ mode }) => ({
       "@tensorflow/tfjs": path.resolve(__dirname, "./src/shims/tfjs-browser-shim.js"),
       "./transport": path.resolve(__dirname, "./src/shims/transport-shim.js"),
       "./profiling/primitives": path.resolve(__dirname, "./src/shims/profiling-shim.js"),
+      "./observer/prsc": path.resolve(__dirname, "./src/shims/prsc-shim.js"),
     },
   },
   define: {
