@@ -7,15 +7,25 @@ import { componentTagger } from "lovable-tagger";
 function tinyalephShimPlugin(): Plugin {
   const shimMap: Record<string, string> = {
     "./transport": path.resolve(__dirname, "./src/shims/transport-shim.js"),
+    "./transport.js": path.resolve(__dirname, "./src/shims/transport-shim.js"),
     "./profiling/primitives": path.resolve(__dirname, "./src/shims/profiling-shim.js"),
+    "./profiling/primitives.js": path.resolve(__dirname, "./src/shims/profiling-shim.js"),
     "./observer/smf": path.resolve(__dirname, "./src/shims/observer-smf-shim.js"),
+    "./observer/smf.js": path.resolve(__dirname, "./src/shims/observer-smf-shim.js"),
     "./observer/prsc": path.resolve(__dirname, "./src/shims/observer-prsc-shim.js"),
+    "./observer/prsc.js": path.resolve(__dirname, "./src/shims/observer-prsc-shim.js"),
     "./observer/temporal": path.resolve(__dirname, "./src/shims/observer-temporal-shim.js"),
+    "./observer/temporal.js": path.resolve(__dirname, "./src/shims/observer-temporal-shim.js"),
     "./observer/entanglement": path.resolve(__dirname, "./src/shims/observer-entanglement-shim.js"),
+    "./observer/entanglement.js": path.resolve(__dirname, "./src/shims/observer-entanglement-shim.js"),
     "./observer/agency": path.resolve(__dirname, "./src/shims/observer-agency-shim.js"),
+    "./observer/agency.js": path.resolve(__dirname, "./src/shims/observer-agency-shim.js"),
     "./observer/boundary": path.resolve(__dirname, "./src/shims/observer-boundary-shim.js"),
+    "./observer/boundary.js": path.resolve(__dirname, "./src/shims/observer-boundary-shim.js"),
     "./observer/safety": path.resolve(__dirname, "./src/shims/observer-safety-shim.js"),
+    "./observer/safety.js": path.resolve(__dirname, "./src/shims/observer-safety-shim.js"),
     "./observer/hqe": path.resolve(__dirname, "./src/shims/observer-hqe-shim.js"),
+    "./observer/hqe.js": path.resolve(__dirname, "./src/shims/observer-hqe-shim.js"),
   };
 
   return {
