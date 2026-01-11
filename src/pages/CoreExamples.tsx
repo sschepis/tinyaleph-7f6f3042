@@ -8,7 +8,7 @@ import {
   factorize,
   primesUpTo,
   nthPrime,
-} from '@aleph-ai/tinyaleph';
+} from '@/lib/tinyaleph-compat';
 
 const HypercomplexExample = () => {
   const [dim, setDim] = useState(16);
