@@ -35,6 +35,9 @@ export const primeToFrequency = tinyaleph.primeToFrequency;
 export const primeToAngle = tinyaleph.primeToAngle;
 export const sumOfTwoSquares = tinyaleph.sumOfTwoSquares;
 
+// Re-export hash utility
+export const hash = tinyaleph.hash;
+
 // Re-export hypercomplex algebra utilities
 export const FANO_LINES = tinyaleph.FANO_LINES;
 export const octonionMultiplyIndex = tinyaleph.octonionMultiplyIndex;
