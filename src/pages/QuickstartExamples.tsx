@@ -7,7 +7,7 @@ import {
   SemanticBackend,
   hash,
   Hypercomplex,
-} from '@aleph-ai/tinyaleph';
+} from '@/lib/tinyaleph-compat';
 import { minimalConfig } from '@/lib/tinyaleph-config';
 
 // Example metadata with descriptions
@@ -214,7 +214,7 @@ const BasicHashExample = () => {
 
 // Example 3: Quantum Coin Flip
 const QuantumCoinExample = () => {
-  const [state, setState] = useState<Hypercomplex | null>(null);
+  const [state, setState] = useState<InstanceType<typeof Hypercomplex> | null>(null);
   const [measurement, setMeasurement] = useState<'heads' | 'tails' | null>(null);
   const [history, setHistory] = useState<('heads' | 'tails')[]>([]);
   const [collapsed, setCollapsed] = useState(false);
