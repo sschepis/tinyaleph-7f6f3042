@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { Play, RefreshCw, Brain, ArrowRight } from 'lucide-react';
 import ExamplePageWrapper, { ExampleConfig } from '../components/ExamplePageWrapper';
 import SedenionVisualizer from '../components/SedenionVisualizer';
-import { createEngine, SemanticBackend } from '@aleph-ai/tinyaleph';
+import { createEngine, SemanticBackend } from '@/lib/tinyaleph-compat';
 import { minimalConfig } from '@/lib/tinyaleph-config';
 
 const EngineExample = () => {

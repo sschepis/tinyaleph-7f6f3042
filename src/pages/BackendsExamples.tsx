@@ -3,11 +3,13 @@ import { Play, Hash, Dna, FlaskConical, Brain, AtomIcon, Shield, Sparkles, BookO
 import CodeBlock from '../components/CodeBlock';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
+import tinyaleph, {
   SemanticBackend,
-  hash,
-  deriveKey,
-} from '@aleph-ai/tinyaleph';
+} from '@/lib/tinyaleph-compat';
+
+// Access hash and deriveKey from the compat layer
+const hash = tinyaleph.hash;
+const deriveKey = tinyaleph.deriveKey;
 import { minimalConfig } from '@/lib/tinyaleph-config';
 
 // ==========================================
