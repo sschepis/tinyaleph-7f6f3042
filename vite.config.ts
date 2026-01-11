@@ -16,11 +16,6 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
       "@tensorflow/tfjs-node": path.resolve(__dirname, "./src/shims/tfjs-browser-shim.js"),
       "@tensorflow/tfjs": path.resolve(__dirname, "./src/shims/tfjs-browser-shim.js"),
-      "./telemetry/metrics": path.resolve(__dirname, "./src/shims/telemetry-shim.js"),
-      "./transport": path.resolve(__dirname, "./src/shims/transport-shim.js"),
-      "./observer/smf": path.resolve(__dirname, "./src/shims/observer-shim.js"),
-      "./observer/prsc": path.resolve(__dirname, "./src/shims/prsc-shim.js"),
-      "./profiling/primitives": path.resolve(__dirname, "./src/shims/profiling-shim.js"),
     },
   },
   define: {
