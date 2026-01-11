@@ -26,6 +26,7 @@ import EnochianExamples from "./pages/EnochianExamples";
 import DNAComputerExamples from "./pages/DNAComputerExamples";
 import SymbolicAIExamples from "./pages/SymbolicAIExamples";
 import AIExamples from "./pages/AIExamples";
+import SymbolicMind from "./pages/SymbolicMind";
 import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
 // New v1.4.0 example pages
@@ -75,6 +76,7 @@ const App = () => (
             <Route path="/enochian" element={<EnochianExamples />} />
             <Route path="/dna-computer" element={<DNAComputerExamples />} />
             <Route path="/symbolic" element={<SymbolicAIExamples />} />
+            <Route path="/symbolic-mind" element={<SymbolicMind />} />
             <Route path="/ai" element={<AIExamples />} />
             <Route path="/landing-page" element={<LandingPage />} />
             {/* New v1.4.0 routes */}
