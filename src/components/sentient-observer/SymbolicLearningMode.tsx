@@ -143,6 +143,13 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
   const [storyLength, setStoryLength] = useState(7);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   
+  // Active path for animation
+  const [activePath, setActivePath] = useState<{
+    visitedNodes: string[];
+    currentNode: string | null;
+    traversedEdges: { from: string; to: string }[];
+  } | null>(null);
+  
   const symbolCategories = useMemo(() => getSymbolCategories(), []);
   
   // Build transition model from patterns
@@ -215,7 +222,11 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
     if (patterns.length === 0) return;
     
     setIsGenerating(true);
+    setActivePath({ visitedNodes: [], currentNode: null, traversedEdges: [] });
+    
     const story: SymbolicSymbol[] = [];
+    const visitedNodes: string[] = [];
+    const traversedEdges: { from: string; to: string }[] = [];
     const allSymbols = Object.values(SYMBOL_DATABASE);
     
     // Pick starting symbol based on learned distribution
@@ -227,7 +238,11 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
         r -= count;
         if (r <= 0) {
           const sym = allSymbols.find(s => s.id === symbolId);
-          if (sym) story.push(sym);
+          if (sym) {
+            story.push(sym);
+            visitedNodes.push(sym.id);
+            setActivePath({ visitedNodes: [...visitedNodes], currentNode: sym.id, traversedEdges: [] });
+          }
           break;
         }
       }
@@ -236,7 +251,11 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
     // If no start found, pick random from first pattern
     if (story.length === 0 && patterns[0]?.sequence[0]) {
       story.push(patterns[0].sequence[0]);
+      visitedNodes.push(patterns[0].sequence[0].id);
+      setActivePath({ visitedNodes: [...visitedNodes], currentNode: patterns[0].sequence[0].id, traversedEdges: [] });
     }
+    
+    await new Promise(resolve => setTimeout(resolve, 400));
     
     // Generate rest of story using Markov chain + oscillator influence
     while (story.length < storyLength) {
@@ -296,11 +315,29 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
       }
       
       if (nextSymbol) {
+        // Add edge transition
+        traversedEdges.push({ from: lastSymbol.id, to: nextSymbol.id });
+        setActivePath({ 
+          visitedNodes: [...visitedNodes], 
+          currentNode: lastSymbol.id, 
+          traversedEdges: [...traversedEdges] 
+        });
+        
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
         story.push(nextSymbol);
+        visitedNodes.push(nextSymbol.id);
+        
+        // Update to show current node
+        setActivePath({ 
+          visitedNodes: [...visitedNodes], 
+          currentNode: nextSymbol.id, 
+          traversedEdges: [...traversedEdges] 
+        });
         
         // Excite oscillators as we generate
         onExciteOscillators([nextSymbol.prime], [0.5]);
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
     }
     
@@ -373,6 +410,7 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
   const resetGeneration = useCallback(() => {
     setGeneratedStory([]);
     setLlmNarrative('');
+    setActivePath(null);
   }, []);
   
   return (
@@ -561,15 +599,35 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
               </div>
             ) : (
               <div className="flex-1 flex flex-col">
-                <p className="text-xs text-muted-foreground mb-2">
-                  Transition probabilities between symbols. Thicker lines = stronger connections.
-                </p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs text-muted-foreground">
+                    {isGenerating ? (
+                      <span className="text-green-400 animate-pulse">● Generating story...</span>
+                    ) : (
+                      'Transition probabilities. Thicker = stronger.'
+                    )}
+                  </p>
+                  {!isGenerating && patterns.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-6 text-xs"
+                      onClick={generateStory}
+                      disabled={!isRunning}
+                    >
+                      <Play className="h-3 w-3 mr-1" />
+                      Animate
+                    </Button>
+                  )}
+                </div>
                 <div className="flex-1 flex items-center justify-center bg-muted/20 rounded-lg border min-h-[280px]">
                   <TransitionNetworkGraph
                     transitionMatrix={learnedModel.transitionMatrix}
                     startSymbols={learnedModel.startSymbols}
                     width={360}
                     height={280}
+                    activePath={activePath || undefined}
+                    isAnimating={isGenerating}
                   />
                 </div>
                 <div className="mt-2 text-[10px] text-muted-foreground">
