@@ -4,7 +4,7 @@ import { Send, Bot, User, Sparkles, Activity, Loader2 } from 'lucide-react';
 import SedenionVisualizer from '../components/SedenionVisualizer';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import { supabase } from '@/integrations/supabase/client';
-import { SemanticBackend } from '@aleph-ai/tinyaleph';
+import { createEngine } from '@aleph-ai/tinyaleph';
 import { minimalConfig } from '@/lib/tinyaleph-config';
 
 interface Message {
@@ -25,7 +25,7 @@ interface SemanticData {
 }
 
 const ChatExamples = () => {
-  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [engine] = useState(() => createEngine('semantic', minimalConfig));
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -44,6 +44,7 @@ const ChatExamples = () => {
   // Get state components from backend for visualization
   const getStateComponents = useCallback((text: string): number[] => {
     try {
+      const backend = engine.backend;
       const primes = backend.encode(text);
       const state = backend.primesToState(primes);
       // Access components via different possible property names
@@ -56,7 +57,7 @@ const ChatExamples = () => {
     } catch {
       return Array(16).fill(0);
     }
-  }, [backend]);
+  }, [engine]);
 
   // Retry with exponential backoff
   const invokeWithRetry = async (
