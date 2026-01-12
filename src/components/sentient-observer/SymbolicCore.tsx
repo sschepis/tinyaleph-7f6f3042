@@ -43,42 +43,66 @@ interface SymbolicCoreProps {
   isRunning: boolean;
 }
 
-// Extract symbols from oscillator state based on phase coherence
-function extractOutputSymbols(oscillators: Oscillator[], count: number = 3): SymbolicSymbol[] {
+// Extract symbols from oscillator state with temperature-based probabilistic sampling
+// This allows exploration of the semantic space rather than always picking the same symbols
+function extractOutputSymbols(oscillators: Oscillator[], count: number = 3, temperature: number = 0.3): SymbolicSymbol[] {
   const meanPhase = Math.atan2(
     oscillators.reduce((s, o) => s + Math.sin(o.phase) * o.amplitude, 0),
     oscillators.reduce((s, o) => s + Math.cos(o.phase) * o.amplitude, 0)
   );
   
+  // Score oscillators by amplitude and phase alignment
   const scored = oscillators.map((osc, idx) => {
     const phaseAlignment = Math.cos(osc.phase - meanPhase);
-    const score = osc.amplitude * (0.5 + 0.5 * phaseAlignment);
+    const baseScore = osc.amplitude * (0.5 + 0.5 * phaseAlignment);
+    // Add randomness based on temperature for exploration
+    const noise = temperature * (Math.random() - 0.5) * 0.5;
+    const score = Math.max(0, baseScore + noise);
     return { osc, idx, score };
   });
   
-  scored.sort((a, b) => b.score - a.score);
+  // Sort by score but with some randomization for ties
+  scored.sort((a, b) => {
+    const diff = b.score - a.score;
+    // If scores are close, randomly swap (encourages exploration)
+    if (Math.abs(diff) < temperature * 0.1) {
+      return Math.random() - 0.5;
+    }
+    return diff;
+  });
   
   const allSymbols = Object.values(SYMBOL_DATABASE);
   const outputSymbols: SymbolicSymbol[] = [];
   const usedSymbolIds = new Set<string>();
+  const usedPrimes = new Set<number>();
   
-  for (const { osc } of scored.slice(0, count * 2)) {
-    let bestSymbol: SymbolicSymbol | null = null;
-    let bestDiff = Infinity;
+  // Look at more candidates to allow for more diverse symbol selection
+  const candidatePoolSize = Math.min(oscillators.length, count * 4);
+  
+  for (const { osc } of scored.slice(0, candidatePoolSize)) {
+    // Skip if we've already used a very similar prime
+    const tooClose = Array.from(usedPrimes).some(p => Math.abs(p - osc.prime) < 5);
+    if (tooClose && Math.random() > temperature) continue;
     
-    for (const symbol of allSymbols) {
-      if (usedSymbolIds.has(symbol.id)) continue;
-      const diff = Math.abs(symbol.prime - osc.prime);
-      if (diff < bestDiff) {
-        bestDiff = diff;
-        bestSymbol = symbol;
-      }
-    }
+    // Find matching symbols with some randomization
+    const matchingSymbols = allSymbols
+      .filter(s => !usedSymbolIds.has(s.id))
+      .map(symbol => ({
+        symbol,
+        diff: Math.abs(symbol.prime - osc.prime),
+        randomBoost: Math.random() * temperature * 50 // Add randomness to selection
+      }))
+      .sort((a, b) => (a.diff - a.randomBoost) - (b.diff - b.randomBoost));
+    
+    const bestSymbol = matchingSymbols[0]?.symbol;
     
     if (bestSymbol && outputSymbols.length < count) {
       outputSymbols.push(bestSymbol);
       usedSymbolIds.add(bestSymbol.id);
+      usedPrimes.add(osc.prime);
     }
+    
+    if (outputSymbols.length >= count) break;
   }
   
   return outputSymbols;
@@ -288,7 +312,9 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
     onExciteOscillators(primes, amplitudes);
     
     setTimeout(() => {
-      const outputSymbols = extractOutputSymbols(oscillators, 3);
+      // Use temperature-based sampling to encourage exploration of semantic space
+      const explorationTemperature = 0.35; // Higher = more exploration
+      const outputSymbols = extractOutputSymbols(oscillators, 3, explorationTemperature);
       const messageId = `msg_${Date.now()}`;
       
       const newMessage: SymbolicMessage = {
