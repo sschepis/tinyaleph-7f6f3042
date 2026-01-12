@@ -681,34 +681,38 @@ const SentientObserverApp: React.FC = () => {
           </div>
 
           {/* Right column - Symbolic Core, Learning & Results */}
-          <div className="space-y-4">
-            {/* Symbolic Communication Interface */}
-            <SymbolicCore
-              oscillators={oscillators}
-              coherence={coherence}
-              onExciteOscillators={exciteByPrimes}
-              isRunning={isRunning}
-            />
-            
-            {/* Symbolic Learning Mode */}
-            <SymbolicLearningMode
-              oscillators={oscillators}
-              coherence={coherence}
-              onExciteOscillators={exciteByPrimes}
-              isRunning={isRunning}
-            />
-            
-            {/* Results Panel */}
-            <ResultsPanel
-              coherence={coherence}
-              entropy={entropy}
-              oscillators={oscillators}
-              smfState={smfState}
-              moments={moments}
-              subjectiveTime={subjectiveTime}
-              tickCount={tickCount}
-              peakCoherence={peakCoherence}
-            />
+          <div className="lg:sticky lg:top-20 lg:h-[calc(100vh-96px)] overflow-hidden">
+            <ScrollArea className="h-full pr-2">
+              <div className="space-y-4">
+                {/* Symbolic Communication Interface */}
+                <SymbolicCore
+                  oscillators={oscillators}
+                  coherence={coherence}
+                  onExciteOscillators={exciteByPrimes}
+                  isRunning={isRunning}
+                />
+                
+                {/* Symbolic Learning Mode */}
+                <SymbolicLearningMode
+                  oscillators={oscillators}
+                  coherence={coherence}
+                  onExciteOscillators={exciteByPrimes}
+                  isRunning={isRunning}
+                />
+                
+                {/* Results Panel */}
+                <ResultsPanel
+                  coherence={coherence}
+                  entropy={entropy}
+                  oscillators={oscillators}
+                  smfState={smfState}
+                  moments={moments}
+                  subjectiveTime={subjectiveTime}
+                  tickCount={tickCount}
+                  peakCoherence={peakCoherence}
+                />
+              </div>
+            </ScrollArea>
           </div>
         </div>
 
