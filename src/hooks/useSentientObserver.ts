@@ -43,6 +43,7 @@ interface UseSentientObserverReturn {
   handleReset: () => void;
   setInitMode: (mode: InitMode) => void;
   boostCoherence: () => void;
+  exciteByPrimes: (primes: number[], amplitudes: number[]) => void;
 }
 
 // Initialize oscillators with clustered phases for easier synchronization
@@ -425,6 +426,47 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
     });
   }, []);
 
+  // Excite oscillators by specific prime numbers with given amplitudes
+  const exciteByPrimes = useCallback((primes: number[], amplitudes: number[]) => {
+    setOscillators(prev => {
+      return prev.map(osc => {
+        // Find if this oscillator's prime matches any input prime (with tolerance)
+        let excitation = 0;
+        for (let i = 0; i < primes.length; i++) {
+          const targetPrime = primes[i];
+          const amp = amplitudes[i] ?? 0.5;
+          
+          // Exact match or close prime
+          if (osc.prime === targetPrime) {
+            excitation += amp;
+          } else if (Math.abs(osc.prime - targetPrime) <= 10) {
+            // Near primes get partial excitation
+            excitation += amp * 0.3;
+          }
+        }
+        
+        if (excitation > 0) {
+          return {
+            ...osc,
+            amplitude: Math.min(1, osc.amplitude + excitation)
+          };
+        }
+        return osc;
+      });
+    });
+
+    // Add attention focus
+    setAttentionFoci(prev => [
+      ...prev.slice(-4),
+      {
+        id: `attn_${Date.now()}`,
+        target: `primes: ${primes.slice(0, 3).join(',')}`,
+        type: 'symbolic_input',
+        intensity: 0.9
+      }
+    ]);
+  }, []);
+
   return {
     isRunning,
     tickCount,
@@ -453,6 +495,7 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
     handleInput,
     handleReset,
     setInitMode,
-    boostCoherence
+    boostCoherence,
+    exciteByPrimes
   };
 };
