@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useCallback } from 'react';
 import { Play, RefreshCw } from 'lucide-react';
 import ExamplePageWrapper, { ExampleConfig } from '../components/ExamplePageWrapper';
@@ -8,7 +9,7 @@ import {
   factorize,
   primesUpTo,
   nthPrime,
-} from '@/lib/tinyaleph-compat';
+} from '@aleph-ai/tinyaleph';
 
 const HypercomplexExample = () => {
   const [dim, setDim] = useState(16);

@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Bot, User, Sparkles, Activity, Loader2 } from 'lucide-react';
 import SedenionVisualizer from '../components/SedenionVisualizer';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import { supabase } from '@/integrations/supabase/client';
-import { SemanticBackend } from '@/lib/tinyaleph-compat';
+import { SemanticBackend } from '@aleph-ai/tinyaleph';
 import { minimalConfig } from '@/lib/tinyaleph-config';
 
 interface Message {

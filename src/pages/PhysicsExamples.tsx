@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable no-case-declarations */
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Play, Pause, RefreshCw } from 'lucide-react';
 import ExamplePageWrapper, { ExampleConfig } from '../components/ExamplePageWrapper';
-import { OscillatorBank, Hypercomplex } from '@/lib/tinyaleph-compat';
+import { OscillatorBank, Hypercomplex } from '@aleph-ai/tinyaleph';
 
 const KuramotoExample = () => {
   const [oscillatorCount, setOscillatorCount] = useState(12);
@@ -37,7 +39,7 @@ const KuramotoExample = () => {
     bankRef.current = new OscillatorBank(frequencies as any);
     initializePhases(initMode, seed);
     updateState();
-  }, [oscillatorCount]);
+  }, [oscillatorCount, initMode, seed, initializePhases]);
 
   const updateState = () => {
     if (!bankRef.current) return;

@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { Play, RefreshCw, Brain, ArrowRight } from 'lucide-react';
 import ExamplePageWrapper, { ExampleConfig } from '../components/ExamplePageWrapper';
 import SedenionVisualizer from '../components/SedenionVisualizer';
-import { createEngine, SemanticBackend } from '@/lib/tinyaleph-compat';
+import { createEngine, SemanticBackend } from '@aleph-ai/tinyaleph';
 import { minimalConfig } from '@/lib/tinyaleph-config';
 
 const EngineExample = () => {
@@ -15,7 +15,7 @@ const EngineExample = () => {
     try {
       const engine = createEngine('semantic', { ...minimalConfig, engineOptions: { oscillatorCount: 16, coupling: 0.2, entropyThreshold: 0.1, maxIterations: 50 } });
       const engineResult = engine.run(input);
-      let stateComponents: number[] = engineResult.state?.components?.slice(0, 16) || (engineResult.state as any)?.c?.slice(0, 16) || Array(16).fill(0);
+      const stateComponents: number[] = engineResult.state?.components?.slice(0, 16) || (engineResult.state as any)?.c?.slice(0, 16) || Array(16).fill(0);
       setResult({ output: engineResult.output || input, entropy: engineResult.entropy || 0, steps: engineResult.steps?.length || 0, state: stateComponents });
     } catch (e) { setResult({ output: `Error: ${(e as Error).message}`, entropy: 0, steps: 0, state: Array(16).fill(0) }); }
     setRunning(false);

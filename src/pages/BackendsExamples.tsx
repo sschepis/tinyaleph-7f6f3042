@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useCallback } from 'react';
 import { Play, Hash, Dna, FlaskConical, Brain, AtomIcon, Shield, Sparkles, BookOpen, Zap } from 'lucide-react';
 import CodeBlock from '../components/CodeBlock';
@@ -5,11 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import tinyaleph, {
   SemanticBackend,
-} from '@/lib/tinyaleph-compat';
-
-// Access hash and deriveKey from the compat layer
-const hash = tinyaleph.hash;
-const deriveKey = tinyaleph.deriveKey;
+  hash,
+  deriveKey,
+} from '@aleph-ai/tinyaleph';
 import { minimalConfig } from '@/lib/tinyaleph-config';
 
 // ==========================================

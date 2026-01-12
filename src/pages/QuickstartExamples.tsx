@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useCallback } from 'react';
 import { Play, Hash, Shuffle } from 'lucide-react';
 import SedenionVisualizer from '../components/SedenionVisualizer';
@@ -7,7 +8,7 @@ import {
   SemanticBackend,
   hash,
   Hypercomplex,
-} from '@/lib/tinyaleph-compat';
+} from '@aleph-ai/tinyaleph';
 import { minimalConfig } from '@/lib/tinyaleph-config';
 
 // Example metadata with descriptions
