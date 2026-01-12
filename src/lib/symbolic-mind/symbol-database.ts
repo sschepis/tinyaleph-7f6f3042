@@ -1,9 +1,9 @@
-import type { Symbol } from './types';
+import type { SymbolicSymbol } from './types';
 
 // ============= COMPREHENSIVE SYMBOL DATABASE =============
 // Symbols from multiple wisdom traditions, each with a unique prime for wave interference
 
-export const SYMBOL_DATABASE: Record<string, Symbol> = {
+export const SYMBOL_DATABASE: Record<string, SymbolicSymbol> = {
   // ============= JUNGIAN ARCHETYPES =============
   self: { id: 'self', name: 'The Self', unicode: '☯', prime: 2, category: 'archetype', culture: 'jungian', meaning: 'Wholeness and integration of consciousness' },
   shadow: { id: 'shadow', name: 'The Shadow', unicode: '🌑', prime: 3, category: 'archetype', culture: 'jungian', meaning: 'Hidden aspects of the psyche' },
@@ -265,18 +265,18 @@ export const CATEGORY_RESONANCE: Record<string, string[]> = {
   emotion: ['archetype', 'element', 'tarot'],
 };
 
-export function getAllSymbols(): Symbol[] {
+export function getAllSymbols(): SymbolicSymbol[] {
   return Object.values(SYMBOL_DATABASE);
 }
 
-export function getSymbolById(id: string): Symbol | undefined {
+export function getSymbolById(id: string): SymbolicSymbol | undefined {
   return SYMBOL_DATABASE[id];
 }
 
-export function getSymbolsByCategory(category: string): Symbol[] {
+export function getSymbolsByCategory(category: string): SymbolicSymbol[] {
   return Object.values(SYMBOL_DATABASE).filter(s => s.category === category);
 }
 
-export function getSymbolsByPrimeRange(min: number, max: number): Symbol[] {
+export function getSymbolsByPrimeRange(min: number, max: number): SymbolicSymbol[] {
   return Object.values(SYMBOL_DATABASE).filter(s => s.prime >= min && s.prime <= max);
 }

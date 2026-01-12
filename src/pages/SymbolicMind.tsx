@@ -14,7 +14,7 @@ import {
   selectOutputSymbols,
   getDefaultAnchors 
 } from '@/lib/symbolic-mind/resonance-engine';
-import type { Message, MindState, Symbol } from '@/lib/symbolic-mind/types';
+import type { Message, MindState, SymbolicSymbol } from '@/lib/symbolic-mind/types';
 import { toast } from 'sonner';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/symbolic-mind`;
@@ -24,7 +24,7 @@ export default function SymbolicMind() {
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [anchoringSymbols] = useState<Symbol[]>(getDefaultAnchors);
+  const [anchoringSymbols] = useState<SymbolicSymbol[]>(getDefaultAnchors);
   const [interferenceModel, setInterferenceModel] = useState<InterferenceModel>('wave');
   const [mindState, setMindState] = useState<MindState>({
     anchoringSymbols: getDefaultAnchors(),

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { Symbol } from '@/lib/symbolic-mind/types';
+import type { SymbolicSymbol } from '@/lib/symbolic-mind/types';
 
 interface SymbolNodeProps {
-  symbol: Symbol;
+  symbol: SymbolicSymbol;
   isActive?: boolean;
   isAnchoring?: boolean;
   resonance?: number;
