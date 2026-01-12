@@ -33,7 +33,7 @@ const routeHierarchy: Record<string, { category: string; label: string }> = {
   // Apps
   '/circuit-runner': { category: 'Apps', label: 'Quantum Circuits' },
   '/dna-computer': { category: 'Apps', label: 'DNA Computer' },
-  '/symbolic': { category: 'Apps', label: 'Symbolic AI' },
+  '/symbolic-mind': { category: 'Apps', label: 'Symbolic Mind' },
   '/chat': { category: 'Apps', label: 'Aleph Chat' },
   '/enochian': { category: 'Apps', label: 'Enochian' },
   '/ai': { category: 'Apps', label: 'AI Integration' },

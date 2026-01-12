@@ -167,12 +167,12 @@ const exampleCategories = [
     examples: ['Central dogma', 'Protein folding', 'DNA circuits', 'Molecular binding']
   },
   {
-    id: 'symbolic',
-    path: '/symbolic',
+    id: 'symbolic-mind',
+    path: '/symbolic-mind',
     icon: Brain,
-    title: 'Symbolic AI',
-    description: '400+ symbols: archetypes, Tarot, I-Ching, hieroglyphs',
-    examples: ['Jungian archetypes', 'Tarot spreads', 'Cross-cultural mapping', 'Golden ratio resonance']
+    title: 'Symbolic Mind',
+    description: 'Hybrid symbolic-neural oracle with resonance-based reasoning',
+    examples: ['Archetypes', 'Resonance', 'LLM integration', 'Symbol database']
   },
   {
     id: 'ai',
