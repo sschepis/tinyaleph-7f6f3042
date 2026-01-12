@@ -21,4 +21,10 @@ export default defineConfig(({ mode }) => ({
   define: {
     global: "globalThis",
   },
+  build: {
+    rollupOptions: {
+      // Exclude example JS files from bundling - they're just code samples for display
+      external: (id) => id.includes('/src/examples/') && id.endsWith('.js'),
+    },
+  },
 }));
