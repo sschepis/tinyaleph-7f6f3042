@@ -41,6 +41,7 @@ const navGroups = [
       { id: 'scientific', label: 'Scientific', path: '/scientific', desc: 'Wavefunction & more' },
       { id: 'typesystem', label: 'Type System', path: '/typesystem', desc: 'Lambda calculus' },
       { id: 'topology', label: 'Topology', path: '/topology', desc: '108 invariant & knots' },
+      { id: 'arithmetic-topology', label: 'Arithmetic Topology', path: '/arithmetic-topology', desc: 'Primes as knots' },
       { id: 'crt-homology', label: 'CRT-Homology', path: '/crt-homology', desc: 'Residue encoding' },
       { id: 'discrete', label: 'Discrete', path: '/discrete', desc: 'Integer dynamics' },
     ],

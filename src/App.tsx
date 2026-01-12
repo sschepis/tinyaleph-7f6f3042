@@ -31,6 +31,7 @@ import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
 // New v1.4.0 example pages
 import TopologyExamples from "./pages/TopologyExamples";
+import ArithmeticTopologyExamples from "./pages/ArithmeticTopologyExamples";
 import CRTHomologyExamples from "./pages/CRTHomologyExamples";
 import DiscreteExamples from "./pages/DiscreteExamples";
 import ObserverExamples from "./pages/ObserverExamples";
@@ -81,6 +82,7 @@ const App = () => (
             <Route path="/landing-page" element={<LandingPage />} />
             {/* New v1.4.0 routes */}
             <Route path="/topology" element={<TopologyExamples />} />
+            <Route path="/arithmetic-topology" element={<ArithmeticTopologyExamples />} />
             <Route path="/crt-homology" element={<CRTHomologyExamples />} />
             <Route path="/discrete" element={<DiscreteExamples />} />
             <Route path="/observer" element={<ObserverExamples />} />

@@ -182,6 +182,14 @@ const exampleCategories = [
     description: 'Reasoning, agents, RAG, neuro-symbolic bridges',
     examples: ['Knowledge graphs', 'LLM integration', 'Entropy reasoning', 'Concept learning']
   },
+  {
+    id: 'arithmetic-topology',
+    path: '/arithmetic-topology',
+    icon: Layers,
+    title: 'Arithmetic Topology',
+    description: 'Primes as knots: Legendre, Rédei, Alexander modules',
+    examples: ['Legendre symbols', 'ALK-Kuramoto', 'Borromean primes', 'Signature memory']
+  },
 ];
 
 const Index = () => {
