@@ -19,8 +19,10 @@ import {
   RotateCcw,
   ChevronRight,
   Brain,
-  Loader2
+  Loader2,
+  Network
 } from 'lucide-react';
+import { TransitionNetworkGraph } from './TransitionNetworkGraph';
 import { SYMBOL_DATABASE } from '@/lib/symbolic-mind/symbol-database';
 import type { SymbolicSymbol } from '@/lib/symbolic-mind/types';
 import type { Oscillator } from './types';
@@ -130,7 +132,7 @@ const NARRATIVE_TEMPLATES: Omit<NarrativePattern, 'id'>[] = [
 ];
 
 export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillators, isRunning }: SymbolicLearningModeProps) {
-  const [mode, setMode] = useState<'teach' | 'generate'>('teach');
+  const [mode, setMode] = useState<'teach' | 'generate' | 'network'>('teach');
   const [patterns, setPatterns] = useState<NarrativePattern[]>([]);
   const [currentSequence, setCurrentSequence] = useState<SymbolicSymbol[]>([]);
   const [patternName, setPatternName] = useState('');
@@ -391,11 +393,15 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
       </CardHeader>
       
       <CardContent className="flex-1 flex flex-col gap-3 overflow-hidden p-3">
-        <Tabs value={mode} onValueChange={(v) => setMode(v as 'teach' | 'generate')}>
-          <TabsList className="w-full grid grid-cols-2 h-8">
+        <Tabs value={mode} onValueChange={(v) => setMode(v as 'teach' | 'generate' | 'network')}>
+          <TabsList className="w-full grid grid-cols-3 h-8">
             <TabsTrigger value="teach" className="text-xs">
               <BookOpen className="h-3 w-3 mr-1" />
               Teach
+            </TabsTrigger>
+            <TabsTrigger value="network" className="text-xs">
+              <Network className="h-3 w-3 mr-1" />
+              Network
             </TabsTrigger>
             <TabsTrigger value="generate" className="text-xs">
               <Wand2 className="h-3 w-3 mr-1" />
@@ -542,6 +548,35 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
                   ))}
                 </div>
               </ScrollArea>
+            )}
+          </TabsContent>
+          
+          {/* NETWORK VIEW MODE */}
+          <TabsContent value="network" className="mt-2 flex-1 flex flex-col gap-2 overflow-hidden">
+            {patterns.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center text-muted-foreground">
+                <Network className="h-8 w-8 mb-2 opacity-50" />
+                <p className="text-xs">No patterns to visualize</p>
+                <p className="text-[10px]">Add patterns in the Teach tab first</p>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col">
+                <p className="text-xs text-muted-foreground mb-2">
+                  Transition probabilities between symbols. Thicker lines = stronger connections.
+                </p>
+                <div className="flex-1 flex items-center justify-center bg-muted/20 rounded-lg border min-h-[280px]">
+                  <TransitionNetworkGraph
+                    transitionMatrix={learnedModel.transitionMatrix}
+                    startSymbols={learnedModel.startSymbols}
+                    width={360}
+                    height={280}
+                  />
+                </div>
+                <div className="mt-2 text-[10px] text-muted-foreground">
+                  <span className="font-medium">{learnedModel.transitionMatrix.size}</span> source nodes • 
+                  <span className="font-medium ml-1">{Array.from(learnedModel.transitionMatrix.values()).reduce((s, m) => s + m.size, 0)}</span> transitions
+                </div>
+              </div>
             )}
           </TabsContent>
           
