@@ -435,7 +435,7 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
   }, [resetGeneration]);
 
   return (
-    <Card className="flex flex-col h-full overflow-hidden">
+    <Card className="flex flex-col max-h-[420px] overflow-hidden">
       <CardHeader className="pb-2 flex-shrink-0">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm flex items-center gap-2">
@@ -451,32 +451,42 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
                 onClick={clearAllPatterns}
               >
                 <RotateCcw className="h-3 w-3 mr-1" />
-                Clear
+                Clear All
               </Button>
             )}
           </div>
         </div>
         
-        {/* Learning Status Indicator */}
-        <div className="flex items-center gap-3 mt-1">
+        {/* Learning Status Indicator - More Prominent */}
+        <div className={`flex items-center justify-between mt-2 px-2 py-1.5 rounded-md ${
+          patterns.length > 0 
+            ? 'bg-green-500/10 border border-green-500/30' 
+            : 'bg-muted/50'
+        }`}>
           {patterns.length > 0 ? (
             <>
-              <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-[10px] text-green-400 font-medium">Learning Active</span>
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                </span>
+                <span className="text-xs text-green-400 font-medium">Learning Active</span>
               </div>
-              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                <span>{learningStats.patterns} patterns</span>
-                <span>•</span>
-                <span>{learningStats.symbols} symbols</span>
-                <span>•</span>
-                <span>{learningStats.transitions} transitions</span>
+              <div className="flex items-center gap-3 text-xs">
+                <div className="flex items-center gap-1">
+                  <span className="font-mono text-green-300">{learningStats.patterns}</span>
+                  <span className="text-muted-foreground">patterns</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="font-mono text-green-300">{learningStats.transitions}</span>
+                  <span className="text-muted-foreground">transitions</span>
+                </div>
               </div>
             </>
           ) : (
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-muted-foreground/50" />
-              <span className="text-[10px] text-muted-foreground">No patterns learned</span>
+            <div className="flex items-center gap-2 w-full justify-center">
+              <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
+              <span className="text-xs text-muted-foreground">Add patterns to start learning</span>
             </div>
           )}
         </div>
