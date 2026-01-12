@@ -26,14 +26,14 @@ export function ChatMessage({ message, isStreaming = false }: ChatMessageProps) 
             {message.symbols.map((s, i) => (
               <motion.span 
                 key={i} 
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs border border-primary/20"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/20 text-primary-foreground text-xs border border-primary/30"
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: i * 0.05 }}
                 title={s.meaning}
               >
                 <span className="text-base">{s.unicode}</span>
-                <span className="opacity-80">{s.name}</span>
+                <span>{s.name}</span>
               </motion.span>
             ))}
           </div>
@@ -46,14 +46,14 @@ export function ChatMessage({ message, isStreaming = false }: ChatMessageProps) 
             {message.symbols.map((s, i) => (
               <motion.span 
                 key={i} 
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/30 text-accent-foreground text-xs border border-accent/30"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/15 text-foreground text-xs border border-primary/25"
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: i * 0.05 }}
                 title={s.meaning}
               >
                 <span className="text-base">{s.unicode}</span>
-                <span className="opacity-80">{s.name}</span>
+                <span>{s.name}</span>
               </motion.span>
             ))}
             {message.coherence !== undefined && (

@@ -374,7 +374,7 @@ export default function SymbolicMind() {
                       title={symbol.meaning}
                     >
                       <span className="text-lg">{symbol.unicode}</span>
-                      <span className="text-muted-foreground truncate">{symbol.name}</span>
+                      <span className="text-foreground/70 truncate">{symbol.name}</span>
                     </div>
                   ))}
                 </div>
