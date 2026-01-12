@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,18 +6,23 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 import { 
   Send, 
   Sparkles, 
   Waves,
   MessageCircle,
   Zap,
-  Brain
+  Brain,
+  TrendingUp,
+  Loader2
 } from 'lucide-react';
 import { SYMBOL_DATABASE } from '@/lib/symbolic-mind/symbol-database';
 import { inferSymbolsFromText } from '@/lib/symbolic-mind/resonance-engine';
 import type { SymbolicSymbol } from '@/lib/symbolic-mind/types';
 import type { Oscillator } from './types';
+import { supabase } from '@/integrations/supabase/client';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
 
 interface SymbolicMessage {
   id: string;
@@ -27,6 +32,8 @@ interface SymbolicMessage {
   outputSymbols: SymbolicSymbol[];
   coherence: number;
   timestamp: Date;
+  llmResponse?: string;
+  isStreaming?: boolean;
 }
 
 interface SymbolicCoreProps {
@@ -36,48 +43,26 @@ interface SymbolicCoreProps {
   isRunning: boolean;
 }
 
-// Map from symbol primes to oscillator indices
-function findOscillatorByPrime(oscillators: Oscillator[], prime: number): number {
-  // Find closest prime oscillator
-  let bestIdx = 0;
-  let bestDiff = Infinity;
-  
-  for (let i = 0; i < oscillators.length; i++) {
-    const diff = Math.abs(oscillators[i].prime - prime);
-    if (diff < bestDiff) {
-      bestDiff = diff;
-      bestIdx = i;
-    }
-  }
-  
-  return bestIdx;
-}
-
 // Extract symbols from oscillator state based on phase coherence
 function extractOutputSymbols(oscillators: Oscillator[], count: number = 3): SymbolicSymbol[] {
-  // Find oscillators with highest amplitude and most coherent phases
   const meanPhase = Math.atan2(
     oscillators.reduce((s, o) => s + Math.sin(o.phase) * o.amplitude, 0),
     oscillators.reduce((s, o) => s + Math.cos(o.phase) * o.amplitude, 0)
   );
   
-  // Score oscillators by their alignment to mean phase + amplitude
   const scored = oscillators.map((osc, idx) => {
     const phaseAlignment = Math.cos(osc.phase - meanPhase);
     const score = osc.amplitude * (0.5 + 0.5 * phaseAlignment);
     return { osc, idx, score };
   });
   
-  // Sort by score descending
   scored.sort((a, b) => b.score - a.score);
   
-  // Map top oscillators to symbols
   const allSymbols = Object.values(SYMBOL_DATABASE);
   const outputSymbols: SymbolicSymbol[] = [];
   const usedSymbolIds = new Set<string>();
   
   for (const { osc } of scored.slice(0, count * 2)) {
-    // Find symbol with closest prime
     let bestSymbol: SymbolicSymbol | null = null;
     let bestDiff = Infinity;
     
@@ -116,27 +101,172 @@ function getSymbolCategories(): { category: string; symbols: SymbolicSymbol[] }[
     .sort((a, b) => a.category.localeCompare(b.category));
 }
 
+// Symbol evolution visualization
+function SymbolEvolution({ messages }: { messages: SymbolicMessage[] }) {
+  if (messages.length < 2) return null;
+  
+  // Build evolution chain
+  const evolution = messages.slice(-5).map((msg, idx) => ({
+    symbols: msg.outputSymbols,
+    coherence: msg.coherence,
+    step: idx + 1
+  }));
+  
+  return (
+    <div className="p-3 bg-muted/30 rounded-lg border">
+      <div className="flex items-center gap-2 mb-2">
+        <TrendingUp className="h-4 w-4 text-primary" />
+        <span className="text-xs font-medium">Symbol Evolution</span>
+      </div>
+      <div className="flex items-center gap-1 overflow-x-auto pb-1">
+        {evolution.map((step, idx) => (
+          <React.Fragment key={idx}>
+            <div className="flex-shrink-0 flex flex-col items-center gap-1">
+              <div className="flex gap-0.5">
+                {step.symbols.slice(0, 2).map((s, i) => (
+                  <span key={i} className="text-lg" title={s.name}>
+                    {s.unicode}
+                  </span>
+                ))}
+              </div>
+              <div className={`text-[10px] px-1 rounded ${step.coherence > 0.7 ? 'bg-green-500/20 text-green-400' : step.coherence > 0.4 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>
+                {Math.round(step.coherence * 100)}%
+              </div>
+            </div>
+            {idx < evolution.length - 1 && (
+              <span className="text-muted-foreground text-xs">→</span>
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRunning }: SymbolicCoreProps) {
   const [messages, setMessages] = useState<SymbolicMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [selectedSymbols, setSelectedSymbols] = useState<SymbolicSymbol[]>([]);
   const [inputMode, setInputMode] = useState<'text' | 'symbols'>('text');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [enableLLM, setEnableLLM] = useState(true);
+  const scrollRef = useRef<HTMLDivElement>(null);
   
   const symbolCategories = useMemo(() => getSymbolCategories(), []);
   
-  // Toggle symbol selection
+  // Auto-scroll to bottom
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+  
   const toggleSymbol = useCallback((symbol: SymbolicSymbol) => {
     setSelectedSymbols(prev => {
       const exists = prev.find(s => s.id === symbol.id);
       if (exists) {
         return prev.filter(s => s.id !== symbol.id);
       }
-      return [...prev, symbol].slice(0, 5); // Max 5 symbols
+      return [...prev, symbol].slice(0, 5);
     });
   }, []);
   
-  // Process input and generate response
+  // Stream LLM response
+  const streamLLMResponse = useCallback(async (
+    messageId: string,
+    userMessage: string,
+    inputSymbols: SymbolicSymbol[],
+    outputSymbols: SymbolicSymbol[],
+    coherenceScore: number
+  ) => {
+    try {
+      const conversationHistory = messages.slice(-6).map(m => ({
+        role: m.role === 'user' ? 'user' : 'assistant',
+        content: m.text
+      }));
+      
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/symbolic-mind`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          userMessage,
+          symbolicOutput: outputSymbols,
+          anchoringSymbols: inputSymbols,
+          coherenceScore,
+          conversationHistory
+        }),
+      });
+
+      if (!resp.ok || !resp.body) {
+        const errData = await resp.json().catch(() => ({}));
+        console.error("LLM error:", errData);
+        setMessages(prev => prev.map(m => 
+          m.id === messageId 
+            ? { ...m, llmResponse: outputSymbols.map(s => s.meaning).join(' → '), isStreaming: false }
+            : m
+        ));
+        return;
+      }
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let textBuffer = "";
+      let llmContent = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        textBuffer += decoder.decode(value, { stream: true });
+        
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+          
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+          
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") break;
+          
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) {
+              llmContent += content;
+              setMessages(prev => prev.map(m => 
+                m.id === messageId 
+                  ? { ...m, llmResponse: llmContent, isStreaming: true }
+                  : m
+              ));
+            }
+          } catch {
+            textBuffer = line + "\n" + textBuffer;
+            break;
+          }
+        }
+      }
+      
+      setMessages(prev => prev.map(m => 
+        m.id === messageId 
+          ? { ...m, isStreaming: false }
+          : m
+      ));
+    } catch (error) {
+      console.error("Stream error:", error);
+      setMessages(prev => prev.map(m => 
+        m.id === messageId 
+          ? { ...m, llmResponse: outputSymbols.map(s => s.meaning).join(' → '), isStreaming: false }
+          : m
+      ));
+    }
+  }, [messages]);
+  
   const handleSend = useCallback(() => {
     let inputSymbols: SymbolicSymbol[];
     let text: string;
@@ -153,53 +283,71 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
     
     setIsProcessing(true);
     
-    // Excite oscillators based on input symbols
     const primes = inputSymbols.map(s => s.prime);
-    const amplitudes = inputSymbols.map((_, i) => 0.8 - i * 0.1); // Decreasing amplitude
+    const amplitudes = inputSymbols.map((_, i) => 0.8 - i * 0.1);
     onExciteOscillators(primes, amplitudes);
     
-    // Wait for resonance to develop, then read output
     setTimeout(() => {
       const outputSymbols = extractOutputSymbols(oscillators, 3);
+      const messageId = `msg_${Date.now()}`;
       
       const newMessage: SymbolicMessage = {
-        id: `msg_${Date.now()}`,
+        id: messageId,
         role: 'user',
         text,
         inputSymbols,
         outputSymbols,
         coherence,
-        timestamp: new Date()
+        timestamp: new Date(),
+        llmResponse: enableLLM ? undefined : outputSymbols.map(s => s.meaning).join(' → '),
+        isStreaming: enableLLM
       };
       
       setMessages(prev => [...prev, newMessage]);
       setInputText('');
       setSelectedSymbols([]);
       setIsProcessing(false);
+      
+      if (enableLLM) {
+        streamLLMResponse(messageId, text, inputSymbols, outputSymbols, coherence);
+      }
     }, 500);
-  }, [inputMode, inputText, selectedSymbols, oscillators, coherence, onExciteOscillators]);
+  }, [inputMode, inputText, selectedSymbols, oscillators, coherence, onExciteOscillators, enableLLM, streamLLMResponse]);
   
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm flex items-center gap-2">
-          <Brain className="h-4 w-4 text-primary" />
-          Symbolic Core Communication
-        </CardTitle>
-        <CardDescription>
-          Communicate with the observer through symbols
+    <Card className="flex flex-col" style={{ height: '500px' }}>
+      <CardHeader className="pb-2 flex-shrink-0">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Brain className="h-4 w-4 text-primary" />
+            Symbolic Core
+          </CardTitle>
+          <label className="flex items-center gap-2 text-xs">
+            <input 
+              type="checkbox" 
+              checked={enableLLM} 
+              onChange={e => setEnableLLM(e.target.checked)}
+              className="w-3 h-3"
+            />
+            LLM Translation
+          </label>
+        </div>
+        <CardDescription className="text-xs">
+          Communicate through symbols • Responses emerge from resonance
         </CardDescription>
       </CardHeader>
       
-      <CardContent className="flex-1 flex flex-col gap-3 overflow-hidden">
-        {/* Messages area */}
-        <ScrollArea className="flex-1 pr-2">
-          <div className="space-y-4">
+      <CardContent className="flex-1 flex flex-col gap-2 overflow-hidden p-3">
+        {/* Symbol Evolution */}
+        <SymbolEvolution messages={messages} />
+        
+        {/* Messages */}
+        <ScrollArea className="flex-1" ref={scrollRef}>
+          <div className="space-y-3 pr-2">
             {messages.length === 0 && (
-              <div className="text-center text-muted-foreground py-8">
-                <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Send symbols to communicate with the observer.</p>
-                <p className="text-xs mt-1">Your input excites oscillators; the response emerges from resonance.</p>
+              <div className="text-center text-muted-foreground py-4">
+                <Sparkles className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                <p className="text-xs">Send symbols to communicate</p>
               </div>
             )}
             
@@ -211,61 +359,63 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-2"
                 >
-                  {/* Input */}
+                  {/* User Input */}
                   <div className="flex justify-end">
-                    <div className="max-w-[80%]">
+                    <div className="max-w-[85%]">
                       <div className="flex flex-wrap gap-1 mb-1 justify-end">
                         {msg.inputSymbols.map((s, i) => (
-                          <motion.span
+                          <span
                             key={i}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/20 text-xs"
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ delay: i * 0.05 }}
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-primary/20 text-[10px]"
                             title={s.meaning}
                           >
-                            <span className="text-base">{s.unicode}</span>
-                            <span>{s.name}</span>
-                          </motion.span>
+                            <span className="text-sm">{s.unicode}</span>
+                            <span className="hidden sm:inline">{s.name}</span>
+                          </span>
                         ))}
                       </div>
-                      <div className="bg-primary text-primary-foreground px-3 py-2 rounded-2xl rounded-br-md text-sm">
+                      <div className="bg-primary text-primary-foreground px-3 py-2 rounded-xl rounded-br-sm text-sm">
                         {msg.text}
                       </div>
                     </div>
                   </div>
                   
-                  {/* Output */}
+                  {/* Observer Response */}
                   <div className="flex justify-start">
-                    <div className="max-w-[80%]">
-                      <div className="flex flex-wrap gap-1 mb-1">
-                        <span className="text-xs text-muted-foreground mr-1">
-                          <Waves className="h-3 w-3 inline" /> resonance:
-                        </span>
+                    <div className="max-w-[85%]">
+                      <div className="flex flex-wrap gap-1 mb-1 items-center">
+                        <Waves className="h-3 w-3 text-muted-foreground" />
                         {msg.outputSymbols.map((s, i) => (
-                          <motion.span
+                          <span
                             key={i}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground text-xs"
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ delay: 0.3 + i * 0.1 }}
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-secondary text-secondary-foreground text-[10px]"
                             title={s.meaning}
                           >
-                            <span className="text-base">{s.unicode}</span>
-                            <span>{s.name}</span>
-                          </motion.span>
+                            <span className="text-sm">{s.unicode}</span>
+                            <span className="hidden sm:inline">{s.name}</span>
+                          </span>
                         ))}
-                        <Badge variant="outline" className="text-xs ml-auto">
+                        <Badge variant="outline" className="text-[10px] ml-1">
                           {Math.round(msg.coherence * 100)}%
                         </Badge>
                       </div>
-                      <div className="bg-muted px-3 py-2 rounded-2xl rounded-bl-md text-sm">
-                        <p className="italic text-muted-foreground">
-                          {msg.outputSymbols.map(s => s.meaning).join(' → ')}
-                        </p>
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      <div className="bg-muted px-3 py-2 rounded-xl rounded-bl-sm text-sm">
+                        {msg.isStreaming && !msg.llmResponse && (
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        )}
+                        {msg.llmResponse && (
+                          <MarkdownRenderer 
+                            content={msg.llmResponse} 
+                            className="prose-sm prose-p:my-1"
+                          />
+                        )}
+                        {msg.isStreaming && msg.llmResponse && (
+                          <motion.span
+                            className="inline-block w-1.5 h-4 ml-0.5 bg-primary"
+                            animate={{ opacity: [1, 0, 1] }}
+                            transition={{ duration: 0.6, repeat: Infinity }}
+                          />
+                        )}
                       </div>
                     </div>
                   </div>
@@ -275,15 +425,17 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
           </div>
         </ScrollArea>
         
-        {/* Input area */}
-        <div className="border-t pt-3 space-y-2">
+        <Separator />
+        
+        {/* Input */}
+        <div className="space-y-2 flex-shrink-0">
           <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'text' | 'symbols')}>
-            <TabsList className="w-full grid grid-cols-2">
-              <TabsTrigger value="text">
+            <TabsList className="w-full grid grid-cols-2 h-8">
+              <TabsTrigger value="text" className="text-xs">
                 <MessageCircle className="h-3 w-3 mr-1" />
                 Text
               </TabsTrigger>
-              <TabsTrigger value="symbols">
+              <TabsTrigger value="symbols" className="text-xs">
                 <Sparkles className="h-3 w-3 mr-1" />
                 Symbols
               </TabsTrigger>
@@ -294,29 +446,29 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
                 <Input
                   value={inputText}
                   onChange={e => setInputText(e.target.value)}
-                  placeholder="Describe your query..."
+                  placeholder="Ask the observer..."
                   onKeyDown={e => e.key === 'Enter' && handleSend()}
                   disabled={isProcessing || !isRunning}
+                  className="h-9 text-sm"
                 />
                 <Button 
                   onClick={handleSend} 
                   disabled={!inputText.trim() || isProcessing || !isRunning}
-                  size="icon"
+                  size="sm"
                 >
-                  <Send className="h-4 w-4" />
+                  {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
               </div>
             </TabsContent>
             
             <TabsContent value="symbols" className="mt-2 space-y-2">
-              {/* Selected symbols */}
               {selectedSymbols.length > 0 && (
                 <div className="flex flex-wrap gap-1 p-2 bg-muted/50 rounded-lg">
                   {selectedSymbols.map(s => (
                     <Badge 
                       key={s.id} 
                       variant="default"
-                      className="cursor-pointer"
+                      className="cursor-pointer text-xs"
                       onClick={() => toggleSymbol(s)}
                     >
                       {s.unicode} {s.name} ×
@@ -325,21 +477,17 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
                 </div>
               )}
               
-              {/* Symbol picker */}
-              <ScrollArea className="h-32">
+              <ScrollArea className="h-24">
                 <div className="space-y-2">
                   {symbolCategories.slice(0, 4).map(({ category, symbols }) => (
                     <div key={category}>
-                      <div className="text-xs text-muted-foreground capitalize mb-1">{category}</div>
-                      <div className="flex flex-wrap gap-1">
+                      <div className="text-[10px] text-muted-foreground capitalize mb-1">{category}</div>
+                      <div className="flex flex-wrap gap-0.5">
                         {symbols.map(s => (
                           <button
                             key={s.id}
                             onClick={() => toggleSymbol(s)}
-                            className={`
-                              text-lg p-1 rounded hover:bg-accent transition-colors
-                              ${selectedSymbols.find(sel => sel.id === s.id) ? 'bg-primary/20 ring-1 ring-primary' : ''}
-                            `}
+                            className={`text-base p-0.5 rounded hover:bg-accent transition-colors ${selectedSymbols.find(sel => sel.id === s.id) ? 'bg-primary/20 ring-1 ring-primary' : ''}`}
                             title={`${s.name}: ${s.meaning}`}
                           >
                             {s.unicode}
@@ -354,16 +502,16 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
               <Button 
                 onClick={handleSend} 
                 disabled={selectedSymbols.length === 0 || isProcessing || !isRunning}
-                className="w-full"
+                className="w-full h-8 text-sm"
               >
-                <Zap className="h-4 w-4 mr-2" />
+                {isProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
                 Send {selectedSymbols.length} Symbol{selectedSymbols.length !== 1 ? 's' : ''}
               </Button>
             </TabsContent>
           </Tabs>
           
           {!isRunning && (
-            <p className="text-xs text-center text-amber-500">
+            <p className="text-[10px] text-center text-amber-500">
               Start the simulation to communicate
             </p>
           )}
