@@ -4,9 +4,16 @@ import { Oscillator } from '../types';
 interface OscillatorPhaseVizProps {
   oscillators: Oscillator[];
   coherence: number;
+  recentlyExploredIndices?: number[];
+  explorationProgress?: number;
 }
 
-export const OscillatorPhaseViz: React.FC<OscillatorPhaseVizProps> = ({ oscillators, coherence }) => {
+export const OscillatorPhaseViz: React.FC<OscillatorPhaseVizProps> = ({ 
+  oscillators, 
+  coherence,
+  recentlyExploredIndices = [],
+  explorationProgress = 0
+}) => {
   const size = 200;
   const center = size / 2;
   const radius = size / 2 - 20;
@@ -16,6 +23,30 @@ export const OscillatorPhaseViz: React.FC<OscillatorPhaseVizProps> = ({ oscillat
 
   return (
     <svg width={size} height={size} className="mx-auto">
+      {/* Exploration progress ring */}
+      <circle
+        cx={center}
+        cy={center}
+        r={radius + 8}
+        fill="none"
+        stroke="hsl(var(--primary))"
+        strokeOpacity={0.2}
+        strokeWidth={4}
+      />
+      <circle
+        cx={center}
+        cy={center}
+        r={radius + 8}
+        fill="none"
+        stroke="hsl(var(--primary))"
+        strokeOpacity={0.6}
+        strokeWidth={4}
+        strokeDasharray={`${explorationProgress * 2 * Math.PI * (radius + 8)} ${2 * Math.PI * (radius + 8)}`}
+        strokeLinecap="round"
+        transform={`rotate(-90 ${center} ${center})`}
+        className="transition-all duration-300"
+      />
+      
       {/* Background circle */}
       <circle
         cx={center}
@@ -52,17 +83,48 @@ export const OscillatorPhaseViz: React.FC<OscillatorPhaseVizProps> = ({ oscillat
       {displayOscillators.map((osc, i) => {
         const x = center + radius * Math.cos(osc.phase);
         const y = center + radius * Math.sin(osc.phase);
-        const hue = (i / 16) * 360;
+        const isExploring = recentlyExploredIndices.includes(i);
+        const hue = isExploring ? 45 : (i / 16) * 360; // Gold for exploring
         const opacity = Math.min(1, osc.amplitude + 0.2);
+        const baseRadius = 4 + osc.amplitude * 4;
 
         return (
-          <circle
-            key={i}
-            cx={x}
-            cy={y}
-            r={4 + osc.amplitude * 4}
-            fill={`hsla(${hue}, 70%, 50%, ${opacity})`}
-          />
+          <g key={i}>
+            {/* Pulse ring for exploring oscillators */}
+            {isExploring && (
+              <>
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={baseRadius + 8}
+                  fill="none"
+                  stroke={`hsla(45, 100%, 60%, 0.6)`}
+                  strokeWidth={2}
+                  className="animate-ping"
+                  style={{ transformOrigin: `${x}px ${y}px` }}
+                />
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={baseRadius + 4}
+                  fill={`hsla(45, 100%, 60%, 0.3)`}
+                  className="animate-pulse"
+                />
+              </>
+            )}
+            {/* Main oscillator dot */}
+            <circle
+              cx={x}
+              cy={y}
+              r={isExploring ? baseRadius * 1.5 : baseRadius}
+              fill={isExploring 
+                ? `hsla(45, 100%, 60%, ${opacity})` 
+                : `hsla(${hue}, 70%, 50%, ${opacity})`
+              }
+              className={isExploring ? 'transition-all duration-300' : ''}
+              style={isExploring ? { filter: 'drop-shadow(0 0 6px hsla(45, 100%, 60%, 0.8))' } : {}}
+            />
+          </g>
         );
       })}
 

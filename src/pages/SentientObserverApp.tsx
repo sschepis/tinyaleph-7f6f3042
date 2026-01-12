@@ -22,7 +22,8 @@ import {
   AlertTriangle,
   CheckCircle,
   Zap,
-  Thermometer
+  Thermometer,
+  Sparkles
 } from 'lucide-react';
 
 import { useSentientObserver } from '@/hooks/useSentientObserver';
@@ -58,6 +59,10 @@ const SentientObserverApp: React.FC = () => {
     inputHistory,
     initMode,
     peakCoherence,
+    explorationTemperature,
+    explorationFrequency,
+    recentlyExploredIndices,
+    explorationProgress,
     setIsRunning,
     setCoupling,
     setTemperature,
@@ -67,7 +72,9 @@ const SentientObserverApp: React.FC = () => {
     handleReset,
     setInitMode,
     boostCoherence,
-    exciteByPrimes
+    exciteByPrimes,
+    setExplorationTemperature,
+    setExplorationFrequency
   } = useSentientObserver();
 
   return (
@@ -191,7 +198,12 @@ const SentientObserverApp: React.FC = () => {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <OscillatorPhaseViz oscillators={oscillators} coherence={coherence} />
+                      <OscillatorPhaseViz 
+                        oscillators={oscillators} 
+                        coherence={coherence}
+                        recentlyExploredIndices={recentlyExploredIndices}
+                        explorationProgress={explorationProgress}
+                      />
                     </CardContent>
                   </Card>
 
@@ -349,6 +361,61 @@ const SentientObserverApp: React.FC = () => {
                         Enable Thermal Dynamics (adds noise, fights coherence)
                       </label>
                     </div>
+
+                    {/* Exploration Controls */}
+                    <div className="pt-4 border-t">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Target className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium">Exploration Settings</span>
+                        <Badge variant="outline" className="ml-auto">
+                          {(explorationProgress * 100).toFixed(0)}% explored
+                        </Badge>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span>Exploration Temperature</span>
+                            <span className="font-mono">{explorationTemperature.toFixed(2)}</span>
+                          </div>
+                          <Slider
+                            value={[explorationTemperature]}
+                            onValueChange={([v]) => setExplorationTemperature(v)}
+                            min={0}
+                            max={1}
+                            step={0.05}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Higher → more symbols explored per cycle
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span>Exploration Frequency</span>
+                            <span className="font-mono">{(explorationFrequency / 1000).toFixed(1)}s</span>
+                          </div>
+                          <Slider
+                            value={[explorationFrequency]}
+                            onValueChange={([v]) => setExplorationFrequency(v)}
+                            min={500}
+                            max={5000}
+                            step={250}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Lower → more frequent exploration bursts
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {recentlyExploredIndices.length > 0 && (
+                        <div className="mt-3 p-2 bg-amber-500/10 border border-amber-500/30 rounded-md">
+                          <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs">
+                            <Sparkles className="h-3 w-3 animate-pulse" />
+                            <span>Exploring {recentlyExploredIndices.length} new oscillators...</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -395,7 +462,12 @@ const SentientObserverApp: React.FC = () => {
                       <CardTitle className="text-sm">Phase Distribution</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <OscillatorPhaseViz oscillators={oscillators} coherence={coherence} />
+                      <OscillatorPhaseViz 
+                        oscillators={oscillators} 
+                        coherence={coherence}
+                        recentlyExploredIndices={recentlyExploredIndices}
+                        explorationProgress={explorationProgress}
+                      />
                       <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
                         <div className="p-2 bg-muted rounded">
                           <div className="font-medium">Order Parameter</div>
