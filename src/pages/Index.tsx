@@ -320,22 +320,22 @@ const Index = () => {
               </Link>
             </motion.div>
 
-            {/* Symbolic AI */}
+            {/* Symbolic Mind */}
             <motion.div variants={scaleIn}>
-              <Link to="/symbolic" className="group block h-full">
+              <Link to="/symbolic-mind" className="group block h-full">
                 <Card className="h-full overflow-hidden border-2 border-transparent hover:border-rose-500/50 transition-all duration-300 bg-gradient-to-br from-rose-500/5 to-pink-500/5">
                   <div className="p-6">
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500/20 to-pink-500/20 border border-rose-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                       <Brain className="w-6 h-6 text-rose-400" />
                     </div>
                     <h3 className="text-xl font-semibold mb-2 group-hover:text-rose-400 transition-colors">
-                      Symbolic AI
+                      Symbolic Mind
                     </h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      400+ symbols: Jungian archetypes, Tarot, I-Ching, hieroglyphs. Cross-cultural resonance with golden ratio detection.
+                      Hybrid symbolic-neural oracle. Watch your words transform into resonating symbols, then emerge as wisdom.
                     </p>
                     <div className="flex flex-wrap gap-1.5">
-                      {['Archetypes', 'Tarot', 'I-Ching'].map(tag => (
+                      {['Archetypes', 'Resonance', 'LLM'].map(tag => (
                         <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20">
                           {tag}
                         </span>
@@ -343,7 +343,7 @@ const Index = () => {
                     </div>
                   </div>
                   <div className="px-6 py-3 bg-rose-500/5 border-t border-rose-500/10 flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">400+ symbols × golden φ</span>
+                    <span className="text-xs text-muted-foreground">Hybrid AI Oracle</span>
                     <ArrowRight className="w-4 h-4 text-rose-400 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </Card>
