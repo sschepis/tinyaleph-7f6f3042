@@ -4,8 +4,8 @@ import { Send, Bot, User, Sparkles, Activity, Loader2 } from 'lucide-react';
 import SedenionVisualizer from '../components/SedenionVisualizer';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import { supabase } from '@/integrations/supabase/client';
-import { createEngine } from '@aleph-ai/tinyaleph';
 import { minimalConfig } from '@/lib/tinyaleph-config';
+import { createSemanticEngine } from '@/lib/tinyaleph-engine';
 
 interface Message {
   id: string;
@@ -25,7 +25,7 @@ interface SemanticData {
 }
 
 const ChatExamples = () => {
-  const [engine] = useState(() => createEngine('semantic', minimalConfig));
+  const [engine] = useState(() => createSemanticEngine(minimalConfig));
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
