@@ -14,14 +14,18 @@ export function MindVisualization({
   width = 400, 
   height = 400 
 }: MindVisualizationProps) {
+  // Add padding to prevent symbol cutoff (symbol size + label space)
+  const padding = 60;
+  const usableWidth = width - padding * 2;
+  const usableHeight = height - padding * 2;
   const centerX = width / 2;
   const centerY = height / 2;
   
-  // Position anchoring symbols in a circle - now with more anchors
+  // Position anchoring symbols in a circle with proper padding
   const anchorPositions = useMemo(() => {
     return mindState.anchoringSymbols.map((symbol, i) => {
       const angle = (i / mindState.anchoringSymbols.length) * Math.PI * 2 - Math.PI / 2;
-      const radius = Math.min(width, height) * 0.38;
+      const radius = Math.min(usableWidth, usableHeight) * 0.42;
       return {
         symbol,
         x: centerX + Math.cos(angle) * radius,
@@ -29,7 +33,7 @@ export function MindVisualization({
         angle,
       };
     });
-  }, [mindState.anchoringSymbols, width, height, centerX, centerY]);
+  }, [mindState.anchoringSymbols, usableWidth, usableHeight, centerX, centerY]);
   
   // Position active symbols in inner orbits based on their category
   const activePositions = useMemo(() => {
@@ -49,7 +53,7 @@ export function MindVisualization({
     let categoryIndex = 0;
     
     for (const [, symbols] of categories) {
-      const orbitRadius = Math.min(width, height) * (0.12 + categoryIndex * 0.06);
+      const orbitRadius = Math.min(usableWidth, usableHeight) * (0.12 + categoryIndex * 0.06);
       symbols.forEach((symbol, i) => {
         const angle = (i / symbols.length) * Math.PI * 2 + categoryIndex * 0.5;
         positions.push({
@@ -63,7 +67,7 @@ export function MindVisualization({
     }
     
     return positions;
-  }, [mindState.activeSymbols, mindState.anchoringSymbols, width, height, centerX, centerY]);
+  }, [mindState.activeSymbols, mindState.anchoringSymbols, usableWidth, usableHeight, centerX, centerY]);
   
   // Calculate wave interference lines - now showing constructive/destructive
   const interferenceLines = useMemo(() => {
@@ -113,22 +117,23 @@ export function MindVisualization({
     
     const rings: { radius: number; amplitude: number; phase: number }[] = [];
     const numRings = 5;
+    const maxRadius = Math.min(usableWidth, usableHeight) * 0.25;
     
     for (let i = 0; i < numRings; i++) {
       const componentIndex = Math.floor((i / numRings) * 16);
       const amplitude = Math.abs(mindState.superposition[componentIndex] || 0);
       const phase = (i * Math.PI * 2) / numRings;
-      const radius = 30 + i * 12;
+      const radius = 20 + i * (maxRadius / numRings);
       
       rings.push({ radius, amplitude, phase });
     }
     
     return rings;
-  }, [mindState.superposition]);
+  }, [mindState.superposition, usableWidth, usableHeight]);
   
   return (
     <div 
-      className="relative bg-background/50 rounded-xl border border-border/30 overflow-hidden"
+      className="relative bg-background/50 rounded-xl border border-border/30"
       style={{ width, height }}
     >
       {/* Background gradient */}
