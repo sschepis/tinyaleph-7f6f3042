@@ -435,7 +435,7 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
   }, [resetGeneration]);
 
   return (
-    <Card className="flex flex-col max-h-[420px] overflow-hidden">
+    <Card className="flex flex-col overflow-hidden">
       <CardHeader className="pb-2 flex-shrink-0">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm flex items-center gap-2">
@@ -575,11 +575,12 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
             </div>
             
             {/* Symbol Picker */}
-            <ScrollArea className="flex-1 min-h-0">
-              <div className="space-y-2 pr-2">
-                {symbolCategories.map(({ category, symbols }) => (
-                  <div key={category}>
-                    <button
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <ScrollArea className="h-full max-h-[140px]">
+                <div className="space-y-2 pr-2">
+                  {symbolCategories.map(({ category, symbols }) => (
+                    <div key={category}>
+                      <button
                       onClick={() => setSelectedCategory(selectedCategory === category ? null : category)}
                       className="text-xs font-medium text-muted-foreground hover:text-foreground capitalize flex items-center gap-1"
                     >
@@ -616,12 +617,13 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
                 ))}
               </div>
             </ScrollArea>
+            </div>
             
             <Separator />
             
             {/* Saved Patterns */}
             {patterns.length > 0 && (
-              <ScrollArea className="max-h-24 flex-shrink-0">
+              <ScrollArea className="max-h-40 flex-shrink-0">
                 <div className="space-y-1 pr-2">
                   {patterns.map(pattern => (
                     <div key={pattern.id} className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
@@ -682,15 +684,17 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
                     </Button>
                   )}
                 </div>
-                <div className="flex-1 flex items-center justify-center bg-muted/20 rounded-lg border min-h-[280px]">
-                  <TransitionNetworkGraph
-                    transitionMatrix={learnedModel.transitionMatrix}
-                    startSymbols={learnedModel.startSymbols}
-                    width={360}
-                    height={280}
-                    activePath={activePath || undefined}
-                    isAnimating={isGenerating}
-                  />
+                <div className="flex-1 overflow-auto bg-muted/20 rounded-lg border">
+                  <div className="min-w-[460px] min-h-[320px]">
+                    <TransitionNetworkGraph
+                      transitionMatrix={learnedModel.transitionMatrix}
+                      startSymbols={learnedModel.startSymbols}
+                      width={460}
+                      height={320}
+                      activePath={activePath || undefined}
+                      isAnimating={isGenerating}
+                    />
+                  </div>
                 </div>
                 <div className="mt-2 text-[10px] text-muted-foreground">
                   <span className="font-medium">{learnedModel.transitionMatrix.size}</span> source nodes • 
@@ -749,7 +753,7 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
                 
                 {/* Generated Story */}
                 {generatedStory.length > 0 && (
-                  <ScrollArea className="flex-1">
+                  <ScrollArea className="flex-1 min-h-0">
                     <div className="space-y-3 pr-2">
                       {/* Symbol Sequence */}
                       <div className="p-3 bg-primary/10 rounded-lg">
@@ -777,7 +781,7 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
                           ))}
                         </div>
                       </div>
-                      
+
                       {/* Narrative */}
                       {(llmNarrative || isGenerating) && (
                         <div className="p-3 bg-muted rounded-lg">
@@ -792,10 +796,7 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
                             </div>
                           )}
                           {llmNarrative && (
-                            <MarkdownRenderer 
-                              content={llmNarrative} 
-                              className="prose-sm prose-p:my-1"
-                            />
+                            <MarkdownRenderer content={llmNarrative} className="prose-sm prose-p:my-1" />
                           )}
                         </div>
                       )}
