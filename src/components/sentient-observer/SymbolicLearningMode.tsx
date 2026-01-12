@@ -413,26 +413,78 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
     setActivePath(null);
   }, []);
   
+  // Calculate learning stats
+  const learningStats = useMemo(() => {
+    const totalTransitions = Array.from(learnedModel.transitionMatrix.values())
+      .reduce((s, m) => s + m.size, 0);
+    const uniqueSymbols = new Set<string>();
+    patterns.forEach(p => p.sequence.forEach(s => uniqueSymbols.add(s.id)));
+    return {
+      transitions: totalTransitions,
+      symbols: uniqueSymbols.size,
+      patterns: patterns.length
+    };
+  }, [patterns, learnedModel]);
+
+  const clearAllPatterns = useCallback(() => {
+    setPatterns([]);
+    setCurrentSequence([]);
+    setPatternName('');
+    setPatternDescription('');
+    resetGeneration();
+  }, [resetGeneration]);
+
   return (
-    <Card className="flex flex-col h-full">
+    <Card className="flex flex-col h-full overflow-hidden">
       <CardHeader className="pb-2 flex-shrink-0">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm flex items-center gap-2">
             <GraduationCap className="h-4 w-4 text-primary" />
             Symbolic Learning
           </CardTitle>
-          <Badge variant="outline" className="text-xs">
-            {patterns.length} patterns
-          </Badge>
+          <div className="flex items-center gap-2">
+            {patterns.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+                onClick={clearAllPatterns}
+              >
+                <RotateCcw className="h-3 w-3 mr-1" />
+                Clear
+              </Button>
+            )}
+          </div>
         </div>
-        <CardDescription className="text-xs">
-          Teach narrative patterns • Generate symbolic stories
-        </CardDescription>
+        
+        {/* Learning Status Indicator */}
+        <div className="flex items-center gap-3 mt-1">
+          {patterns.length > 0 ? (
+            <>
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-[10px] text-green-400 font-medium">Learning Active</span>
+              </div>
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                <span>{learningStats.patterns} patterns</span>
+                <span>•</span>
+                <span>{learningStats.symbols} symbols</span>
+                <span>•</span>
+                <span>{learningStats.transitions} transitions</span>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-muted-foreground/50" />
+              <span className="text-[10px] text-muted-foreground">No patterns learned</span>
+            </div>
+          )}
+        </div>
       </CardHeader>
       
-      <CardContent className="flex-1 flex flex-col gap-3 overflow-hidden p-3">
-        <Tabs value={mode} onValueChange={(v) => setMode(v as 'teach' | 'generate' | 'network')}>
-          <TabsList className="w-full grid grid-cols-3 h-8">
+      <CardContent className="flex-1 flex flex-col gap-3 overflow-hidden p-3 min-h-0">
+        <Tabs value={mode} onValueChange={(v) => setMode(v as 'teach' | 'generate' | 'network')} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <TabsList className="w-full grid grid-cols-3 h-8 flex-shrink-0">
             <TabsTrigger value="teach" className="text-xs">
               <BookOpen className="h-3 w-3 mr-1" />
               Teach
@@ -448,7 +500,7 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
           </TabsList>
           
           {/* TEACH MODE */}
-          <TabsContent value="teach" className="mt-2 flex-1 flex flex-col gap-2 overflow-hidden">
+          <TabsContent value="teach" className="mt-2 flex-1 flex flex-col gap-2 overflow-hidden min-h-0">
             {/* Preset Templates */}
             <div className="flex-shrink-0">
               <p className="text-xs text-muted-foreground mb-1">Quick Add Templates:</p>
@@ -513,7 +565,7 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
             </div>
             
             {/* Symbol Picker */}
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1 min-h-0">
               <div className="space-y-2 pr-2">
                 {symbolCategories.map(({ category, symbols }) => (
                   <div key={category}>
@@ -559,7 +611,7 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
             
             {/* Saved Patterns */}
             {patterns.length > 0 && (
-              <ScrollArea className="max-h-32">
+              <ScrollArea className="max-h-24 flex-shrink-0">
                 <div className="space-y-1 pr-2">
                   {patterns.map(pattern => (
                     <div key={pattern.id} className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
@@ -590,7 +642,7 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
           </TabsContent>
           
           {/* NETWORK VIEW MODE */}
-          <TabsContent value="network" className="mt-2 flex-1 flex flex-col gap-2 overflow-hidden">
+          <TabsContent value="network" className="mt-2 flex-1 flex flex-col gap-2 overflow-hidden min-h-0">
             {patterns.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center text-muted-foreground">
                 <Network className="h-8 w-8 mb-2 opacity-50" />
@@ -639,7 +691,7 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
           </TabsContent>
           
           {/* GENERATE MODE */}
-          <TabsContent value="generate" className="mt-2 flex-1 flex flex-col gap-2 overflow-hidden">
+          <TabsContent value="generate" className="mt-2 flex-1 flex flex-col gap-2 overflow-hidden min-h-0">
             {patterns.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center text-muted-foreground">
                 <Brain className="h-8 w-8 mb-2 opacity-50" />
