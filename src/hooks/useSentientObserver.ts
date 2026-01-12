@@ -38,6 +38,8 @@ interface UseSentientObserverReturn {
   explorationFrequency: number;
   recentlyExploredIndices: number[];
   explorationProgress: number;
+  oscillatorActivationCounts: number[];
+  autoExploreEnabled: boolean;
   
   // Actions
   setIsRunning: (running: boolean) => void;
@@ -52,6 +54,7 @@ interface UseSentientObserverReturn {
   exciteByPrimes: (primes: number[], amplitudes: number[]) => void;
   setExplorationTemperature: (temp: number) => void;
   setExplorationFrequency: (freq: number) => void;
+  setAutoExploreEnabled: (enabled: boolean) => void;
 }
 
 // Initialize oscillators with clustered phases for easier synchronization
@@ -172,6 +175,10 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
   const [explorationFrequency, setExplorationFrequency] = useState(2000); // ms between explorations
   const [recentlyExploredIndices, setRecentlyExploredIndices] = useState<number[]>([]);
   const [explorationProgress, setExplorationProgress] = useState(0);
+  const [oscillatorActivationCounts, setOscillatorActivationCounts] = useState<number[]>(() => 
+    new Array(NUM_OSCILLATORS).fill(0)
+  );
+  const [autoExploreEnabled, setAutoExploreEnabled] = useState(false);
 
   // Animation frame ref
   const animationRef = useRef<number>(0);
@@ -203,14 +210,20 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
     });
 
     // Exploration logic: when coherence is high and system is stable, excite new oscillators
+    // Auto-explore mode reduces coherence threshold and speeds up exploration
+    const coherenceThreshold = autoExploreEnabled ? 0.3 : 0.6;
+    const frequencyMultiplier = autoExploreEnabled ? 0.5 : 1;
     const shouldExplore = 
-      orderParam > 0.6 && 
-      now - lastExplorationRef.current > explorationFrequency && // Use configurable frequency
+      orderParam > coherenceThreshold && 
+      now - lastExplorationRef.current > (explorationFrequency * frequencyMultiplier) &&
       explorationCooldownRef.current <= 0;
 
     let explorationTargets: number[] = [];
     
-    if (shouldExplore) {
+    // Check if exploration is complete
+    const isFullyExplored = exploredOscillatorsRef.current.size >= N;
+    
+    if (shouldExplore && !isFullyExplored) {
       // Find oscillators that haven't been explored much
       const unexploredIndices: number[] = [];
       const lowActivityIndices: number[] = [];
@@ -228,14 +241,24 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
       
       if (candidates.length > 0) {
         // Number of oscillators to excite scales with exploration temperature
-        const baseExcite = 2;
+        // Auto-explore mode increases the number
+        const baseExcite = autoExploreEnabled ? 4 : 2;
         const tempBonus = Math.floor(explorationTemperature * 4);
         const numToExcite = Math.min(candidates.length, baseExcite + tempBonus);
         const shuffled = [...candidates].sort(() => Math.random() - 0.5);
         explorationTargets = shuffled.slice(0, numToExcite);
         
         lastExplorationRef.current = now;
-        explorationCooldownRef.current = 60; // frames until next exploration check
+        explorationCooldownRef.current = autoExploreEnabled ? 30 : 60;
+        
+        // Update activation counts for heatmap
+        setOscillatorActivationCounts(prev => {
+          const newCounts = [...prev];
+          explorationTargets.forEach(idx => {
+            newCounts[idx] = (newCounts[idx] || 0) + 1;
+          });
+          return newCounts;
+        });
         
         // Update recently explored indices for visualization
         setRecentlyExploredIndices(explorationTargets);
@@ -247,6 +270,11 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
           );
         }, 1500);
       }
+    }
+    
+    // Auto-disable auto-explore when fully explored
+    if (isFullyExplored && autoExploreEnabled) {
+      setAutoExploreEnabled(false);
     }
     
     // Update exploration progress
@@ -506,6 +534,10 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
     exploredOscillatorsRef.current.clear();
     lastExplorationRef.current = 0;
     explorationCooldownRef.current = 0;
+    setOscillatorActivationCounts(new Array(NUM_OSCILLATORS).fill(0));
+    setRecentlyExploredIndices([]);
+    setExplorationProgress(0);
+    setAutoExploreEnabled(false);
     // Reset goals progress
     setGoals([
       { id: 'g1', description: 'Maintain coherence above 0.5', status: 'active', priority: 0.8, progress: 0.6 },
@@ -605,6 +637,8 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
     explorationFrequency,
     recentlyExploredIndices,
     explorationProgress,
+    oscillatorActivationCounts,
+    autoExploreEnabled,
     setIsRunning,
     setCoupling,
     setTemperature,
@@ -616,6 +650,7 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
     boostCoherence,
     exciteByPrimes,
     setExplorationTemperature,
-    setExplorationFrequency
+    setExplorationFrequency,
+    setAutoExploreEnabled
   };
 };

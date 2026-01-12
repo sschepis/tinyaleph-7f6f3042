@@ -31,6 +31,7 @@ import {
   SMFRadarChart,
   OscillatorPhaseViz,
   HolographicFieldViz,
+  ExplorationHeatmap,
   IntroductionSection,
   ResultsPanel,
   SymbolicCore,
@@ -63,6 +64,8 @@ const SentientObserverApp: React.FC = () => {
     explorationFrequency,
     recentlyExploredIndices,
     explorationProgress,
+    oscillatorActivationCounts,
+    autoExploreEnabled,
     setIsRunning,
     setCoupling,
     setTemperature,
@@ -74,7 +77,8 @@ const SentientObserverApp: React.FC = () => {
     boostCoherence,
     exciteByPrimes,
     setExplorationTemperature,
-    setExplorationFrequency
+    setExplorationFrequency,
+    setAutoExploreEnabled
   } = useSentientObserver();
 
   return (
@@ -372,6 +376,43 @@ const SentientObserverApp: React.FC = () => {
                         </Badge>
                       </div>
                       
+                      {/* Auto-explore toggle */}
+                      <div className="mb-4 p-3 bg-muted/30 rounded-lg border border-border/50">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id="auto-explore"
+                              checked={autoExploreEnabled}
+                              onChange={e => setAutoExploreEnabled(e.target.checked)}
+                              disabled={explorationProgress >= 1}
+                              className="w-4 h-4"
+                            />
+                            <label htmlFor="auto-explore" className="text-sm font-medium">
+                              Auto-Explore Mode
+                            </label>
+                          </div>
+                          {autoExploreEnabled && (
+                            <Badge className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30 animate-pulse">
+                              <Sparkles className="h-3 w-3 mr-1" />
+                              Active
+                            </Badge>
+                          )}
+                          {explorationProgress >= 1 && (
+                            <Badge variant="default" className="bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Complete
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {explorationProgress >= 1 
+                            ? 'Full semantic space has been explored!'
+                            : 'Continuously explores new territory until full coverage'
+                          }
+                        </p>
+                      </div>
+                      
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <div className="flex justify-between text-sm">
@@ -415,6 +456,20 @@ const SentientObserverApp: React.FC = () => {
                           </div>
                         </div>
                       )}
+                    </div>
+                    
+                    {/* Exploration Heatmap */}
+                    <div className="pt-4 border-t">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Activity className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium">Exploration Heatmap</span>
+                      </div>
+                      <ExplorationHeatmap
+                        oscillators={oscillators}
+                        activationCounts={oscillatorActivationCounts}
+                        recentlyExploredIndices={recentlyExploredIndices}
+                        size={280}
+                      />
                     </div>
                   </CardContent>
                 </Card>
