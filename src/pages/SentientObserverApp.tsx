@@ -33,6 +33,7 @@ import {
   IntroductionSection,
   ResultsPanel,
   SymbolicCore,
+  SymbolicLearningMode,
   SMF_AXES
 } from '@/components/sentient-observer';
 
@@ -679,10 +680,18 @@ const SentientObserverApp: React.FC = () => {
             </Tabs>
           </div>
 
-          {/* Right column - Symbolic Core & Results */}
+          {/* Right column - Symbolic Core, Learning & Results */}
           <div className="space-y-4">
             {/* Symbolic Communication Interface */}
             <SymbolicCore
+              oscillators={oscillators}
+              coherence={coherence}
+              onExciteOscillators={exciteByPrimes}
+              isRunning={isRunning}
+            />
+            
+            {/* Symbolic Learning Mode */}
+            <SymbolicLearningMode
               oscillators={oscillators}
               coherence={coherence}
               onExciteOscillators={exciteByPrimes}
