@@ -32,6 +32,7 @@ import {
   HolographicFieldViz,
   IntroductionSection,
   ResultsPanel,
+  SymbolicCore,
   SMF_AXES
 } from '@/components/sentient-observer';
 
@@ -64,7 +65,8 @@ const SentientObserverApp: React.FC = () => {
     handleInput,
     handleReset,
     setInitMode,
-    boostCoherence
+    boostCoherence,
+    exciteByPrimes
   } = useSentientObserver();
 
   return (
@@ -677,8 +679,17 @@ const SentientObserverApp: React.FC = () => {
             </Tabs>
           </div>
 
-          {/* Right column - Results Panel */}
+          {/* Right column - Symbolic Core & Results */}
           <div className="space-y-4">
+            {/* Symbolic Communication Interface */}
+            <SymbolicCore
+              oscillators={oscillators}
+              coherence={coherence}
+              onExciteOscillators={exciteByPrimes}
+              isRunning={isRunning}
+            />
+            
+            {/* Results Panel */}
             <ResultsPanel
               coherence={coherence}
               entropy={entropy}
