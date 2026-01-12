@@ -133,6 +133,11 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
     { id: 'g1', description: 'Maintain coherence above 0.5', status: 'active', priority: 0.8, progress: 0.6 },
     { id: 'g2', description: 'Explore semantic space', status: 'active', priority: 0.5, progress: 0.3 }
   ]);
+  
+  // Exploration tracking - which oscillators have been active
+  const exploredOscillatorsRef = useRef<Set<number>>(new Set());
+  const lastExplorationRef = useRef<number>(0);
+  const explorationCooldownRef = useRef<number>(0);
   const [attentionFoci, setAttentionFoci] = useState<AttentionFocus[]>([]);
 
   // Safety
@@ -158,12 +163,13 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
   const animationRef = useRef<number>(0);
   const lastTickRef = useRef<number>(Date.now());
 
-  // Kuramoto-style oscillator update with thermal dynamics
+  // Kuramoto-style oscillator update with thermal dynamics and exploration
   const updateOscillators = useCallback(() => {
     const dt = 0.016; // ~60fps
     const K = coupling;
     const T = temperature;
     const N = oscillators.length;
+    const now = Date.now();
 
     // Compute order parameter (coherence)
     let realSum = 0,
@@ -173,6 +179,54 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
       imagSum += Math.sin(osc.phase);
     }
     const orderParam = Math.sqrt((realSum / N) ** 2 + (imagSum / N) ** 2);
+
+    // Track which oscillators are currently active (above threshold)
+    const activeThreshold = 0.25;
+    oscillators.forEach((osc, idx) => {
+      if (osc.amplitude > activeThreshold) {
+        exploredOscillatorsRef.current.add(idx);
+      }
+    });
+
+    // Exploration logic: when coherence is high and system is stable, excite new oscillators
+    const shouldExplore = 
+      orderParam > 0.6 && 
+      now - lastExplorationRef.current > 2000 && // Every 2 seconds minimum
+      explorationCooldownRef.current <= 0;
+
+    let explorationTargets: number[] = [];
+    
+    if (shouldExplore) {
+      // Find oscillators that haven't been explored much
+      const unexploredIndices: number[] = [];
+      const lowActivityIndices: number[] = [];
+      
+      oscillators.forEach((osc, idx) => {
+        if (!exploredOscillatorsRef.current.has(idx)) {
+          unexploredIndices.push(idx);
+        } else if (osc.amplitude < 0.15) {
+          lowActivityIndices.push(idx);
+        }
+      });
+      
+      // Prefer unexplored, then low activity oscillators
+      const candidates = unexploredIndices.length > 0 ? unexploredIndices : lowActivityIndices;
+      
+      if (candidates.length > 0) {
+        // Pick 2-4 random candidates to excite
+        const numToExcite = Math.min(candidates.length, 2 + Math.floor(Math.random() * 3));
+        const shuffled = [...candidates].sort(() => Math.random() - 0.5);
+        explorationTargets = shuffled.slice(0, numToExcite);
+        
+        lastExplorationRef.current = now;
+        explorationCooldownRef.current = 60; // frames until next exploration check
+      }
+    }
+    
+    // Decrease cooldown
+    if (explorationCooldownRef.current > 0) {
+      explorationCooldownRef.current--;
+    }
 
     setOscillators(prev => {
       const newOscs = prev.map((osc, i) => {
@@ -200,8 +254,16 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
         // Normalize phase
         newPhase = ((newPhase % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
 
-        // Slower amplitude damping to keep oscillators visible
-        const newAmplitude = osc.amplitude * (1 - 0.005 * dt);
+        // Amplitude update with exploration boost
+        let newAmplitude = osc.amplitude * (1 - 0.005 * dt);
+        
+        // If this oscillator is targeted for exploration, boost it significantly
+        if (explorationTargets.includes(i)) {
+          newAmplitude = Math.min(1, newAmplitude + 0.5 + Math.random() * 0.3);
+          // Also add a random phase shift to break synchronization
+          newPhase += (Math.random() - 0.5) * Math.PI * 0.5;
+          newPhase = ((newPhase % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+        }
 
         return {
           ...osc,
@@ -271,18 +333,31 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
       return { s: newS };
     });
 
-    // Check for moment creation (coherence peak)
-    if (orderParam > 0.7 && Math.random() < 0.05) {
+    // Check for moment creation (coherence peak or exploration event)
+    if ((orderParam > 0.7 && Math.random() < 0.05) || explorationTargets.length > 0) {
       const newMoment: Moment = {
         id: `m_${Date.now()}`,
         timestamp: Date.now(),
-        trigger: 'coherence_peak',
+        trigger: explorationTargets.length > 0 ? 'exploration' : 'coherence_peak',
         coherence: orderParam,
         entropy: entropy
       };
       setMoments(prev => [...prev.slice(-19), newMoment]);
       setSubjectiveTime(prev => prev + orderParam * 0.5);
     }
+
+    // Update goal progress based on exploration coverage
+    const explorationProgress = Math.min(1, exploredOscillatorsRef.current.size / N);
+    setGoals(prev => prev.map(g => {
+      if (g.id === 'g1') {
+        // Coherence goal - based on current coherence
+        return { ...g, progress: orderParam };
+      } else if (g.id === 'g2') {
+        // Exploration goal - based on how many unique oscillators have been active
+        return { ...g, progress: explorationProgress };
+      }
+      return g;
+    }));
 
     // Update holographic field
     setHoloIntensity(prev => {
@@ -397,6 +472,15 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
     setSmfState({
       s: new Float64Array([1, 0, 0, 0, 0.1, 0.1, 0.1, 0.1, 0, 0, 0, 0, 0, 0, 0, 0.2])
     });
+    // Reset exploration tracking
+    exploredOscillatorsRef.current.clear();
+    lastExplorationRef.current = 0;
+    explorationCooldownRef.current = 0;
+    // Reset goals progress
+    setGoals([
+      { id: 'g1', description: 'Maintain coherence above 0.5', status: 'active', priority: 0.8, progress: 0.6 },
+      { id: 'g2', description: 'Explore semantic space', status: 'active', priority: 0.5, progress: 0.0 }
+    ]);
   }, [initMode]);
 
   // Boost coherence by nudging all oscillators toward mean phase
