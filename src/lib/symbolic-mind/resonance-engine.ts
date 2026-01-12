@@ -1,4 +1,4 @@
-import type { Symbol, MindState, ResonanceResult, WaveState } from './types';
+import type { Symbol, MindState, ResonanceResult, WaveState, InterferenceModel } from './types';
 import { SYMBOL_DATABASE, KEYWORD_MAP, getAllSymbols, CATEGORY_RESONANCE } from './symbol-database';
 
 const PHI = (1 + Math.sqrt(5)) / 2; // Golden ratio
@@ -69,6 +69,129 @@ function calculateInterference(wave1: number[], wave2: number[]): {
   
   return { interference, constructive, destructive };
 }
+
+// ============= QUANTUM COLLAPSE MODEL =============
+
+// Calculate probability amplitude for a symbol in superposition
+function quantumAmplitude(symbol: Symbol, anchors: Symbol[]): number {
+  const wave = symbol.state || primeToWave(symbol.prime);
+  let totalAmplitude = 0;
+  
+  for (const anchor of anchors) {
+    const anchorWave = anchor.state || primeToWave(anchor.prime);
+    // Quantum overlap integral
+    let overlap = 0;
+    for (let i = 0; i < WAVE_DIMENSIONS; i++) {
+      overlap += wave[i] * anchorWave[i];
+    }
+    // Square for probability
+    totalAmplitude += overlap * overlap;
+  }
+  
+  return Math.sqrt(totalAmplitude / anchors.length);
+}
+
+// Measure the quantum state - probabilistic collapse
+function quantumMeasure(symbols: Symbol[], anchors: Symbol[]): { symbol: Symbol; probability: number }[] {
+  const probabilities = symbols.map(s => ({
+    symbol: s,
+    probability: quantumAmplitude(s, anchors)
+  }));
+  
+  // Normalize probabilities
+  const total = probabilities.reduce((sum, p) => sum + p.probability, 0);
+  if (total > 0) {
+    for (const p of probabilities) {
+      p.probability /= total;
+    }
+  }
+  
+  return probabilities.sort((a, b) => b.probability - a.probability);
+}
+
+// Calculate quantum entropy (uncertainty in superposition)
+function quantumEntropy(symbols: Symbol[], anchors: Symbol[]): number {
+  const probs = quantumMeasure(symbols, anchors);
+  let entropy = 0;
+  
+  for (const { probability } of probs) {
+    if (probability > 0.001) {
+      entropy -= probability * Math.log2(probability);
+    }
+  }
+  
+  // Normalize by max entropy
+  const maxEntropy = Math.log2(symbols.length);
+  return maxEntropy > 0 ? entropy / maxEntropy : 0;
+}
+
+// ============= ATTRACTOR BASIN MODEL =============
+
+// Calculate attractor force toward an anchor
+function attractorForce(symbol: Symbol, anchor: Symbol): number[] {
+  const symbolWave = symbol.state || primeToWave(symbol.prime);
+  const anchorWave = anchor.state || primeToWave(anchor.prime);
+  
+  // Force vector points toward anchor proportional to similarity
+  const force = new Array(WAVE_DIMENSIONS).fill(0);
+  let similarity = 0;
+  
+  for (let i = 0; i < WAVE_DIMENSIONS; i++) {
+    const diff = anchorWave[i] - symbolWave[i];
+    force[i] = diff;
+    similarity += symbolWave[i] * anchorWave[i];
+  }
+  
+  // Scale by similarity (stronger pull to more similar anchors)
+  const scale = Math.max(0, (similarity + 1) / 2) * 0.1;
+  return force.map(f => f * scale);
+}
+
+// Calculate total potential energy in the attractor landscape
+function attractorEnergy(symbols: Symbol[], anchors: Symbol[]): number {
+  let totalEnergy = 0;
+  
+  for (const symbol of symbols) {
+    const wave = symbol.state || primeToWave(symbol.prime);
+    let minDistance = Infinity;
+    
+    for (const anchor of anchors) {
+      const anchorWave = anchor.state || primeToWave(anchor.prime);
+      let distance = 0;
+      for (let i = 0; i < WAVE_DIMENSIONS; i++) {
+        distance += (wave[i] - anchorWave[i]) ** 2;
+      }
+      minDistance = Math.min(minDistance, Math.sqrt(distance));
+    }
+    
+    totalEnergy += minDistance * minDistance;
+  }
+  
+  return totalEnergy / symbols.length;
+}
+
+// Find the dominant attractor basin for a symbol
+function findBasin(symbol: Symbol, anchors: Symbol[]): Symbol {
+  const wave = symbol.state || primeToWave(symbol.prime);
+  let bestAnchor = anchors[0];
+  let bestSimilarity = -Infinity;
+  
+  for (const anchor of anchors) {
+    const anchorWave = anchor.state || primeToWave(anchor.prime);
+    let similarity = 0;
+    for (let i = 0; i < WAVE_DIMENSIONS; i++) {
+      similarity += wave[i] * anchorWave[i];
+    }
+    if (similarity > bestSimilarity) {
+      bestSimilarity = similarity;
+      bestAnchor = anchor;
+    }
+  }
+  
+  return bestAnchor;
+}
+
+// ============= COMMON FUNCTIONS =============
 
 // Calculate resonance between two symbols using wave interference
 function computeResonance(s1: Symbol, s2: Symbol): number {
@@ -189,27 +312,15 @@ export function inferSymbolsFromText(text: string): Symbol[] {
     .map(({ symbol }) => symbol);
 }
 
-// ============= WAVE SUPERPOSITION COLLAPSE =============
+// ============= MODEL-SPECIFIC RESONANCE LOOPS =============
 
-export interface SuperpositionState {
-  waves: WaveState[];
-  collapsed: number[];
-  probability: number;
-}
-
-// Run the resonance loop with wave interference
-export function runResonanceLoop(
+// Wave Interference model loop
+function runWaveInterferenceLoop(
   inputSymbols: Symbol[],
-  anchoringSymbols: Symbol[],
+  anchors: Symbol[],
+  allSymbols: Symbol[],
   onIteration?: (state: MindState) => void
 ): MindState {
-  // Initialize wave states for anchors
-  const anchors = anchoringSymbols.map(s => ({
-    ...s,
-    state: s.state || primeToWave(s.prime)
-  }));
-  
-  // Initialize input symbols with their waves
   let activeSymbols = inputSymbols.map(s => ({
     ...s,
     state: s.state || primeToWave(s.prime)
@@ -218,12 +329,7 @@ export function runResonanceLoop(
   let iteration = 0;
   let coherence = 0;
   let converged = false;
-  
-  // Superposition of all active waves
   let superposition: number[] = [];
-  
-  // Get all symbols for resonance lookup
-  const allSymbols = getAllSymbols();
   
   while (iteration < MAX_ITERATIONS && !converged) {
     iteration++;
@@ -232,14 +338,12 @@ export function runResonanceLoop(
     const resonatedSymbols: Map<string, { symbol: Symbol; amplitude: number }> = new Map();
     
     for (const anchor of anchors) {
-      // Calculate how strongly this anchor is activated by input
       let anchorActivation = 0;
       for (const active of activeSymbols) {
         anchorActivation += computeResonance(active, anchor);
       }
       anchorActivation /= Math.max(activeSymbols.length, 1);
       
-      // If anchor is sufficiently activated, it resonates its domain symbols
       if (anchorActivation > 0.25) {
         const resonant = getResonantSymbols(anchor, allSymbols, 2);
         
@@ -260,20 +364,18 @@ export function runResonanceLoop(
     // Add strongly resonated symbols to active set
     for (const { symbol, amplitude } of resonatedSymbols.values()) {
       if (amplitude > 0.3 && !activeSymbols.find(s => s.id === symbol.id)) {
-        // Ensure the symbol has a state before adding
-        const symbolWithState = {
+        activeSymbols.push({
           ...symbol,
           state: symbol.state || primeToWave(symbol.prime)
-        };
-        activeSymbols.push(symbolWithState);
+        });
       }
     }
     
     // Build superposition from all active waves
     const waves = activeSymbols.map((s, i) => ({
       wave: s.state || primeToWave(s.prime),
-      amplitude: 1 / Math.sqrt(activeSymbols.length), // Normalize amplitudes
-      phase: (i * Math.PI * 2) / activeSymbols.length // Distribute phases
+      amplitude: 1 / Math.sqrt(activeSymbols.length),
+      phase: (i * Math.PI * 2) / activeSymbols.length
     }));
     
     superposition = superposeWaves(waves);
@@ -297,16 +399,15 @@ export function runResonanceLoop(
     coherence = Math.min(1, Math.max(0, coherence));
     converged = coherence >= COHERENCE_THRESHOLD;
     
-    const state: MindState = {
+    onIteration?.({
       anchoringSymbols: anchors,
       activeSymbols: [...activeSymbols],
       coherence,
       iteration,
       converged,
-      superposition, // Include the superposition state
-    };
-    
-    onIteration?.(state);
+      superposition,
+      model: 'wave',
+    });
   }
   
   return {
@@ -316,7 +417,227 @@ export function runResonanceLoop(
     iteration,
     converged,
     superposition,
+    model: 'wave',
   };
+}
+
+// Quantum Collapse model loop
+function runQuantumCollapseLoop(
+  inputSymbols: Symbol[],
+  anchors: Symbol[],
+  allSymbols: Symbol[],
+  onIteration?: (state: MindState) => void
+): MindState {
+  let activeSymbols = inputSymbols.map(s => ({
+    ...s,
+    state: s.state || primeToWave(s.prime)
+  }));
+  
+  let iteration = 0;
+  let coherence = 0;
+  let converged = false;
+  let superposition: number[] = new Array(WAVE_DIMENSIONS).fill(0);
+  
+  // Initial entropy (maximum uncertainty)
+  let entropy = 1;
+  
+  while (iteration < MAX_ITERATIONS && !converged) {
+    iteration++;
+    
+    // Expand superposition by adding symbols with high probability
+    const measured = quantumMeasure(allSymbols, anchors);
+    const topMeasured = measured.slice(0, 3);
+    
+    for (const { symbol, probability } of topMeasured) {
+      if (probability > 0.1 && !activeSymbols.find(s => s.id === symbol.id)) {
+        activeSymbols.push({
+          ...symbol,
+          state: symbol.state || primeToWave(symbol.prime)
+        });
+      }
+    }
+    
+    // Calculate probability amplitudes for superposition
+    for (let i = 0; i < WAVE_DIMENSIONS; i++) {
+      let amplitude = 0;
+      for (const symbol of activeSymbols) {
+        const wave = symbol.state || primeToWave(symbol.prime);
+        const prob = quantumAmplitude(symbol, anchors);
+        amplitude += wave[i] * prob;
+      }
+      superposition[i] = amplitude;
+    }
+    
+    // Normalize
+    const norm = Math.sqrt(superposition.reduce((sum, v) => sum + v * v, 0));
+    if (norm > 0) {
+      superposition = superposition.map(v => v / norm);
+    }
+    
+    // Update entropy (decreases as system collapses)
+    entropy = quantumEntropy(activeSymbols, anchors);
+    
+    // Coherence is inverse of entropy (low entropy = high coherence)
+    coherence = 1 - entropy * 0.7;
+    converged = entropy < 0.3; // System has "collapsed"
+    
+    onIteration?.({
+      anchoringSymbols: anchors,
+      activeSymbols: [...activeSymbols],
+      coherence,
+      iteration,
+      converged,
+      superposition,
+      model: 'quantum',
+      quantumEntropy: entropy,
+    });
+  }
+  
+  return {
+    anchoringSymbols: anchors,
+    activeSymbols,
+    coherence,
+    iteration,
+    converged,
+    superposition,
+    model: 'quantum',
+    quantumEntropy: entropy,
+  };
+}
+
+// Attractor Basin model loop
+function runAttractorBasinLoop(
+  inputSymbols: Symbol[],
+  anchors: Symbol[],
+  allSymbols: Symbol[],
+  onIteration?: (state: MindState) => void
+): MindState {
+  let activeSymbols = inputSymbols.map(s => ({
+    ...s,
+    state: s.state || primeToWave(s.prime)
+  }));
+  
+  let iteration = 0;
+  let coherence = 0;
+  let converged = false;
+  let superposition: number[] = new Array(WAVE_DIMENSIONS).fill(0);
+  
+  // Track energy dissipation
+  let energy = attractorEnergy(activeSymbols, anchors);
+  const initialEnergy = energy;
+  
+  while (iteration < MAX_ITERATIONS && !converged) {
+    iteration++;
+    
+    // Apply attractor forces to each symbol
+    for (const symbol of activeSymbols) {
+      if (!symbol.state) {
+        symbol.state = primeToWave(symbol.prime);
+      }
+      
+      // Find the dominant basin and move toward it
+      const basin = findBasin(symbol, anchors);
+      const force = attractorForce(symbol, basin);
+      
+      // Update state with damped dynamics
+      const damping = 0.85;
+      for (let i = 0; i < WAVE_DIMENSIONS; i++) {
+        symbol.state[i] += force[i] * damping;
+      }
+      
+      // Re-normalize
+      const norm = Math.sqrt(symbol.state.reduce((sum, v) => sum + v * v, 0));
+      if (norm > 0) {
+        symbol.state = symbol.state.map(v => v / norm);
+      }
+    }
+    
+    // Add symbols near basin attractors
+    for (const anchor of anchors) {
+      const nearbySymbols = getResonantSymbols(anchor, allSymbols, 1);
+      for (const symbol of nearbySymbols) {
+        if (!activeSymbols.find(s => s.id === symbol.id)) {
+          const newSymbol = {
+            ...symbol,
+            state: symbol.state || primeToWave(symbol.prime)
+          };
+          // Only add if it would reduce energy
+          const testSymbols = [...activeSymbols, newSymbol];
+          const newEnergy = attractorEnergy(testSymbols, anchors);
+          if (newEnergy < energy * 0.95) {
+            activeSymbols.push(newSymbol);
+          }
+        }
+      }
+    }
+    
+    // Calculate current energy
+    energy = attractorEnergy(activeSymbols, anchors);
+    
+    // Build superposition as centroid of all active states
+    for (let i = 0; i < WAVE_DIMENSIONS; i++) {
+      let sum = 0;
+      for (const symbol of activeSymbols) {
+        const wave = symbol.state || primeToWave(symbol.prime);
+        sum += wave[i];
+      }
+      superposition[i] = sum / activeSymbols.length;
+    }
+    
+    // Coherence based on energy minimization
+    coherence = initialEnergy > 0 ? 1 - (energy / initialEnergy) : 0;
+    coherence = Math.min(1, Math.max(0, coherence));
+    converged = energy < 0.1 || (initialEnergy > 0 && energy / initialEnergy < 0.2);
+    
+    onIteration?.({
+      anchoringSymbols: anchors,
+      activeSymbols: [...activeSymbols],
+      coherence,
+      iteration,
+      converged,
+      superposition,
+      model: 'attractor',
+      attractorEnergy: energy,
+    });
+  }
+  
+  return {
+    anchoringSymbols: anchors,
+    activeSymbols,
+    coherence,
+    iteration,
+    converged,
+    superposition,
+    model: 'attractor',
+    attractorEnergy: energy,
+  };
+}
+
+// ============= MAIN RESONANCE LOOP =============
+
+export function runResonanceLoop(
+  inputSymbols: Symbol[],
+  anchoringSymbols: Symbol[],
+  onIteration?: (state: MindState) => void,
+  model: InterferenceModel = 'wave'
+): MindState {
+  // Initialize wave states for anchors
+  const anchors = anchoringSymbols.map(s => ({
+    ...s,
+    state: s.state || primeToWave(s.prime)
+  }));
+  
+  const allSymbols = getAllSymbols();
+  
+  switch (model) {
+    case 'quantum':
+      return runQuantumCollapseLoop(inputSymbols, anchors, allSymbols, onIteration);
+    case 'attractor':
+      return runAttractorBasinLoop(inputSymbols, anchors, allSymbols, onIteration);
+    case 'wave':
+    default:
+      return runWaveInterferenceLoop(inputSymbols, anchors, allSymbols, onIteration);
+  }
 }
 
 // Collapse the superposition to select output symbols
@@ -325,23 +646,53 @@ export function selectOutputSymbols(state: MindState): Symbol[] {
     return state.activeSymbols.slice(0, 5);
   }
   
-  // Calculate "collapse probability" for each active symbol
+  // Model-specific collapse behavior
+  if (state.model === 'quantum') {
+    // Probabilistic selection based on quantum amplitudes
+    const measured = state.activeSymbols.map(symbol => {
+      const wave = symbol.state || primeToWave(symbol.prime);
+      let overlap = 0;
+      for (let i = 0; i < WAVE_DIMENSIONS; i++) {
+        overlap += wave[i] * state.superposition![i];
+      }
+      return { symbol, probability: Math.abs(overlap) };
+    });
+    
+    measured.sort((a, b) => b.probability - a.probability);
+    return measured.slice(0, 6).map(m => m.symbol);
+  }
+  
+  if (state.model === 'attractor') {
+    // Select symbols closest to their basin attractors
+    const scored = state.activeSymbols.map(symbol => {
+      let minDist = Infinity;
+      for (const anchor of state.anchoringSymbols) {
+        const wave = symbol.state || primeToWave(symbol.prime);
+        const anchorWave = anchor.state || primeToWave(anchor.prime);
+        let dist = 0;
+        for (let i = 0; i < WAVE_DIMENSIONS; i++) {
+          dist += (wave[i] - anchorWave[i]) ** 2;
+        }
+        minDist = Math.min(minDist, Math.sqrt(dist));
+      }
+      return { symbol, stability: 1 / (1 + minDist) };
+    });
+    
+    scored.sort((a, b) => b.stability - a.stability);
+    return scored.slice(0, 6).map(s => s.symbol);
+  }
+  
+  // Wave interference (default)
   const collapseScores: { symbol: Symbol; probability: number }[] = [];
   
   for (const symbol of state.activeSymbols) {
     const wave = symbol.state || primeToWave(symbol.prime);
     const { interference, constructive } = calculateInterference(wave, state.superposition);
-    
-    // Probability weighted by interference quality and prime fundamentality
     const probability = (interference + 1) / 2 * constructive * (1000 / symbol.prime);
-    
     collapseScores.push({ symbol, probability });
   }
   
-  // Sort by collapse probability
   collapseScores.sort((a, b) => b.probability - a.probability);
-  
-  // Return top symbols that "survive" the collapse
   return collapseScores.slice(0, Math.min(6, collapseScores.length)).map(s => s.symbol);
 }
 
