@@ -78,8 +78,11 @@ export function ChatMessage({ message, isStreaming = false }: ChatMessageProps) 
               {message.content}
             </p>
           ) : (
-            <div className="text-sm leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5">
-              <MarkdownRenderer content={message.content} />
+            <div className="text-sm leading-relaxed">
+              <MarkdownRenderer 
+                content={message.content} 
+                className="prose-p:my-1.5 prose-headings:my-2 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5 prose-blockquote:my-2 prose-pre:my-2"
+              />
               {isStreaming && (
                 <motion.span
                   className="inline-block w-2 h-4 ml-1 bg-current"
