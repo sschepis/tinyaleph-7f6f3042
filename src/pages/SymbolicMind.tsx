@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MindVisualization } from '@/components/symbolic-mind/MindVisualization';
 import { ChatMessage } from '@/components/symbolic-mind/ChatMessage';
+import { SuperpositionWaveform } from '@/components/symbolic-mind/SuperpositionWaveform';
+import { InterferenceModelToggle, type InterferenceModel } from '@/components/symbolic-mind/InterferenceModelToggle';
 import { 
   inferSymbolsFromText, 
   runResonanceLoop, 
@@ -23,12 +25,14 @@ export default function SymbolicMind() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [anchoringSymbols] = useState<Symbol[]>(getDefaultAnchors);
+  const [interferenceModel, setInterferenceModel] = useState<InterferenceModel>('wave');
   const [mindState, setMindState] = useState<MindState>({
     anchoringSymbols: getDefaultAnchors(),
     activeSymbols: [],
     coherence: 0,
     iteration: 0,
     converged: false,
+    model: 'wave',
   });
   
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -71,7 +75,8 @@ export default function SymbolicMind() {
         (state) => {
           setMindState(state);
           finalState = state;
-        }
+        },
+        interferenceModel
       );
       finalState = result;
       setMindState(result);
@@ -98,6 +103,7 @@ export default function SymbolicMind() {
             finalState.activeSymbols.some(s => s.id === a.id)
           ),
           coherenceScore: finalState.coherence,
+          interferenceModel: interferenceModel,
           conversationHistory: messages.slice(-10).map(m => ({
             role: m.role,
             content: m.content,
@@ -183,7 +189,7 @@ export default function SymbolicMind() {
     setIsStreaming(false);
     setIsProcessing(false);
     inputRef.current?.focus();
-  }, [isProcessing, mindState, anchoringSymbols, messages]);
+  }, [isProcessing, mindState, anchoringSymbols, messages, interferenceModel]);
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -198,7 +204,15 @@ export default function SymbolicMind() {
       coherence: 0,
       iteration: 0,
       converged: false,
+      model: interferenceModel,
     });
+  };
+  
+  // Model names for display
+  const modelDisplayNames: Record<InterferenceModel, string> = {
+    wave: 'Wave Interference',
+    quantum: 'Quantum Collapse', 
+    attractor: 'Attractor Basin',
   };
   
   return (
@@ -218,10 +232,16 @@ export default function SymbolicMind() {
                 </p>
               </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={resetConversation}>
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Reset
-            </Button>
+            <div className="flex items-center gap-3">
+              <InterferenceModelToggle 
+                model={interferenceModel} 
+                onModelChange={setInterferenceModel} 
+              />
+              <Button variant="ghost" size="sm" onClick={resetConversation}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Reset
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -241,7 +261,8 @@ export default function SymbolicMind() {
                       </h3>
                       <p className="text-sm text-muted-foreground/70 max-w-md mx-auto">
                         Speak, and your words will transform into symbols. 
-                        The symbols will resonate with the anchoring archetypes 
+                        Using <span className="text-primary">{modelDisplayNames[interferenceModel]}</span>, 
+                        the symbols will resonate with the anchoring archetypes 
                         until coherence emerges, then translate back through wisdom.
                       </p>
                     </div>
@@ -274,7 +295,11 @@ export default function SymbolicMind() {
                           />
                         ))}
                       </div>
-                      <span className="text-sm">Resonating symbols...</span>
+                      <span className="text-sm">
+                        {interferenceModel === 'wave' && 'Computing wave interference...'}
+                        {interferenceModel === 'quantum' && 'Collapsing quantum states...'}
+                        {interferenceModel === 'attractor' && 'Finding attractor basins...'}
+                      </span>
                     </motion.div>
                   )}
                 </div>
@@ -304,11 +329,37 @@ export default function SymbolicMind() {
                 <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
                   <Brain className="w-4 h-4 text-primary" />
                   Resonance Field
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {modelDisplayNames[interferenceModel]}
+                  </span>
                 </h3>
                 <MindVisualization 
                   mindState={mindState}
                   width={380}
-                  height={380}
+                  height={320}
+                />
+              </div>
+              
+              {/* Superposition Waveform */}
+              <div className="bg-card/30 rounded-xl border border-border/40 p-4">
+                <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  Superposition State
+                  {mindState.model === 'quantum' && mindState.quantumEntropy !== undefined && (
+                    <span className="text-xs text-muted-foreground ml-auto">
+                      S = {mindState.quantumEntropy.toFixed(3)}
+                    </span>
+                  )}
+                  {mindState.model === 'attractor' && mindState.attractorEnergy !== undefined && (
+                    <span className="text-xs text-muted-foreground ml-auto">
+                      E = {mindState.attractorEnergy.toFixed(3)}
+                    </span>
+                  )}
+                </h3>
+                <SuperpositionWaveform
+                  superposition={mindState.superposition || new Array(16).fill(0)}
+                  coherence={mindState.coherence}
+                  converged={mindState.converged}
                 />
               </div>
               
