@@ -189,7 +189,7 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
             <span className="text-sm font-medium">Active Primes</span>
           </div>
           <div className="text-right">
-            <div className="font-mono">{activeCount}/32</div>
+            <div className="font-mono">{activeCount}/{oscillators.length}</div>
             <div className="text-xs text-muted-foreground">
               Energy: {totalEnergy.toFixed(2)}
             </div>
