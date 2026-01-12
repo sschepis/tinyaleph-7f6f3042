@@ -33,6 +33,12 @@ interface UseSentientObserverReturn {
   initMode: InitMode;
   peakCoherence: number;
   
+  // Exploration state
+  explorationTemperature: number;
+  explorationFrequency: number;
+  recentlyExploredIndices: number[];
+  explorationProgress: number;
+  
   // Actions
   setIsRunning: (running: boolean) => void;
   setCoupling: (coupling: number) => void;
@@ -44,6 +50,8 @@ interface UseSentientObserverReturn {
   setInitMode: (mode: InitMode) => void;
   boostCoherence: () => void;
   exciteByPrimes: (primes: number[], amplitudes: number[]) => void;
+  setExplorationTemperature: (temp: number) => void;
+  setExplorationFrequency: (freq: number) => void;
 }
 
 // Initialize oscillators with clustered phases for easier synchronization
@@ -158,6 +166,12 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
   // Mode and tracking
   const [initMode, setInitMode] = useState<InitMode>('clustered');
   const [peakCoherence, setPeakCoherence] = useState(0.5);
+  
+  // Exploration settings (user-controllable)
+  const [explorationTemperature, setExplorationTemperature] = useState(0.35);
+  const [explorationFrequency, setExplorationFrequency] = useState(2000); // ms between explorations
+  const [recentlyExploredIndices, setRecentlyExploredIndices] = useState<number[]>([]);
+  const [explorationProgress, setExplorationProgress] = useState(0);
 
   // Animation frame ref
   const animationRef = useRef<number>(0);
@@ -191,7 +205,7 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
     // Exploration logic: when coherence is high and system is stable, excite new oscillators
     const shouldExplore = 
       orderParam > 0.6 && 
-      now - lastExplorationRef.current > 2000 && // Every 2 seconds minimum
+      now - lastExplorationRef.current > explorationFrequency && // Use configurable frequency
       explorationCooldownRef.current <= 0;
 
     let explorationTargets: number[] = [];
@@ -213,15 +227,31 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
       const candidates = unexploredIndices.length > 0 ? unexploredIndices : lowActivityIndices;
       
       if (candidates.length > 0) {
-        // Pick 2-4 random candidates to excite
-        const numToExcite = Math.min(candidates.length, 2 + Math.floor(Math.random() * 3));
+        // Number of oscillators to excite scales with exploration temperature
+        const baseExcite = 2;
+        const tempBonus = Math.floor(explorationTemperature * 4);
+        const numToExcite = Math.min(candidates.length, baseExcite + tempBonus);
         const shuffled = [...candidates].sort(() => Math.random() - 0.5);
         explorationTargets = shuffled.slice(0, numToExcite);
         
         lastExplorationRef.current = now;
         explorationCooldownRef.current = 60; // frames until next exploration check
+        
+        // Update recently explored indices for visualization
+        setRecentlyExploredIndices(explorationTargets);
+        
+        // Clear the visual highlight after a short delay
+        setTimeout(() => {
+          setRecentlyExploredIndices(prev => 
+            prev.filter(idx => !explorationTargets.includes(idx))
+          );
+        }, 1500);
       }
     }
+    
+    // Update exploration progress
+    const currentExplorationProgress = exploredOscillatorsRef.current.size / N;
+    setExplorationProgress(currentExplorationProgress);
     
     // Decrease cooldown
     if (explorationCooldownRef.current > 0) {
@@ -571,6 +601,10 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
     inputHistory,
     initMode,
     peakCoherence,
+    explorationTemperature,
+    explorationFrequency,
+    recentlyExploredIndices,
+    explorationProgress,
     setIsRunning,
     setCoupling,
     setTemperature,
@@ -580,6 +614,8 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
     handleReset,
     setInitMode,
     boostCoherence,
-    exciteByPrimes
+    exciteByPrimes,
+    setExplorationTemperature,
+    setExplorationFrequency
   };
 };
