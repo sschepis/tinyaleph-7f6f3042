@@ -14,26 +14,35 @@ export function MindVisualization({
   width = 400, 
   height = 400 
 }: MindVisualizationProps) {
-  // Add padding to prevent symbol cutoff (symbol size + label space)
-  const padding = 60;
+  // Dynamic padding based on size
+  const padding = Math.max(40, Math.min(width, height) * 0.12);
+  const footerHeight = 28;
   const usableWidth = width - padding * 2;
-  const usableHeight = height - padding * 2;
+  const usableHeight = height - padding - footerHeight - 10;
   const centerX = width / 2;
-  const centerY = height / 2;
+  const centerY = (height - footerHeight) / 2;
+  
+  // Calculate optimal radius based on symbol count and container size
+  const anchorRadius = useMemo(() => {
+    const symbolCount = mindState.anchoringSymbols.length;
+    const maxRadius = Math.min(usableWidth, usableHeight) * 0.44;
+    // Ensure minimum spacing between symbols (symbol size + gap)
+    const minSpacingRadius = (symbolCount * 56) / (2 * Math.PI);
+    return Math.max(minSpacingRadius, maxRadius * 0.6);
+  }, [mindState.anchoringSymbols.length, usableWidth, usableHeight]);
   
   // Position anchoring symbols in a circle with proper padding
   const anchorPositions = useMemo(() => {
     return mindState.anchoringSymbols.map((symbol, i) => {
       const angle = (i / mindState.anchoringSymbols.length) * Math.PI * 2 - Math.PI / 2;
-      const radius = Math.min(usableWidth, usableHeight) * 0.42;
       return {
         symbol,
-        x: centerX + Math.cos(angle) * radius,
-        y: centerY + Math.sin(angle) * radius,
+        x: centerX + Math.cos(angle) * anchorRadius,
+        y: centerY + Math.sin(angle) * anchorRadius,
         angle,
       };
     });
-  }, [mindState.anchoringSymbols, usableWidth, usableHeight, centerX, centerY]);
+  }, [mindState.anchoringSymbols, anchorRadius, centerX, centerY]);
   
   // Position active symbols in inner orbits based on their category
   const activePositions = useMemo(() => {
@@ -52,8 +61,12 @@ export function MindVisualization({
     const positions: { symbol: typeof activeOnly[0]; x: number; y: number; orbit: number }[] = [];
     let categoryIndex = 0;
     
+    // Inner orbits should be well inside the anchor ring
+    const innerRadiusBase = anchorRadius * 0.3;
+    const innerRadiusStep = anchorRadius * 0.12;
+    
     for (const [, symbols] of categories) {
-      const orbitRadius = Math.min(usableWidth, usableHeight) * (0.12 + categoryIndex * 0.06);
+      const orbitRadius = innerRadiusBase + categoryIndex * innerRadiusStep;
       symbols.forEach((symbol, i) => {
         const angle = (i / symbols.length) * Math.PI * 2 + categoryIndex * 0.5;
         positions.push({
@@ -67,7 +80,7 @@ export function MindVisualization({
     }
     
     return positions;
-  }, [mindState.activeSymbols, mindState.anchoringSymbols, usableWidth, usableHeight, centerX, centerY]);
+  }, [mindState.activeSymbols, mindState.anchoringSymbols, anchorRadius, centerX, centerY]);
   
   // Calculate wave interference lines - now showing constructive/destructive
   const interferenceLines = useMemo(() => {
@@ -116,36 +129,39 @@ export function MindVisualization({
     if (!mindState.superposition) return [];
     
     const rings: { radius: number; amplitude: number; phase: number }[] = [];
-    const numRings = 5;
-    const maxRadius = Math.min(usableWidth, usableHeight) * 0.25;
+    const numRings = 4;
+    const maxRadius = anchorRadius * 0.25;
     
     for (let i = 0; i < numRings; i++) {
       const componentIndex = Math.floor((i / numRings) * 16);
       const amplitude = Math.abs(mindState.superposition[componentIndex] || 0);
       const phase = (i * Math.PI * 2) / numRings;
-      const radius = 20 + i * (maxRadius / numRings);
+      const radius = 15 + i * (maxRadius / numRings);
       
       rings.push({ radius, amplitude, phase });
     }
     
     return rings;
-  }, [mindState.superposition, usableWidth, usableHeight]);
+  }, [mindState.superposition, anchorRadius]);
+  
+  // Coherence indicator size - keep it compact
+  const coherenceSize = 60 + mindState.coherence * 30;
   
   return (
     <div 
-      className="relative bg-background/50 rounded-xl border border-border/30"
+      className="relative bg-background/50 rounded-xl border border-border/30 overflow-hidden"
       style={{ width, height }}
     >
       {/* Background gradient */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 pointer-events-none">
         <div 
           className="w-full h-full"
           style={{
             background: `
-              radial-gradient(circle at center, 
-                hsl(var(--primary) / 0.15) 0%, 
-                hsl(var(--primary) / 0.05) 30%,
-                transparent 60%
+              radial-gradient(circle at ${centerX}px ${centerY}px, 
+                hsl(var(--primary) / 0.12) 0%, 
+                hsl(var(--primary) / 0.04) 30%,
+                transparent 55%
               )
             `,
           }}
@@ -169,6 +185,17 @@ export function MindVisualization({
             <stop offset="100%" stopColor="hsl(0, 70%, 50%)" stopOpacity="0.2" />
           </linearGradient>
         </defs>
+        
+        {/* Anchor orbit ring - subtle guide */}
+        <circle
+          cx={centerX}
+          cy={centerY}
+          r={anchorRadius}
+          fill="none"
+          stroke="hsl(var(--border) / 0.3)"
+          strokeWidth={1}
+          strokeDasharray="4 8"
+        />
         
         {/* Superposition wave rings */}
         {superpositionRings.map((ring, i) => (
@@ -215,13 +242,15 @@ export function MindVisualization({
       
       {/* Center coherence indicator with wave animation */}
       <motion.div
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+        className="absolute rounded-full pointer-events-none"
         style={{
-          width: 70 + mindState.coherence * 50,
-          height: 70 + mindState.coherence * 50,
+          left: centerX - coherenceSize / 2,
+          top: centerY - coherenceSize / 2,
+          width: coherenceSize,
+          height: coherenceSize,
           background: `radial-gradient(circle, 
-            hsl(var(--primary) / ${mindState.coherence * 0.5}) 0%, 
-            hsl(var(--primary) / ${mindState.coherence * 0.2}) 40%,
+            hsl(var(--primary) / ${mindState.coherence * 0.4}) 0%, 
+            hsl(var(--primary) / ${mindState.coherence * 0.15}) 40%,
             transparent 70%
           )`,
         }}
@@ -236,15 +265,22 @@ export function MindVisualization({
       />
       
       {/* Coherence display */}
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-10">
+      <div 
+        className="absolute text-center z-20 pointer-events-none"
+        style={{
+          left: centerX,
+          top: centerY,
+          transform: 'translate(-50%, -50%)',
+        }}
+      >
         <motion.div 
-          className="text-2xl font-bold text-primary"
+          className="text-xl font-bold text-primary"
           animate={{ scale: mindState.converged ? [1, 1.1, 1] : 1 }}
           transition={{ duration: 0.3 }}
         >
           {Math.round(mindState.coherence * 100)}%
         </motion.div>
-        <div className="text-xs text-muted-foreground">
+        <div className="text-[10px] text-muted-foreground">
           {mindState.converged ? '✨ collapsed' : 'coherence'}
         </div>
       </div>
@@ -270,11 +306,17 @@ export function MindVisualization({
         />
       ))}
       
-      {/* Status indicators */}
-      <div className="absolute bottom-2 left-2 text-xs text-muted-foreground">
+      {/* Status indicators - positioned in footer area */}
+      <div 
+        className="absolute left-3 text-xs text-muted-foreground"
+        style={{ bottom: 8 }}
+      >
         {mindState.activeSymbols.length} symbols
       </div>
-      <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
+      <div 
+        className="absolute right-3 text-xs text-muted-foreground"
+        style={{ bottom: 8 }}
+      >
         iter {mindState.iteration}
         {mindState.converged && <span className="ml-1 text-green-400">✓</span>}
       </div>
