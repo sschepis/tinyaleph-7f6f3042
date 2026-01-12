@@ -3,11 +3,19 @@ import { motion } from 'framer-motion';
 import { SYMBOL_DATABASE } from '@/lib/symbolic-mind/symbol-database';
 import type { SymbolicSymbol } from '@/lib/symbolic-mind/types';
 
+interface ActivePath {
+  visitedNodes: string[];
+  currentNode: string | null;
+  traversedEdges: { from: string; to: string }[];
+}
+
 interface TransitionNetworkGraphProps {
   transitionMatrix: Map<string, Map<string, number>>;
   startSymbols: Map<string, number>;
   width?: number;
   height?: number;
+  activePath?: ActivePath;
+  isAnimating?: boolean;
 }
 
 interface Node {
@@ -121,7 +129,9 @@ export function TransitionNetworkGraph({
   transitionMatrix, 
   startSymbols,
   width = 400,
-  height = 300 
+  height = 300,
+  activePath,
+  isAnimating = false
 }: TransitionNetworkGraphProps) {
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [hoveredEdge, setHoveredEdge] = useState<{ from: string; to: string } | null>(null);
@@ -300,6 +310,21 @@ export function TransitionNetworkGraph({
         >
           <polygon points="0 0, 8 2.5, 0 5" fill="hsl(var(--primary))" />
         </marker>
+        {/* Glow filter for active elements */}
+        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <filter id="glow-strong" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="5" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
       </defs>
       
       {/* Edges */}
@@ -308,16 +333,53 @@ export function TransitionNetworkGraph({
           if (!edge) return null;
           const isHovered = hoveredEdge?.from === edge.from && hoveredEdge?.to === edge.to;
           const isConnectedToHovered = hoveredNode === edge.from || hoveredNode === edge.to;
-          const opacity = hoveredNode ? (isConnectedToHovered ? 1 : 0.15) : 0.6;
+          
+          // Check if this edge is part of the active path
+          const isTraversed = activePath?.traversedEdges.some(
+            e => e.from === edge.from && e.to === edge.to
+          );
+          const isCurrentEdge = activePath?.traversedEdges.length && 
+            activePath.traversedEdges[activePath.traversedEdges.length - 1]?.from === edge.from &&
+            activePath.traversedEdges[activePath.traversedEdges.length - 1]?.to === edge.to;
+          
+          let opacity = hoveredNode ? (isConnectedToHovered ? 1 : 0.15) : 0.6;
+          let strokeColor = "hsl(var(--primary))";
+          
+          if (isAnimating && activePath) {
+            if (isCurrentEdge) {
+              opacity = 1;
+              strokeColor = "hsl(142, 76%, 55%)"; // Bright green for current
+            } else if (isTraversed) {
+              opacity = 0.9;
+              strokeColor = "hsl(142, 60%, 45%)"; // Green for traversed
+            } else {
+              opacity = 0.2;
+            }
+          }
+          
           const strokeWidth = 1 + (edge.weight / maxWeight) * 3;
           
           return (
             <g key={`${edge.from}-${edge.to}`}>
+              {/* Glow effect for current edge */}
+              {isCurrentEdge && (
+                <motion.path
+                  d={edge.path}
+                  fill="none"
+                  stroke="hsl(142, 76%, 55%)"
+                  strokeWidth={strokeWidth + 4}
+                  opacity={0.4}
+                  strokeLinecap="round"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: [0.2, 0.6, 0.2] }}
+                  transition={{ duration: 0.8, repeat: Infinity }}
+                />
+              )}
               <motion.path
                 d={edge.path}
                 fill="none"
-                stroke="hsl(var(--primary))"
-                strokeWidth={isHovered ? strokeWidth + 1 : strokeWidth}
+                stroke={strokeColor}
+                strokeWidth={isHovered || isCurrentEdge ? strokeWidth + 1 : strokeWidth}
                 opacity={isHovered ? 1 : opacity}
                 strokeLinecap="round"
                 initial={{ pathLength: 0 }}
@@ -326,14 +388,29 @@ export function TransitionNetworkGraph({
                 onMouseEnter={() => setHoveredEdge({ from: edge.from, to: edge.to })}
                 onMouseLeave={() => setHoveredEdge(null)}
                 style={{ cursor: 'pointer' }}
+                filter={isCurrentEdge ? 'url(#glow)' : undefined}
               />
               {/* Arrow */}
               <polygon
                 points="-5,-3 5,0 -5,3"
-                fill="hsl(var(--primary))"
-                opacity={isHovered ? 1 : opacity}
+                fill={strokeColor}
+                opacity={isHovered || isCurrentEdge ? 1 : opacity}
                 transform={`translate(${edge.arrowX}, ${edge.arrowY}) rotate(${edge.arrowAngle})`}
               />
+              {/* Animated particle along current edge */}
+              {isCurrentEdge && (
+                <motion.circle
+                  r={4}
+                  fill="hsl(142, 76%, 65%)"
+                  filter="url(#glow)"
+                  initial={{ offsetDistance: '0%' }}
+                  animate={{ offsetDistance: '100%' }}
+                  transition={{ duration: 0.4, ease: 'easeOut' }}
+                  style={{ 
+                    offsetPath: `path('${edge.path}')`,
+                  }}
+                />
+              )}
               {/* Probability label on hover */}
               {isHovered && (
                 <text
@@ -357,7 +434,28 @@ export function TransitionNetworkGraph({
           const isConnected = hoveredNode ? 
             edges.some(e => (e.from === hoveredNode && e.to === node.id) || (e.to === hoveredNode && e.from === node.id)) : 
             false;
-          const opacity = hoveredNode ? (isHovered || isConnected ? 1 : 0.3) : 1;
+          
+          // Check if node is part of active path
+          const isVisited = activePath?.visitedNodes.includes(node.id);
+          const isCurrent = activePath?.currentNode === node.id;
+          
+          let opacity = hoveredNode ? (isHovered || isConnected ? 1 : 0.3) : 1;
+          let fillColor = node.isStart ? 'hsl(var(--primary) / 0.2)' : 'hsl(var(--background))';
+          let strokeColor = node.isStart ? 'hsl(var(--primary))' : 'hsl(var(--border))';
+          
+          if (isAnimating && activePath) {
+            if (isCurrent) {
+              fillColor = 'hsl(142, 76%, 55%)';
+              strokeColor = 'hsl(142, 76%, 65%)';
+              opacity = 1;
+            } else if (isVisited) {
+              fillColor = 'hsl(142, 60%, 35%)';
+              strokeColor = 'hsl(142, 60%, 45%)';
+              opacity = 0.9;
+            } else {
+              opacity = 0.3;
+            }
+          }
           
           return (
             <motion.g
@@ -369,8 +467,23 @@ export function TransitionNetworkGraph({
               onMouseLeave={() => setHoveredNode(null)}
               style={{ cursor: 'pointer' }}
             >
+              {/* Pulse ring for current node */}
+              {isCurrent && (
+                <motion.circle
+                  cx={node.x}
+                  cy={node.y}
+                  r={24}
+                  fill="none"
+                  stroke="hsl(142, 76%, 55%)"
+                  strokeWidth={2}
+                  initial={{ r: 18, opacity: 1 }}
+                  animate={{ r: 30, opacity: 0 }}
+                  transition={{ duration: 0.8, repeat: Infinity }}
+                />
+              )}
+              
               {/* Start indicator ring */}
-              {node.isStart && (
+              {node.isStart && !isCurrent && (
                 <circle
                   cx={node.x}
                   cy={node.y}
@@ -379,19 +492,21 @@ export function TransitionNetworkGraph({
                   stroke="hsl(var(--primary))"
                   strokeWidth={2}
                   strokeDasharray="4 2"
-                  opacity={0.6}
+                  opacity={isAnimating ? 0.3 : 0.6}
                 />
               )}
               
               {/* Node circle */}
-              <circle
+              <motion.circle
                 cx={node.x}
                 cy={node.y}
-                r={isHovered ? 20 : 18}
-                fill={node.isStart ? 'hsl(var(--primary) / 0.2)' : 'hsl(var(--background))'}
-                stroke={node.isStart ? 'hsl(var(--primary))' : 'hsl(var(--border))'}
-                strokeWidth={isHovered ? 2 : 1.5}
-                className="transition-all duration-150"
+                r={isCurrent ? 22 : isHovered ? 20 : 18}
+                fill={fillColor}
+                stroke={strokeColor}
+                strokeWidth={isCurrent ? 3 : isHovered ? 2 : 1.5}
+                filter={isCurrent ? 'url(#glow-strong)' : undefined}
+                animate={isCurrent ? { scale: [1, 1.1, 1] } : { scale: 1 }}
+                transition={isCurrent ? { duration: 0.5, repeat: Infinity } : undefined}
               />
               
               {/* Symbol unicode */}
