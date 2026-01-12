@@ -4,7 +4,7 @@ import { Play, Hash, Dna, FlaskConical, Brain, AtomIcon, Shield, Sparkles, BookO
 import CodeBlock from '../components/CodeBlock';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import tinyaleph, {
+import {
   SemanticBackend,
   hash,
   deriveKey,
