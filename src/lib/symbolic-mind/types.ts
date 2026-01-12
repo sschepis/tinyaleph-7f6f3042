@@ -1,6 +1,6 @@
 export type InterferenceModel = 'wave' | 'quantum' | 'attractor';
 
-export interface Symbol {
+export interface SymbolicSymbol {
   id: string;
   name: string;
   unicode: string;
@@ -12,14 +12,14 @@ export interface Symbol {
 }
 
 export interface WaveState {
-  symbol: Symbol;
+  symbol: SymbolicSymbol;
   wave: number[];
   amplitude: number;
   phase: number;
 }
 
 export interface ResonanceResult {
-  symbol: Symbol;
+  symbol: SymbolicSymbol;
   resonance: number;
   contribution: number[];
   interference?: number;
@@ -39,8 +39,8 @@ export interface QuantumState {
 }
 
 export interface MindState {
-  anchoringSymbols: Symbol[];
-  activeSymbols: Symbol[];
+  anchoringSymbols: SymbolicSymbol[];
+  activeSymbols: SymbolicSymbol[];
   coherence: number;
   iteration: number;
   converged: boolean;
@@ -55,7 +55,7 @@ export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  symbols?: Symbol[];
+  symbols?: SymbolicSymbol[];
   coherence?: number;
   timestamp: Date;
 }

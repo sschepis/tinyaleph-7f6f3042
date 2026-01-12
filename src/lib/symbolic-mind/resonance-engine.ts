@@ -1,4 +1,4 @@
-import type { Symbol, MindState, ResonanceResult, WaveState, InterferenceModel } from './types';
+import type { SymbolicSymbol, MindState, ResonanceResult, WaveState, InterferenceModel } from './types';
 import { SYMBOL_DATABASE, KEYWORD_MAP, getAllSymbols, CATEGORY_RESONANCE } from './symbol-database';
 
 const PHI = (1 + Math.sqrt(5)) / 2; // Golden ratio
@@ -73,7 +73,7 @@ function calculateInterference(wave1: number[], wave2: number[]): {
 // ============= QUANTUM COLLAPSE MODEL =============
 
 // Calculate probability amplitude for a symbol in superposition
-function quantumAmplitude(symbol: Symbol, anchors: Symbol[]): number {
+function quantumAmplitude(symbol: SymbolicSymbol, anchors: SymbolicSymbol[]): number {
   const wave = symbol.state || primeToWave(symbol.prime);
   let totalAmplitude = 0;
   
@@ -92,7 +92,7 @@ function quantumAmplitude(symbol: Symbol, anchors: Symbol[]): number {
 }
 
 // Measure the quantum state - probabilistic collapse
-function quantumMeasure(symbols: Symbol[], anchors: Symbol[]): { symbol: Symbol; probability: number }[] {
+function quantumMeasure(symbols: SymbolicSymbol[], anchors: SymbolicSymbol[]): { symbol: SymbolicSymbol; probability: number }[] {
   const probabilities = symbols.map(s => ({
     symbol: s,
     probability: quantumAmplitude(s, anchors)
@@ -110,7 +110,7 @@ function quantumMeasure(symbols: Symbol[], anchors: Symbol[]): { symbol: Symbol;
 }
 
 // Calculate quantum entropy (uncertainty in superposition)
-function quantumEntropy(symbols: Symbol[], anchors: Symbol[]): number {
+function quantumEntropy(symbols: SymbolicSymbol[], anchors: SymbolicSymbol[]): number {
   const probs = quantumMeasure(symbols, anchors);
   let entropy = 0;
   
@@ -128,7 +128,7 @@ function quantumEntropy(symbols: Symbol[], anchors: Symbol[]): number {
 // ============= ATTRACTOR BASIN MODEL =============
 
 // Calculate attractor force toward an anchor
-function attractorForce(symbol: Symbol, anchor: Symbol): number[] {
+function attractorForce(symbol: SymbolicSymbol, anchor: SymbolicSymbol): number[] {
   const symbolWave = symbol.state || primeToWave(symbol.prime);
   const anchorWave = anchor.state || primeToWave(anchor.prime);
   
@@ -148,7 +148,7 @@ function attractorForce(symbol: Symbol, anchor: Symbol): number[] {
 }
 
 // Calculate total potential energy in the attractor landscape
-function attractorEnergy(symbols: Symbol[], anchors: Symbol[]): number {
+function attractorEnergy(symbols: SymbolicSymbol[], anchors: SymbolicSymbol[]): number {
   let totalEnergy = 0;
   
   for (const symbol of symbols) {
@@ -171,7 +171,7 @@ function attractorEnergy(symbols: Symbol[], anchors: Symbol[]): number {
 }
 
 // Find the dominant attractor basin for a symbol
-function findBasin(symbol: Symbol, anchors: Symbol[]): Symbol {
+function findBasin(symbol: SymbolicSymbol, anchors: SymbolicSymbol[]): SymbolicSymbol {
   const wave = symbol.state || primeToWave(symbol.prime);
   let bestAnchor = anchors[0];
   let bestSimilarity = -Infinity;
@@ -194,7 +194,7 @@ function findBasin(symbol: Symbol, anchors: Symbol[]): Symbol {
 // ============= COMMON FUNCTIONS =============
 
 // Calculate resonance between two symbols using wave interference
-function computeResonance(s1: Symbol, s2: Symbol): number {
+function computeResonance(s1: SymbolicSymbol, s2: SymbolicSymbol): number {
   const wave1 = s1.state || primeToWave(s1.prime);
   const wave2 = s2.state || primeToWave(s2.prime);
   
@@ -228,8 +228,8 @@ function computeResonance(s1: Symbol, s2: Symbol): number {
 }
 
 // Each archetype resonates symbols from its domain
-function getResonantSymbols(anchor: Symbol, allSymbols: Symbol[], count: number = 3): Symbol[] {
-  const resonances: { symbol: Symbol; score: number }[] = [];
+function getResonantSymbols(anchor: SymbolicSymbol, allSymbols: SymbolicSymbol[], count: number = 3): SymbolicSymbol[] {
+  const resonances: { symbol: SymbolicSymbol; score: number }[] = [];
   
   for (const symbol of allSymbols) {
     if (symbol.id === anchor.id) continue;
@@ -244,9 +244,9 @@ function getResonantSymbols(anchor: Symbol, allSymbols: Symbol[], count: number 
 }
 
 // Extract symbols from user text
-export function inferSymbolsFromText(text: string): Symbol[] {
+export function inferSymbolsFromText(text: string): SymbolicSymbol[] {
   const lowerText = text.toLowerCase();
-  const foundSymbols: Map<string, { symbol: Symbol; strength: number }> = new Map();
+  const foundSymbols: Map<string, { symbol: SymbolicSymbol; strength: number }> = new Map();
   
   // Check each keyword mapping
   for (const [symbolId, keywords] of Object.entries(KEYWORD_MAP)) {
@@ -316,9 +316,9 @@ export function inferSymbolsFromText(text: string): Symbol[] {
 
 // Wave Interference model loop
 function runWaveInterferenceLoop(
-  inputSymbols: Symbol[],
-  anchors: Symbol[],
-  allSymbols: Symbol[],
+  inputSymbols: SymbolicSymbol[],
+  anchors: SymbolicSymbol[],
+  allSymbols: SymbolicSymbol[],
   onIteration?: (state: MindState) => void
 ): MindState {
   let activeSymbols = inputSymbols.map(s => ({
@@ -335,7 +335,7 @@ function runWaveInterferenceLoop(
     iteration++;
     
     // Each anchor resonates its own symbols back
-    const resonatedSymbols: Map<string, { symbol: Symbol; amplitude: number }> = new Map();
+    const resonatedSymbols: Map<string, { symbol: SymbolicSymbol; amplitude: number }> = new Map();
     
     for (const anchor of anchors) {
       let anchorActivation = 0;
@@ -423,9 +423,9 @@ function runWaveInterferenceLoop(
 
 // Quantum Collapse model loop
 function runQuantumCollapseLoop(
-  inputSymbols: Symbol[],
-  anchors: Symbol[],
-  allSymbols: Symbol[],
+  inputSymbols: SymbolicSymbol[],
+  anchors: SymbolicSymbol[],
+  allSymbols: SymbolicSymbol[],
   onIteration?: (state: MindState) => void
 ): MindState {
   let activeSymbols = inputSymbols.map(s => ({
@@ -507,9 +507,9 @@ function runQuantumCollapseLoop(
 
 // Attractor Basin model loop
 function runAttractorBasinLoop(
-  inputSymbols: Symbol[],
-  anchors: Symbol[],
-  allSymbols: Symbol[],
+  inputSymbols: SymbolicSymbol[],
+  anchors: SymbolicSymbol[],
+  allSymbols: SymbolicSymbol[],
   onIteration?: (state: MindState) => void
 ): MindState {
   let activeSymbols = inputSymbols.map(s => ({
@@ -616,8 +616,8 @@ function runAttractorBasinLoop(
 // ============= MAIN RESONANCE LOOP =============
 
 export function runResonanceLoop(
-  inputSymbols: Symbol[],
-  anchoringSymbols: Symbol[],
+  inputSymbols: SymbolicSymbol[],
+  anchoringSymbols: SymbolicSymbol[],
   onIteration?: (state: MindState) => void,
   model: InterferenceModel = 'wave'
 ): MindState {
@@ -641,7 +641,7 @@ export function runResonanceLoop(
 }
 
 // Collapse the superposition to select output symbols
-export function selectOutputSymbols(state: MindState): Symbol[] {
+export function selectOutputSymbols(state: MindState): SymbolicSymbol[] {
   if (!state.superposition || state.activeSymbols.length === 0) {
     return state.activeSymbols.slice(0, 5);
   }
@@ -683,7 +683,7 @@ export function selectOutputSymbols(state: MindState): Symbol[] {
   }
   
   // Wave interference (default)
-  const collapseScores: { symbol: Symbol; probability: number }[] = [];
+  const collapseScores: { symbol: SymbolicSymbol; probability: number }[] = [];
   
   for (const symbol of state.activeSymbols) {
     const wave = symbol.state || primeToWave(symbol.prime);
@@ -697,7 +697,7 @@ export function selectOutputSymbols(state: MindState): Symbol[] {
 }
 
 // Get default anchoring symbols - diverse across traditions
-export function getDefaultAnchors(): Symbol[] {
+export function getDefaultAnchors(): SymbolicSymbol[] {
   const anchorIds = [
     // Archetypes
     'self', 'shadow', 'sage',
@@ -720,13 +720,13 @@ export function getDefaultAnchors(): Symbol[] {
     return {
       ...baseSymbol,
       state: primeToWave(baseSymbol.prime)
-    } as Symbol;
-  }).filter(Boolean) as Symbol[];
+    } as SymbolicSymbol;
+  }).filter(Boolean) as SymbolicSymbol[];
 }
 
 // Get symbols grouped by tradition for display
-export function getSymbolsByTradition(): Record<string, Symbol[]> {
-  const traditions: Record<string, Symbol[]> = {
+export function getSymbolsByTradition(): Record<string, SymbolicSymbol[]> {
+  const traditions: Record<string, SymbolicSymbol[]> = {
     'Jungian Archetypes': [],
     'Tarot Major Arcana': [],
     'I-Ching Trigrams': [],
