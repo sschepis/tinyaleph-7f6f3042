@@ -52,7 +52,7 @@ const navGroups = [
     items: [
       { id: 'circuit-runner', label: 'Quantum Circuits', path: '/circuit-runner', desc: 'Build & simulate' },
       { id: 'dna-computer', label: 'DNA Computer', path: '/dna-computer', desc: 'Bioinformatics' },
-      { id: 'symbolic', label: 'Symbolic AI', path: '/symbolic', desc: 'Symbol reasoning' },
+      { id: 'symbolic-mind', label: 'Symbolic Mind', path: '/symbolic-mind', desc: 'Resonance oracle' },
       { id: 'chat', label: 'Aleph Chat', path: '/chat', desc: 'AI assistant' },
       { id: 'enochian', label: 'Enochian', path: '/enochian', desc: 'Language model' },
       { id: 'ai', label: 'AI Integration', path: '/ai', desc: 'ML examples' },
