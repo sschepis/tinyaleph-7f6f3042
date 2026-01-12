@@ -46,8 +46,10 @@ interface UseSentientObserverReturn {
 }
 
 // Initialize oscillators with clustered phases for easier synchronization
+const NUM_OSCILLATORS = 128;
+
 const createInitialOscillators = (mode: 'random' | 'clustered' | 'aligned' = 'clustered'): Oscillator[] => {
-  const primes = firstNPrimes(32);
+  const primes = firstNPrimes(NUM_OSCILLATORS);
   
   // Base phase - oscillators will cluster around this
   const basePhase = Math.random() * 2 * Math.PI;
@@ -61,20 +63,33 @@ const createInitialOscillators = (mode: 'random' | 'clustered' | 'aligned' = 'cl
         phase = basePhase + (Math.random() - 0.5) * 0.3;
         break;
       case 'clustered':
-        // Two clusters for interesting dynamics
-        const cluster = i % 2 === 0 ? 0 : Math.PI * 0.7;
-        phase = basePhase + cluster + (Math.random() - 0.5) * 0.5;
+        // Four clusters for interesting dynamics with 128 oscillators
+        const clusterIdx = i % 4;
+        const clusterPhase = clusterIdx * (Math.PI / 2);
+        phase = basePhase + clusterPhase + (Math.random() - 0.5) * 0.4;
         break;
       case 'random':
       default:
         phase = Math.random() * 2 * Math.PI;
     }
     
+    // Amplitude tiers: first 32 are strongest, then decay
+    let amplitude: number;
+    if (i < 32) {
+      amplitude = 0.5 + Math.random() * 0.3;
+    } else if (i < 64) {
+      amplitude = 0.3 + Math.random() * 0.2;
+    } else if (i < 96) {
+      amplitude = 0.15 + Math.random() * 0.15;
+    } else {
+      amplitude = 0.08 + Math.random() * 0.1;
+    }
+    
     return {
       prime: p,
       phase: ((phase % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI),
-      amplitude: i < 12 ? 0.4 + Math.random() * 0.3 : 0.15 + Math.random() * 0.1,
-      frequency: 1 + Math.log(p) / 15 // Slower frequencies for better sync
+      amplitude,
+      frequency: 1 + Math.log(p) / 20 // Even slower for 128 oscillators
     };
   });
 };
