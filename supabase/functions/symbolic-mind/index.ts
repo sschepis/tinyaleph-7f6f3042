@@ -1,17 +1,107 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// Rate limiting map: IP -> { count, resetTime }
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT = 20; // requests per minute
+const RATE_WINDOW = 60 * 1000; // 1 minute
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') || '';
+  const allowedOrigins = [
+    'https://lovable.dev',
+    'https://www.lovable.dev',
+  ];
+  
+  const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
+  const isLovablePreview = origin.includes('.lovable.app') || origin.includes('.lovableproject.com');
+  
+  const allowedOrigin = allowedOrigins.includes(origin) || isLocalhost || isLovablePreview
+    ? origin
+    : allowedOrigins[0];
+  
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
+}
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const record = rateLimitMap.get(ip);
+  
+  if (!record || now > record.resetTime) {
+    rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_WINDOW });
+    return true;
+  }
+  
+  if (record.count >= RATE_LIMIT) {
+    return false;
+  }
+  
+  record.count++;
+  return true;
+}
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  
+  // Rate limiting
+  const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+                   req.headers.get('cf-connecting-ip') || 
+                   'unknown';
+  
+  if (!checkRateLimit(clientIP)) {
+    return new Response(
+      JSON.stringify({ error: "Rate limit exceeded. Please wait a moment." }),
+      { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
 
   try {
-    const { userMessage, symbolicOutput, anchoringSymbols, coherenceScore, conversationHistory } = await req.json();
+    // Input validation
+    const body = await req.json();
+    const { userMessage, symbolicOutput, anchoringSymbols, coherenceScore, conversationHistory } = body;
+    
+    // Validate required fields
+    if (typeof userMessage !== 'string' || userMessage.length === 0 || userMessage.length > 2000) {
+      return new Response(
+        JSON.stringify({ error: "Invalid userMessage: must be a non-empty string under 2000 characters" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    if (!Array.isArray(symbolicOutput) || symbolicOutput.length > 50) {
+      return new Response(
+        JSON.stringify({ error: "Invalid symbolicOutput: must be an array with at most 50 elements" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    if (!Array.isArray(anchoringSymbols) || anchoringSymbols.length > 50) {
+      return new Response(
+        JSON.stringify({ error: "Invalid anchoringSymbols: must be an array with at most 50 elements" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    if (typeof coherenceScore !== 'number' || coherenceScore < 0 || coherenceScore > 1) {
+      return new Response(
+        JSON.stringify({ error: "Invalid coherenceScore: must be a number between 0 and 1" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    if (!Array.isArray(conversationHistory) || conversationHistory.length > 20) {
+      return new Response(
+        JSON.stringify({ error: "Invalid conversationHistory: must be an array with at most 20 messages" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
