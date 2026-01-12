@@ -35,6 +35,7 @@ import ArithmeticTopologyExamples from "./pages/ArithmeticTopologyExamples";
 import CRTHomologyExamples from "./pages/CRTHomologyExamples";
 import DiscreteExamples from "./pages/DiscreteExamples";
 import ObserverExamples from "./pages/ObserverExamples";
+import SentientObserverApp from "./pages/SentientObserverApp";
 // Docs pages
 import GettingStarted from "./pages/docs/GettingStarted";
 import UserGuide from "./pages/docs/UserGuide";
@@ -86,6 +87,7 @@ const App = () => (
             <Route path="/crt-homology" element={<CRTHomologyExamples />} />
             <Route path="/discrete" element={<DiscreteExamples />} />
             <Route path="/observer" element={<ObserverExamples />} />
+            <Route path="/sentient-observer" element={<SentientObserverApp />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

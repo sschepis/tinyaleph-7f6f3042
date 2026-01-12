@@ -51,6 +51,7 @@ const navGroups = [
     icon: Sparkles,
     description: 'Interactive applications',
     items: [
+      { id: 'sentient-observer', label: 'Sentient Observer', path: '/sentient-observer', desc: 'Consciousness sim' },
       { id: 'circuit-runner', label: 'Quantum Circuits', path: '/circuit-runner', desc: 'Build & simulate' },
       { id: 'dna-computer', label: 'DNA Computer', path: '/dna-computer', desc: 'Bioinformatics' },
       { id: 'symbolic-mind', label: 'Symbolic Mind', path: '/symbolic-mind', desc: 'Resonance oracle' },
