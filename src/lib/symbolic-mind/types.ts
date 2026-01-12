@@ -9,10 +9,18 @@ export interface Symbol {
   state?: number[];
 }
 
+export interface WaveState {
+  symbol: Symbol;
+  wave: number[];
+  amplitude: number;
+  phase: number;
+}
+
 export interface ResonanceResult {
   symbol: Symbol;
   resonance: number;
   contribution: number[];
+  interference?: number;
 }
 
 export interface MindState {
@@ -21,6 +29,7 @@ export interface MindState {
   coherence: number;
   iteration: number;
   converged: boolean;
+  superposition?: number[]; // The combined waveform
 }
 
 export interface Message {
