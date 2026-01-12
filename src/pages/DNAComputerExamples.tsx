@@ -27,23 +27,13 @@ import RestrictionMap from '@/components/dna-computer/RestrictionMap';
 import HydrophobicityPlot from '@/components/dna-computer/HydrophobicityPlot';
 import ORFViewer from '@/components/dna-computer/ORFViewer';
 
-// Import BioinformaticsBackend from tinyaleph
-let BioinformaticsBackend: any = null;
-let DNACircuit: any = null;
-let ANDGate: any = null;
-let ORGate: any = null;
-let NOTGate: any = null;
-
-try {
-  const tinyaleph = require('@aleph-ai/tinyaleph');
-  BioinformaticsBackend = tinyaleph.BioinformaticsBackend;
-  DNACircuit = tinyaleph.DNACircuit;
-  ANDGate = tinyaleph.ANDGate;
-  ORGate = tinyaleph.ORGate;
-  NOTGate = tinyaleph.NOTGate;
-} catch (e) {
-  console.warn('BioinformaticsBackend not available, using fallback');
-}
+// BioinformaticsBackend and DNA gates are not available in current tinyaleph version
+// Using built-in fallback implementations
+const BioinformaticsBackend: any = null;
+const DNACircuit: any = null;
+const ANDGate: any = null;
+const ORGate: any = null;
+const NOTGate: any = null;
 
 // Create backend instance
 const createBackend = () => {
