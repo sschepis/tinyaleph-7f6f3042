@@ -23,7 +23,7 @@ import ScientificExamples from "./pages/ScientificExamples";
 import TypeSystemExamples from "./pages/TypeSystemExamples";
 import ChatExamples from "./pages/ChatExamples";
 import EnochianExamples from "./pages/EnochianExamples";
-import DNAComputerExamples from "./pages/DNAComputerExamples";
+import DNAComputer from "./pages/DNAComputer";
 import SymbolicAIExamples from "./pages/SymbolicAIExamples";
 import AIExamples from "./pages/AIExamples";
 import SymbolicMind from "./pages/SymbolicMind";
@@ -74,7 +74,7 @@ const App = () => (
             <Route path="/typesystem" element={<TypeSystemExamples />} />
             <Route path="/chat" element={<ChatExamples />} />
             <Route path="/enochian" element={<EnochianExamples />} />
-            <Route path="/dna-computer" element={<DNAComputerExamples />} />
+            <Route path="/dna-computer" element={<DNAComputer />} />
             <Route path="/symbolic" element={<SymbolicAIExamples />} />
             <Route path="/symbolic-mind" element={<SymbolicMind />} />
             <Route path="/ai" element={<AIExamples />} />
