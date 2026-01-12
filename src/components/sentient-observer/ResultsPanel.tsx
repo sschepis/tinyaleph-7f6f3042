@@ -21,6 +21,7 @@ interface ResultsPanelProps {
   moments: Moment[];
   subjectiveTime: number;
   tickCount: number;
+  peakCoherence?: number;
 }
 
 interface Interpretation {
@@ -37,7 +38,8 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
   smfState,
   moments,
   subjectiveTime,
-  tickCount
+  tickCount,
+  peakCoherence = coherence
 }) => {
   // Compute interpretations
   const consciousnessInterpretation = useMemo((): Interpretation => {
@@ -119,6 +121,11 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
               {(coherence * 100).toFixed(0)}% coherent
             </Badge>
           </div>
+          {peakCoherence > coherence && (
+            <div className="text-xs text-muted-foreground mb-2">
+              Peak coherence achieved: <span className="font-mono text-primary">{(peakCoherence * 100).toFixed(0)}%</span>
+            </div>
+          )}
           <p className="text-sm text-muted-foreground">
             {consciousnessInterpretation.description}
           </p>

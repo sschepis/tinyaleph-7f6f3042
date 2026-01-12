@@ -54,13 +54,17 @@ const SentientObserverApp: React.FC = () => {
     holoIntensity,
     userInput,
     inputHistory,
+    initMode,
+    peakCoherence,
     setIsRunning,
     setCoupling,
     setTemperature,
     setThermalEnabled,
     setUserInput,
     handleInput,
-    handleReset
+    handleReset,
+    setInitMode,
+    boostCoherence
   } = useSentientObserver();
 
   return (
@@ -102,14 +106,20 @@ const SentientObserverApp: React.FC = () => {
         {/* Stats Bar */}
         <Card>
           <CardContent className="py-3">
-            <div className="grid grid-cols-6 gap-4 text-center">
+            <div className="grid grid-cols-7 gap-4 text-center">
               <div>
                 <div className="text-2xl font-mono">{tickCount}</div>
                 <div className="text-xs text-muted-foreground">Ticks</div>
               </div>
               <div>
-                <div className="text-2xl font-mono">{(coherence * 100).toFixed(1)}%</div>
+                <div className={`text-2xl font-mono ${coherence > 0.7 ? 'text-green-500' : coherence > 0.4 ? 'text-yellow-500' : 'text-red-500'}`}>
+                  {(coherence * 100).toFixed(1)}%
+                </div>
                 <div className="text-xs text-muted-foreground">Coherence</div>
+              </div>
+              <div>
+                <div className="text-2xl font-mono text-primary">{(peakCoherence * 100).toFixed(1)}%</div>
+                <div className="text-xs text-muted-foreground">Peak</div>
               </div>
               <div>
                 <div className="text-2xl font-mono">{entropy.toFixed(3)}</div>
@@ -253,7 +263,40 @@ const SentientObserverApp: React.FC = () => {
                       System Parameters
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-4">
+                    {/* Initialization Mode */}
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium">Initialization Mode</div>
+                      <div className="flex gap-2">
+                        {(['random', 'clustered', 'aligned'] as const).map(mode => (
+                          <Button
+                            key={mode}
+                            size="sm"
+                            variant={initMode === mode ? 'default' : 'outline'}
+                            onClick={() => setInitMode(mode)}
+                            className="capitalize"
+                          >
+                            {mode}
+                          </Button>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {initMode === 'aligned' && 'Oscillators start nearly synchronized (high coherence)'}
+                        {initMode === 'clustered' && 'Oscillators form groups (moderate coherence, interesting dynamics)'}
+                        {initMode === 'random' && 'Oscillators start with random phases (low coherence, harder to sync)'}
+                      </p>
+                    </div>
+
+                    {/* Coherence Boost Button */}
+                    <Button
+                      onClick={boostCoherence}
+                      variant="secondary"
+                      className="w-full"
+                    >
+                      <Zap className="h-4 w-4 mr-2" />
+                      Boost Coherence (Nudge Phases)
+                    </Button>
+
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
@@ -292,7 +335,7 @@ const SentientObserverApp: React.FC = () => {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 mt-4">
+                    <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
                         id="thermal"
@@ -300,7 +343,7 @@ const SentientObserverApp: React.FC = () => {
                         onChange={e => setThermalEnabled(e.target.checked)}
                       />
                       <label htmlFor="thermal" className="text-sm">
-                        Enable Thermal Dynamics (ThermalKuramoto)
+                        Enable Thermal Dynamics (adds noise, fights coherence)
                       </label>
                     </div>
                   </CardContent>
@@ -644,6 +687,7 @@ const SentientObserverApp: React.FC = () => {
               moments={moments}
               subjectiveTime={subjectiveTime}
               tickCount={tickCount}
+              peakCoherence={peakCoherence}
             />
           </div>
         </div>

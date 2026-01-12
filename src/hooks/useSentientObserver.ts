@@ -9,6 +9,8 @@ import {
   firstNPrimes
 } from '@/components/sentient-observer/types';
 
+export type InitMode = 'random' | 'clustered' | 'aligned';
+
 interface UseSentientObserverReturn {
   // State
   isRunning: boolean;
@@ -28,6 +30,8 @@ interface UseSentientObserverReturn {
   holoIntensity: number[][];
   userInput: string;
   inputHistory: string[];
+  initMode: InitMode;
+  peakCoherence: number;
   
   // Actions
   setIsRunning: (running: boolean) => void;
@@ -37,16 +41,42 @@ interface UseSentientObserverReturn {
   setUserInput: (input: string) => void;
   handleInput: () => void;
   handleReset: () => void;
+  setInitMode: (mode: InitMode) => void;
+  boostCoherence: () => void;
 }
 
-const createInitialOscillators = (): Oscillator[] => {
+// Initialize oscillators with clustered phases for easier synchronization
+const createInitialOscillators = (mode: 'random' | 'clustered' | 'aligned' = 'clustered'): Oscillator[] => {
   const primes = firstNPrimes(32);
-  return primes.map((p, i) => ({
-    prime: p,
-    phase: Math.random() * 2 * Math.PI,
-    amplitude: i < 8 ? 0.3 + Math.random() * 0.2 : 0.05,
-    frequency: 1 + Math.log(p) / 10
-  }));
+  
+  // Base phase - oscillators will cluster around this
+  const basePhase = Math.random() * 2 * Math.PI;
+  
+  return primes.map((p, i) => {
+    let phase: number;
+    
+    switch (mode) {
+      case 'aligned':
+        // Nearly synchronized start
+        phase = basePhase + (Math.random() - 0.5) * 0.3;
+        break;
+      case 'clustered':
+        // Two clusters for interesting dynamics
+        const cluster = i % 2 === 0 ? 0 : Math.PI * 0.7;
+        phase = basePhase + cluster + (Math.random() - 0.5) * 0.5;
+        break;
+      case 'random':
+      default:
+        phase = Math.random() * 2 * Math.PI;
+    }
+    
+    return {
+      prime: p,
+      phase: ((phase % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI),
+      amplitude: i < 12 ? 0.4 + Math.random() * 0.3 : 0.15 + Math.random() * 0.1,
+      frequency: 1 + Math.log(p) / 15 // Slower frequencies for better sync
+    };
+  });
 };
 
 const createInitialHoloField = (): number[][] => {
@@ -66,9 +96,9 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
   const [tickCount, setTickCount] = useState(0);
   const [coherence, setCoherence] = useState(0.5);
   const [entropy, setEntropy] = useState(0.5);
-  const [temperature, setTemperature] = useState(1.0);
-  const [coupling, setCoupling] = useState(0.3);
-  const [thermalEnabled, setThermalEnabled] = useState(true);
+  const [temperature, setTemperature] = useState(0.5); // Lower default for less noise
+  const [coupling, setCoupling] = useState(0.6); // Higher coupling for faster sync
+  const [thermalEnabled, setThermalEnabled] = useState(false); // Start without noise
 
   // Oscillator state
   const [oscillators, setOscillators] = useState<Oscillator[]>(createInitialOscillators);
@@ -103,6 +133,10 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
   // Input
   const [userInput, setUserInput] = useState('');
   const [inputHistory, setInputHistory] = useState<string[]>([]);
+  
+  // Mode and tracking
+  const [initMode, setInitMode] = useState<InitMode>('clustered');
+  const [peakCoherence, setPeakCoherence] = useState(0.5);
 
   // Animation frame ref
   const animationRef = useRef<number>(0);
@@ -150,21 +184,22 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
         // Normalize phase
         newPhase = ((newPhase % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
 
-        // Amplitude damping
-        const newAmplitude = osc.amplitude * (1 - 0.02 * dt);
+        // Slower amplitude damping to keep oscillators visible
+        const newAmplitude = osc.amplitude * (1 - 0.005 * dt);
 
         return {
           ...osc,
           phase: newPhase,
-          amplitude: Math.max(0.01, newAmplitude)
+          amplitude: Math.max(0.05, newAmplitude)
         };
       });
 
       return newOscs;
     });
 
-    // Update coherence
+    // Update coherence and track peak
     setCoherence(orderParam);
+    setPeakCoherence(prev => Math.max(prev, orderParam));
 
     // Update entropy
     const amplitudeTotal = oscillators.reduce((s, o) => s + o.amplitude, 0);
@@ -338,12 +373,40 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
     setTickCount(0);
     setCoherence(0.5);
     setEntropy(0.5);
+    setPeakCoherence(0.5);
     setMoments([]);
     setSubjectiveTime(0);
     setAttentionFoci([]);
-    setOscillators(createInitialOscillators());
+    setOscillators(createInitialOscillators(initMode));
     setSmfState({
       s: new Float64Array([1, 0, 0, 0, 0.1, 0.1, 0.1, 0.1, 0, 0, 0, 0, 0, 0, 0, 0.2])
+    });
+  }, [initMode]);
+
+  // Boost coherence by nudging all oscillators toward mean phase
+  const boostCoherence = useCallback(() => {
+    setOscillators(prev => {
+      // Calculate mean phase
+      let sinSum = 0, cosSum = 0;
+      for (const osc of prev) {
+        sinSum += Math.sin(osc.phase);
+        cosSum += Math.cos(osc.phase);
+      }
+      const meanPhase = Math.atan2(sinSum, cosSum);
+      
+      return prev.map(osc => {
+        // Move each oscillator 50% toward the mean phase
+        const diff = meanPhase - osc.phase;
+        // Handle wraparound
+        const adjustedDiff = Math.atan2(Math.sin(diff), Math.cos(diff));
+        const newPhase = osc.phase + adjustedDiff * 0.5;
+        
+        return {
+          ...osc,
+          phase: ((newPhase % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI),
+          amplitude: Math.min(1, osc.amplitude + 0.2) // Also boost amplitude
+        };
+      });
     });
   }, []);
 
@@ -365,12 +428,16 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
     holoIntensity,
     userInput,
     inputHistory,
+    initMode,
+    peakCoherence,
     setIsRunning,
     setCoupling,
     setTemperature,
     setThermalEnabled,
     setUserInput,
     handleInput,
-    handleReset
+    handleReset,
+    setInitMode,
+    boostCoherence
   };
 };
