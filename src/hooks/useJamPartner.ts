@@ -266,18 +266,46 @@ export function useJamPartner(): UseJamPartnerReturn {
         
         setTimeout(() => {
           // Query harmony engine directly with the captured input note
-          const suggestions = harmonyEngineRef.current.suggestOutputs(inputForResponse, 5);
+          const suggestions = harmonyEngineRef.current.suggestOutputs(inputForResponse, 8);
           
-          // Play top 2 suggestions that aren't the input note
-          const toPlay = suggestions
-            .filter(s => s.noteId !== noteId && s.score > 0.1)
-            .slice(0, 2);
+          // Filter valid suggestions and add variety with weighted random selection
+          const validSuggestions = suggestions
+            .filter(s => s.noteId !== noteId && s.score > 0.05);
+          
+          // Weighted random selection from top suggestions
+          const selectWithVariety = (pool: typeof validSuggestions, count: number) => {
+            const selected: typeof validSuggestions = [];
+            const remaining = [...pool];
+            
+            for (let i = 0; i < count && remaining.length > 0; i++) {
+              // Weight by score but add randomness - higher scores more likely but not guaranteed
+              const totalWeight = remaining.reduce((sum, s) => sum + s.score + 0.1, 0);
+              let random = Math.random() * totalWeight;
+              
+              for (let j = 0; j < remaining.length; j++) {
+                random -= (remaining[j].score + 0.1);
+                if (random <= 0) {
+                  selected.push(remaining[j]);
+                  remaining.splice(j, 1);
+                  break;
+                }
+              }
+            }
+            return selected;
+          };
+          
+          // Select 1-3 notes with variety
+          const numNotes = 1 + Math.floor(Math.random() * 2);
+          const toPlay = selectWithVariety(validSuggestions, numNotes);
           
           for (const suggestion of toPlay) {
-            noteOn(suggestion.noteId, 80, true);
-            setTimeout(() => noteOff(suggestion.noteId, true), 400);
+            const delay = Math.random() * 50; // Slight timing variation
+            setTimeout(() => {
+              noteOn(suggestion.noteId, 70 + Math.random() * 30, true);
+              setTimeout(() => noteOff(suggestion.noteId, true), 300 + Math.random() * 200);
+            }, delay);
           }
-        }, 100 + Math.random() * 100);
+        }, 80 + Math.random() * 120);
       }
     }
     
