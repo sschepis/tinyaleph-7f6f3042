@@ -2,16 +2,18 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
-import { RotateCcw, Mic, Music2 } from 'lucide-react';
+import { RotateCcw, Mic, Music2, Zap } from 'lucide-react';
 import { JamMode } from '@/lib/jam-partner/types';
 
 interface JamControlsProps {
   mode: JamMode;
   tempo: number;
   coherence: number;
+  responsiveness: number;
   midiConnected: boolean;
   onModeChange: (mode: JamMode) => void;
   onTempoChange: (tempo: number) => void;
+  onResponsivenessChange: (value: number) => void;
   onConnectMIDI: () => void;
   onReset: () => void;
 }
@@ -20,12 +22,23 @@ export const JamControls: React.FC<JamControlsProps> = ({
   mode,
   tempo,
   coherence,
+  responsiveness,
   midiConnected,
   onModeChange,
   onTempoChange,
+  onResponsivenessChange,
   onConnectMIDI,
   onReset,
 }) => {
+  // Format responsiveness as descriptive label
+  const responsivenessLabel = responsiveness < 0.3 
+    ? 'Sparse' 
+    : responsiveness < 0.6 
+      ? 'Balanced' 
+      : responsiveness < 0.8 
+        ? 'Active' 
+        : 'Dense';
+
   return (
     <div className="space-y-4">
       {/* Mode selector */}
@@ -61,6 +74,27 @@ export const JamControls: React.FC<JamControlsProps> = ({
             style={{ width: `${coherence * 100}%` }}
           />
         </div>
+      </div>
+
+      {/* Responsiveness slider */}
+      <div className="space-y-2">
+        <div className="flex justify-between text-sm">
+          <span className="text-muted-foreground flex items-center gap-1">
+            <Zap className="w-3 h-3" />
+            AI Responsiveness
+          </span>
+          <span className="font-mono text-xs">{responsivenessLabel}</span>
+        </div>
+        <Slider
+          value={[responsiveness * 100]}
+          onValueChange={([v]) => onResponsivenessChange(v / 100)}
+          min={0}
+          max={100}
+          step={5}
+        />
+        <p className="text-xs text-muted-foreground">
+          Controls note count, speed & chord richness
+        </p>
       </div>
 
       {/* Tempo */}
