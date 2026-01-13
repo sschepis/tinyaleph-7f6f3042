@@ -57,6 +57,7 @@ const navGroups = [
       { id: 'symbolic-mind', label: 'Symbolic Mind', path: '/symbolic-mind', desc: 'Resonance oracle' },
       { id: 'chat', label: 'Aleph Chat', path: '/chat', desc: 'AI assistant' },
       { id: 'enochian', label: 'Enochian', path: '/enochian', desc: 'Language model' },
+      { id: 'jam-partner', label: 'Jam Partner', path: '/jam-partner', desc: 'Music AI' },
     ],
   },
 ];

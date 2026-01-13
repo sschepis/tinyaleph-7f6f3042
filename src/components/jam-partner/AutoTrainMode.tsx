@@ -4,7 +4,8 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Play, Square, Music } from 'lucide-react';
-import { getAllTrainingScripts, TrainingScript } from '@/lib/jam-partner/training-scripts';
+import { getAllTrainingScripts } from '@/lib/jam-partner/training-scripts';
+import type { TrainingScript } from '@/lib/jam-partner/types';
 
 interface AutoTrainModeProps {
   isTraining: boolean;

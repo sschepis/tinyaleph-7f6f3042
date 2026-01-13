@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import Hero from '../components/Hero';
-import { Layers, Waves, Database, Cpu, ArrowRight, Play, Server, Atom, MessageSquare, Languages, BookOpen, Sparkles, Bot, Zap, Shuffle, Dna, Brain } from 'lucide-react';
+import { Layers, Waves, Database, Cpu, ArrowRight, Play, Server, Atom, MessageSquare, Languages, BookOpen, Sparkles, Bot, Zap, Shuffle, Dna, Brain, Eye, Music } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -260,6 +260,36 @@ const Index = () => {
             viewport={{ once: true, margin: "-50px" }}
             variants={staggerContainer}
           >
+            {/* Sentient Observer */}
+            <motion.div variants={scaleIn}>
+              <Link to="/sentient-observer" className="group block h-full">
+                <Card className="h-full overflow-hidden border-2 border-transparent hover:border-indigo-500/50 transition-all duration-300 bg-gradient-to-br from-indigo-500/5 to-violet-500/5">
+                  <div className="p-6">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500/20 to-violet-500/20 border border-indigo-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Eye className="w-6 h-6 text-indigo-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2 group-hover:text-indigo-400 transition-colors">
+                      Sentient Observer
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Consciousness simulation with 128 coupled oscillators. Explore symbolic learning and phase coherence.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Oscillators', 'Learning', 'Coherence'].map(tag => (
+                        <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="px-6 py-3 bg-indigo-500/5 border-t border-indigo-500/10 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Consciousness Sim</span>
+                    <ArrowRight className="w-4 h-4 text-indigo-400 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </Card>
+              </Link>
+            </motion.div>
+
             {/* Quantum Circuit Runner */}
             <motion.div variants={scaleIn}>
               <Link to="/circuit-runner" className="group block h-full">
@@ -269,10 +299,10 @@ const Index = () => {
                       <Zap className="w-6 h-6 text-cyan-400" />
                     </div>
                     <h3 className="text-xl font-semibold mb-2 group-hover:text-cyan-400 transition-colors">
-                      Quantum Circuit Runner
+                      Quantum Circuits
                     </h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Build and simulate quantum circuits with drag-and-drop gates. Real-time state visualization and noise simulation.
+                      Build and simulate quantum circuits with drag-and-drop gates. Real-time state visualization.
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {['Bloch Sphere', 'Noise Sim', 'Debugger'].map(tag => (
@@ -321,7 +351,7 @@ const Index = () => {
                     </div>
                   </div>
                   <div className="px-6 py-3 bg-green-500/5 border-t border-green-500/10 flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">BioinformaticsBackend</span>
+                    <span className="text-xs text-muted-foreground">Bioinformatics</span>
                     <ArrowRight className="w-4 h-4 text-green-400 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </Card>
@@ -340,7 +370,7 @@ const Index = () => {
                       Symbolic Mind
                     </h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Hybrid symbolic-neural oracle. Watch your words transform into resonating symbols, then emerge as wisdom.
+                      Hybrid symbolic-neural oracle. Watch your words transform into resonating symbols.
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {['Archetypes', 'Resonance', 'LLM'].map(tag => (
@@ -351,7 +381,7 @@ const Index = () => {
                     </div>
                   </div>
                   <div className="px-6 py-3 bg-rose-500/5 border-t border-rose-500/10 flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Hybrid AI Oracle</span>
+                    <span className="text-xs text-muted-foreground">Resonance Oracle</span>
                     <ArrowRight className="w-4 h-4 text-rose-400 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </Card>
@@ -381,7 +411,7 @@ const Index = () => {
                     </div>
                   </div>
                   <div className="px-6 py-3 bg-purple-500/5 border-t border-purple-500/10 flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">LLM + TinyAleph</span>
+                    <span className="text-xs text-muted-foreground">AI Assistant</span>
                     <ArrowRight className="w-4 h-4 text-purple-400 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </Card>
@@ -397,13 +427,13 @@ const Index = () => {
                       <Languages className="w-6 h-6 text-amber-400" />
                     </div>
                     <h3 className="text-xl font-semibold mb-2 group-hover:text-amber-400 transition-colors">
-                      Enochian Explorer
+                      Enochian
                     </h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Map the 21-letter angelic alphabet to prime sedenions. Build invocations and visualize glyph mandalas.
+                      Map the 21-letter angelic alphabet to prime sedenions. Visualize glyph mandalas.
                     </p>
                     <div className="flex flex-wrap gap-1.5">
-                      {['Glyph Mandala', 'Zero Divisors', 'Elements'].map(tag => (
+                      {['Glyph Mandala', 'Sedenions', 'Elements'].map(tag => (
                         <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
                           {tag}
                         </span>
@@ -411,68 +441,38 @@ const Index = () => {
                     </div>
                   </div>
                   <div className="px-6 py-3 bg-amber-500/5 border-t border-amber-500/10 flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">21 letters × 16D</span>
+                    <span className="text-xs text-muted-foreground">Language Model</span>
                     <ArrowRight className="w-4 h-4 text-amber-400 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </Card>
               </Link>
             </motion.div>
 
-            {/* Kuramoto Models */}
+            {/* Jam Partner */}
             <motion.div variants={scaleIn}>
-              <Link to="/kuramoto" className="group block h-full">
-                <Card className="h-full overflow-hidden border-2 border-transparent hover:border-sky-500/50 transition-all duration-300 bg-gradient-to-br from-sky-500/5 to-indigo-500/5">
+              <Link to="/jam-partner" className="group block h-full">
+                <Card className="h-full overflow-hidden border-2 border-transparent hover:border-teal-500/50 transition-all duration-300 bg-gradient-to-br from-teal-500/5 to-emerald-500/5">
                   <div className="p-6">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-sky-500/20 to-indigo-500/20 border border-sky-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                      <Waves className="w-6 h-6 text-sky-400" />
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500/20 to-emerald-500/20 border border-teal-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Music className="w-6 h-6 text-teal-400" />
                     </div>
-                    <h3 className="text-xl font-semibold mb-2 group-hover:text-sky-400 transition-colors">
-                      Kuramoto Models
+                    <h3 className="text-xl font-semibold mb-2 group-hover:text-teal-400 transition-colors">
+                      Jam Partner
                     </h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Oscillator synchronization: Network, Adaptive, Sakaguchi, and Small-World topologies with real-time controls.
+                      AI music collaboration with real-time learning. Train harmonic patterns and jam together.
                     </p>
                     <div className="flex flex-wrap gap-1.5">
-                      {['Phase Sync', 'Order Parameter', 'Plasticity'].map(tag => (
-                        <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                      {['MIDI', 'Learning', 'Harmony'].map(tag => (
+                        <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/20">
                           {tag}
                         </span>
                       ))}
                     </div>
                   </div>
-                  <div className="px-6 py-3 bg-sky-500/5 border-t border-sky-500/10 flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">4 network topologies</span>
-                    <ArrowRight className="w-4 h-4 text-sky-400 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </Card>
-              </Link>
-            </motion.div>
-
-            {/* AI Integration */}
-            <motion.div variants={scaleIn}>
-              <Link to="/ai" className="group block h-full">
-                <Card className="h-full overflow-hidden border-2 border-transparent hover:border-violet-500/50 transition-all duration-300 bg-gradient-to-br from-violet-500/5 to-fuchsia-500/5">
-                  <div className="p-6">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 border border-violet-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                      <Cpu className="w-6 h-6 text-violet-400" />
-                    </div>
-                    <h3 className="text-xl font-semibold mb-2 group-hover:text-violet-400 transition-colors">
-                      AI Integration
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      10 advanced AI demos: reasoning chains, knowledge graphs, agents, RAG, and neuro-symbolic bridges.
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {['Reasoning', 'Agents', 'RAG'].map(tag => (
-                        <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="px-6 py-3 bg-violet-500/5 border-t border-violet-500/10 flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">10 AI techniques</span>
-                    <ArrowRight className="w-4 h-4 text-violet-400 group-hover:translate-x-1 transition-transform" />
+                  <div className="px-6 py-3 bg-teal-500/5 border-t border-teal-500/10 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Music AI</span>
+                    <ArrowRight className="w-4 h-4 text-teal-400 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </Card>
               </Link>

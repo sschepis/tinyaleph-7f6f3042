@@ -27,6 +27,7 @@ import DNAComputer from "./pages/DNAComputer";
 import SymbolicAIExamples from "./pages/SymbolicAIExamples";
 import AIExamples from "./pages/AIExamples";
 import SymbolicMind from "./pages/SymbolicMind";
+import JamPartner from "./pages/JamPartner";
 import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
 // New v1.4.0 example pages
@@ -88,6 +89,7 @@ const App = () => (
             <Route path="/discrete" element={<DiscreteExamples />} />
             <Route path="/observer" element={<ObserverExamples />} />
             <Route path="/sentient-observer" element={<SentientObserverApp />} />
+            <Route path="/jam-partner" element={<JamPartner />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
