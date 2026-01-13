@@ -231,38 +231,7 @@ export function useJamPartner(): UseJamPartnerReturn {
     };
   }, [isPlaying, isAutoTraining, activeInputNotes, activeOutputNotes]);
   
-  // Note on handler
-  const noteOn = useCallback((noteId: string, velocity: number = 100, isOutput: boolean = false) => {
-    audioEngineRef.current.playNote(noteId, velocity);
-    
-    if (isOutput) {
-      setActiveOutputNotes(prev => new Set(prev).add(noteId));
-    } else {
-      setActiveInputNotes(prev => new Set(prev).add(noteId));
-      
-      // In jam mode, generate AI response
-      if (mode === 'jamming') {
-        setTimeout(() => {
-          const suggestions = generateResponse();
-          for (const suggestion of suggestions.slice(0, 2)) {
-            noteOn(suggestion.noteId, 80, true);
-            setTimeout(() => noteOff(suggestion.noteId, true), 400);
-          }
-        }, 100 + Math.random() * 100);
-      }
-    }
-    
-    // Excite corresponding oscillator
-    setOscillators(prev => prev.map(osc => 
-      osc.noteId === noteId 
-        ? { ...osc, amplitude: 1, lastTriggered: Date.now() }
-        : osc
-    ));
-    
-    setIsPlaying(true);
-  }, [mode]);
-  
-  // Note off handler
+  // Note off handler (defined first so noteOn can reference it)
   const noteOff = useCallback((noteId: string, isOutput: boolean = false) => {
     audioEngineRef.current.stopNote(noteId);
     
@@ -280,6 +249,47 @@ export function useJamPartner(): UseJamPartnerReturn {
       });
     }
   }, []);
+
+  // Note on handler
+  const noteOn = useCallback((noteId: string, velocity: number = 100, isOutput: boolean = false) => {
+    audioEngineRef.current.playNote(noteId, velocity);
+    
+    if (isOutput) {
+      setActiveOutputNotes(prev => new Set(prev).add(noteId));
+    } else {
+      setActiveInputNotes(prev => new Set(prev).add(noteId));
+      
+      // In jam mode, generate AI response based on THIS note
+      if (mode === 'jamming') {
+        // Capture the current note immediately for the delayed response
+        const inputForResponse = [noteId];
+        
+        setTimeout(() => {
+          // Query harmony engine directly with the captured input note
+          const suggestions = harmonyEngineRef.current.suggestOutputs(inputForResponse, 5);
+          
+          // Play top 2 suggestions that aren't the input note
+          const toPlay = suggestions
+            .filter(s => s.noteId !== noteId && s.score > 0.1)
+            .slice(0, 2);
+          
+          for (const suggestion of toPlay) {
+            noteOn(suggestion.noteId, 80, true);
+            setTimeout(() => noteOff(suggestion.noteId, true), 400);
+          }
+        }, 100 + Math.random() * 100);
+      }
+    }
+    
+    // Excite corresponding oscillator
+    setOscillators(prev => prev.map(osc => 
+      osc.noteId === noteId 
+        ? { ...osc, amplitude: 1, lastTriggered: Date.now() }
+        : osc
+    ));
+    
+    setIsPlaying(true);
+  }, [mode, noteOff]);
   
   // Record a pattern
   const recordPattern = useCallback((input: NoteEvent[], output: NoteEvent[]) => {
