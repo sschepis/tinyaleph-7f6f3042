@@ -103,9 +103,11 @@ const JamPartner: React.FC = () => {
                   mode={jam.mode}
                   tempo={jam.tempo}
                   coherence={jam.coherence}
+                  responsiveness={jam.responsiveness}
                   midiConnected={jam.midiConnected}
                   onModeChange={jam.setMode}
                   onTempoChange={jam.setTempo}
+                  onResponsivenessChange={jam.setResponsiveness}
                   onConnectMIDI={jam.connectMIDI}
                   onReset={jam.reset}
                 />

@@ -21,6 +21,7 @@ export interface UseJamPartnerReturn {
   keySignature: string;
   scale: string;
   coherence: number;
+  responsiveness: number;
   
   // Active notes
   activeInputNotes: Set<string>;
@@ -53,6 +54,7 @@ export interface UseJamPartnerReturn {
   setTempo: (bpm: number) => void;
   setKeySignature: (key: string) => void;
   setScale: (scale: string) => void;
+  setResponsiveness: (value: number) => void;
   
   // Training
   recordPattern: (input: NoteEvent[], output: NoteEvent[]) => void;
@@ -84,6 +86,86 @@ function createInitialOscillators(): MusicalOscillator[] {
   }));
 }
 
+// Common chord intervals (semitones from root)
+const CHORD_PATTERNS = {
+  major: [0, 4, 7],
+  minor: [0, 3, 7],
+  dim: [0, 3, 6],
+  aug: [0, 4, 8],
+  maj7: [0, 4, 7, 11],
+  min7: [0, 3, 7, 10],
+  dom7: [0, 4, 7, 10],
+  sus4: [0, 5, 7],
+  sus2: [0, 2, 7],
+};
+
+// Detect chord from a set of notes
+function detectChord(noteIds: string[]): { root: string; type: keyof typeof CHORD_PATTERNS; semitones: number[] } | null {
+  if (noteIds.length < 2) return null;
+  
+  // Get semitone values for each note
+  const notes = noteIds.map(id => {
+    const note = getNote(id);
+    return note ? { id, semitone: note.semitone, octave: note.octave } : null;
+  }).filter(Boolean) as { id: string; semitone: number; octave: number }[];
+  
+  if (notes.length < 2) return null;
+  
+  // Sort by pitch
+  notes.sort((a, b) => (a.octave * 12 + a.semitone) - (b.octave * 12 + b.semitone));
+  
+  // Try each note as potential root
+  for (const potentialRoot of notes) {
+    const intervals = notes.map(n => {
+      let interval = n.semitone - potentialRoot.semitone;
+      if (interval < 0) interval += 12;
+      return interval % 12;
+    }).sort((a, b) => a - b);
+    
+    // Match against chord patterns
+    for (const [type, pattern] of Object.entries(CHORD_PATTERNS)) {
+      const matches = pattern.every(p => intervals.includes(p));
+      if (matches && intervals.length >= pattern.length - 1) {
+        return { 
+          root: potentialRoot.id, 
+          type: type as keyof typeof CHORD_PATTERNS,
+          semitones: intervals
+        };
+      }
+    }
+  }
+  
+  return null;
+}
+
+// Get harmonically related chord based on input chord
+function getRelatedChord(inputChord: { root: string; type: keyof typeof CHORD_PATTERNS }, keyRoot: string): { intervals: number[]; rootShift: number } {
+  const progressions: Record<string, { shift: number; type: keyof typeof CHORD_PATTERNS }[]> = {
+    major: [
+      { shift: 5, type: 'major' },   // IV
+      { shift: 7, type: 'major' },   // V
+      { shift: 9, type: 'minor' },   // vi
+      { shift: 2, type: 'minor' },   // ii
+      { shift: 4, type: 'minor' },   // iii
+    ],
+    minor: [
+      { shift: 3, type: 'major' },   // III
+      { shift: 5, type: 'minor' },   // iv
+      { shift: 7, type: 'major' },   // VII
+      { shift: 10, type: 'major' },  // bVII
+      { shift: 8, type: 'major' },   // VI
+    ],
+  };
+  
+  const options = progressions[inputChord.type.includes('min') ? 'minor' : 'major'] || progressions.major;
+  const choice = options[Math.floor(Math.random() * options.length)];
+  
+  return {
+    intervals: CHORD_PATTERNS[choice.type],
+    rootShift: choice.shift,
+  };
+}
+
 export function useJamPartner(): UseJamPartnerReturn {
   // Core state
   const [mode, setMode] = useState<JamMode>('training');
@@ -92,10 +174,14 @@ export function useJamPartner(): UseJamPartnerReturn {
   const [keySignature, setKeySignature] = useState('C');
   const [scale, setScale] = useState('major');
   const [coherence, setCoherence] = useState(0);
+  const [responsiveness, setResponsiveness] = useState(0.5); // 0-1 scale
   
   // Notes state
   const [activeInputNotes, setActiveInputNotes] = useState<Set<string>>(new Set());
   const [activeOutputNotes, setActiveOutputNotes] = useState<Set<string>>(new Set());
+  
+  // Track recent input notes for chord detection
+  const recentInputNotesRef = useRef<{ noteId: string; time: number }[]>([]);
   
   // Oscillators
   const [oscillators, setOscillators] = useState<MusicalOscillator[]>(createInitialOscillators);
@@ -259,53 +345,103 @@ export function useJamPartner(): UseJamPartnerReturn {
     } else {
       setActiveInputNotes(prev => new Set(prev).add(noteId));
       
-      // In jam mode, generate AI response based on THIS note
+      // Track recent input for chord detection
+      const now = Date.now();
+      recentInputNotesRef.current = [
+        ...recentInputNotesRef.current.filter(n => now - n.time < 150), // Notes within 150ms window
+        { noteId, time: now }
+      ];
+      
+      // In jam mode, generate AI response
       if (mode === 'jamming') {
-        // Capture the current note immediately for the delayed response
-        const inputForResponse = [noteId];
+        // Calculate response delay based on responsiveness (lower = faster)
+        const baseDelay = 200 - (responsiveness * 180); // 20-200ms range
+        const responseDelay = baseDelay + Math.random() * (50 - responsiveness * 40);
         
         setTimeout(() => {
-          // Query harmony engine directly with the captured input note
-          const suggestions = harmonyEngineRef.current.suggestOutputs(inputForResponse, 8);
+          // Get all recent notes for chord detection
+          const recentNotes = recentInputNotesRef.current
+            .filter(n => Date.now() - n.time < 300)
+            .map(n => n.noteId);
           
-          // Filter valid suggestions and add variety with weighted random selection
-          const validSuggestions = suggestions
-            .filter(s => s.noteId !== noteId && s.score > 0.05);
+          // Detect if user played a chord
+          const detectedChord = detectChord(recentNotes);
           
-          // Weighted random selection from top suggestions
-          const selectWithVariety = (pool: typeof validSuggestions, count: number) => {
-            const selected: typeof validSuggestions = [];
-            const remaining = [...pool];
+          // Calculate how many notes to play based on responsiveness
+          const minNotes = 1;
+          const maxNotes = Math.ceil(1 + responsiveness * 4); // 1-5 notes
+          const numNotes = minNotes + Math.floor(Math.random() * (maxNotes - minNotes + 1));
+          
+          let notesToPlay: { noteId: string; velocity: number }[] = [];
+          
+          if (detectedChord && recentNotes.length >= 3) {
+            // Respond with a harmonically related chord
+            const relatedChord = getRelatedChord(detectedChord, keySignature);
+            const rootNote = getNote(detectedChord.root);
             
-            for (let i = 0; i < count && remaining.length > 0; i++) {
-              // Weight by score but add randomness - higher scores more likely but not guaranteed
+            if (rootNote) {
+              // Build the response chord
+              const allNotes = getAllNotes();
+              const rootSemitone = rootNote.semitone;
+              const rootOctave = rootNote.octave;
+              
+              // Find notes matching the related chord intervals
+              for (const interval of relatedChord.intervals) {
+                const targetSemitone = (rootSemitone + relatedChord.rootShift + interval) % 12;
+                const targetOctave = rootOctave + Math.floor((rootSemitone + relatedChord.rootShift + interval) / 12);
+                
+                const matchingNote = allNotes.find(n => 
+                  n.semitone === targetSemitone && 
+                  n.octave === Math.min(Math.max(targetOctave, 2), 6) // Keep in playable range
+                );
+                
+                if (matchingNote && notesToPlay.length < numNotes) {
+                  notesToPlay.push({
+                    noteId: matchingNote.id,
+                    velocity: 65 + Math.random() * 35,
+                  });
+                }
+              }
+            }
+          }
+          
+          // Fallback to harmony engine suggestions if no chord detected or not enough notes
+          if (notesToPlay.length < numNotes) {
+            const suggestions = harmonyEngineRef.current.suggestOutputs([noteId, ...recentNotes], 8);
+            const validSuggestions = suggestions
+              .filter(s => !recentNotes.includes(s.noteId) && s.score > 0.05);
+            
+            // Weighted random selection
+            const remaining = [...validSuggestions];
+            while (notesToPlay.length < numNotes && remaining.length > 0) {
               const totalWeight = remaining.reduce((sum, s) => sum + s.score + 0.1, 0);
               let random = Math.random() * totalWeight;
               
               for (let j = 0; j < remaining.length; j++) {
                 random -= (remaining[j].score + 0.1);
                 if (random <= 0) {
-                  selected.push(remaining[j]);
+                  notesToPlay.push({
+                    noteId: remaining[j].noteId,
+                    velocity: 70 + Math.random() * 30,
+                  });
                   remaining.splice(j, 1);
                   break;
                 }
               }
             }
-            return selected;
-          };
-          
-          // Select 1-3 notes with variety
-          const numNotes = 1 + Math.floor(Math.random() * 2);
-          const toPlay = selectWithVariety(validSuggestions, numNotes);
-          
-          for (const suggestion of toPlay) {
-            const delay = Math.random() * 50; // Slight timing variation
-            setTimeout(() => {
-              noteOn(suggestion.noteId, 70 + Math.random() * 30, true);
-              setTimeout(() => noteOff(suggestion.noteId, true), 300 + Math.random() * 200);
-            }, delay);
           }
-        }, 80 + Math.random() * 120);
+          
+          // Play the selected notes with organic timing
+          const noteDuration = 250 + responsiveness * 250; // Longer notes at higher responsiveness
+          for (let i = 0; i < notesToPlay.length; i++) {
+            const note = notesToPlay[i];
+            const stagger = i * (20 - responsiveness * 15); // Slight arpeggio effect
+            setTimeout(() => {
+              noteOn(note.noteId, note.velocity, true);
+              setTimeout(() => noteOff(note.noteId, true), noteDuration + Math.random() * 100);
+            }, stagger);
+          }
+        }, responseDelay);
       }
     }
     
@@ -317,7 +453,7 @@ export function useJamPartner(): UseJamPartnerReturn {
     ));
     
     setIsPlaying(true);
-  }, [mode, noteOff]);
+  }, [mode, responsiveness, keySignature, noteOff]);
   
   // Record a pattern
   const recordPattern = useCallback((input: NoteEvent[], output: NoteEvent[]) => {
@@ -464,12 +600,14 @@ export function useJamPartner(): UseJamPartnerReturn {
     midiConnected,
     midiInputs,
     midiOutputs,
+    responsiveness,
     noteOn,
     noteOff,
     setMode,
     setTempo,
     setKeySignature,
     setScale,
+    setResponsiveness,
     recordPattern,
     startAutoTrain,
     stopAutoTrain,
