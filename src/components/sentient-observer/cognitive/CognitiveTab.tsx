@@ -24,10 +24,7 @@ import {
   AlertCircle,
   Bot
 } from 'lucide-react';
-import { HolographicMemoryPanel } from './HolographicMemoryPanel';
 import { MemoryBrowserPanel } from './MemoryBrowserPanel';
-import { AgencyPanel } from './AgencyPanel';
-import { CollapseVisualization } from './CollapseVisualization';
 import { ReasoningPanel } from './ReasoningPanel';
 import { InferenceGraph } from './InferenceGraph';
 
@@ -108,38 +105,19 @@ export const CognitiveTab: React.FC<CognitiveTabProps> = ({
   getCollapseStats,
   onReset
 }) => {
-  const [memoryInput, setMemoryInput] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<{ fragment: MemoryFragment; similarity: number; location: { x: number; y: number } }[]>([]);
   const [collapseInput, setCollapseInput] = useState('');
   const [lastAction, setLastAction] = useState<string | null>(null);
-  const [recalledMemories, setRecalledMemories] = useState<{ fragment: MemoryFragment; similarity: number }[]>([]);
   const [selectedMemoryId, setSelectedMemoryId] = useState<string | null>(null);
+  const [isDaydreaming, setIsDaydreaming] = useState(false);
   
   const memStats = getMemoryStats();
   const reasoningStats = getReasoningStats();
   const collapseStats = getCollapseStats();
   
-  const handleStoreMemory = useCallback(() => {
-    if (!memoryInput.trim()) return;
-    const result = onStoreMemory(memoryInput, coherence);
-    setMemoryInput('');
-  }, [memoryInput, coherence, onStoreMemory]);
-  
-  const handleSearch = useCallback(() => {
-    if (!searchQuery.trim()) return;
-    const results = onSearchMemory(searchQuery);
-    setSearchResults(results);
-  }, [searchQuery, onSearchMemory]);
-  
   const handleReinjectMemory = useCallback((content: string) => {
     onReinjectMemory(content);
     setLastAction(`Re-injected: "${content.slice(0, 30)}..."`);
   }, [onReinjectMemory]);
-  
-  const handleSearchResultClick = useCallback((fragment: MemoryFragment) => {
-    handleReinjectMemory(fragment.content);
-  }, [handleReinjectMemory]);
   
   const handleCreateSuperposition = useCallback(() => {
     if (!collapseInput.trim()) return;
@@ -234,74 +212,16 @@ export const CognitiveTab: React.FC<CognitiveTabProps> = ({
 
         {/* Memory Tab */}
         <TabsContent value="memory" className="space-y-4">
-          {/* Store/Search Controls */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Database className="h-4 w-4" />
-                Store & Search
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {/* Store Memory */}
-              <div className="flex gap-2">
-                <Input
-                  value={memoryInput}
-                  onChange={e => setMemoryInput(e.target.value)}
-                  placeholder="Enter content to store..."
-                  onKeyDown={e => e.key === 'Enter' && handleStoreMemory()}
-                />
-                <Button onClick={handleStoreMemory} size="sm">
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
-              
-              {/* Search Memory */}
-              <div className="flex gap-2">
-                <Input
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Search for memories..."
-                  onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                />
-                <Button onClick={handleSearch} size="sm" variant="outline">
-                  <Search className="h-4 w-4" />
-                </Button>
-              </div>
-              
-              {/* Search Results - clickable for re-injection */}
-              {searchResults.length > 0 && (
-                <div className="space-y-1 pt-2 border-t">
-                  <label className="text-xs font-medium text-muted-foreground">Search Results (click to re-inject)</label>
-                  <div className="space-y-1">
-                    {searchResults.map((result, i) => (
-                      <div 
-                        key={i} 
-                        className="p-2 bg-muted/50 rounded text-sm cursor-pointer hover:bg-primary/10 hover:border-primary/30 border border-transparent transition-all"
-                        onClick={() => handleSearchResultClick(result.fragment)}
-                      >
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium truncate flex-1 mr-2">
-                            {result.fragment.content.slice(0, 40)}...
-                          </span>
-                          <Badge variant="outline" className="text-xs">
-                            {(result.similarity * 100).toFixed(0)}%
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          
-          {/* Memory Browser Panel */}
+          {/* Memory Browser Panel (with search integrated) */}
           <MemoryBrowserPanel
             memory={memory}
             onReinjectMemory={handleReinjectMemory}
             selectedMemoryId={selectedMemoryId || undefined}
             onSelectMemory={setSelectedMemoryId}
+            onSearchMemory={onSearchMemory}
+            isDaydreamingEnabled={isDaydreaming}
+            onToggleDaydreaming={() => setIsDaydreaming(prev => !prev)}
+            isSimulationRunning={isSimulationRunning}
           />
         </TabsContent>
 

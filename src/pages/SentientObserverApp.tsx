@@ -237,6 +237,10 @@ const SentientObserverApp: React.FC = () => {
               onExciteOscillators={exciteByPrimes}
               isRunning={isRunning}
               onConversationFact={cognitive.addConversationFact}
+              onSearchMemory={(query) => {
+                const results = cognitive.searchMemory(query);
+                return results.map(r => ({ content: r.fragment.content, similarity: r.similarity }));
+              }}
             />
             
             

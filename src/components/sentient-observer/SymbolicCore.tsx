@@ -42,6 +42,7 @@ interface SymbolicCoreProps {
   onExciteOscillators: (primes: number[], amplitudes: number[]) => void;
   isRunning: boolean;
   onConversationFact?: (userMessage: string, response: string, coherence: number) => void;
+  onSearchMemory?: (query: string) => { content: string; similarity: number }[];
 }
 
 // Extract symbols from oscillator state with temperature-based probabilistic sampling
@@ -168,13 +169,14 @@ function SymbolEvolution({ messages }: { messages: SymbolicMessage[] }) {
   );
 }
 
-export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRunning, onConversationFact }: SymbolicCoreProps) {
+export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRunning, onConversationFact, onSearchMemory }: SymbolicCoreProps) {
   const [messages, setMessages] = useState<SymbolicMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [selectedSymbols, setSelectedSymbols] = useState<SymbolicSymbol[]>([]);
   const [inputMode, setInputMode] = useState<'text' | 'symbols'>('text');
   const [isProcessing, setIsProcessing] = useState(false);
   const [enableLLM, setEnableLLM] = useState(true);
+  const [matchingMemories, setMatchingMemories] = useState<{ content: string; similarity: number }[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   
   const symbolCategories = useMemo(() => getSymbolCategories(), []);
@@ -185,6 +187,21 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+  
+  // Search for matching memories as user types (debounced)
+  useEffect(() => {
+    if (!onSearchMemory || inputText.length < 3) {
+      setMatchingMemories([]);
+      return;
+    }
+    
+    const timer = setTimeout(() => {
+      const results = onSearchMemory(inputText);
+      setMatchingMemories(results.slice(0, 3)); // Show top 3 matches
+    }, 400);
+    
+    return () => clearTimeout(timer);
+  }, [inputText, onSearchMemory]);
   
   const toggleSymbol = useCallback((symbol: SymbolicSymbol) => {
     setSelectedSymbols(prev => {
@@ -433,7 +450,41 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
               </TabsTrigger>
             </TabsList>
             
-            <TabsContent value="text" className="mt-2">
+            <TabsContent value="text" className="mt-2 space-y-2">
+              {/* Matching memories decoration */}
+              <AnimatePresence>
+                {matchingMemories.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20"
+                  >
+                    <div className="flex items-center gap-1 mb-1">
+                      <Brain className="h-3 w-3 text-purple-400" />
+                      <span className="text-[10px] text-purple-300">Related memories:</span>
+                    </div>
+                    <div className="space-y-1">
+                      {matchingMemories.map((mem, idx) => (
+                        <motion.div
+                          key={idx}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.05 }}
+                          className="text-[10px] text-muted-foreground flex items-center gap-1"
+                        >
+                          <span className="text-purple-400">•</span>
+                          <span className="truncate flex-1">{mem.content.slice(0, 50)}...</span>
+                          <Badge variant="outline" className="text-[8px] h-4 px-1">
+                            {(mem.similarity * 100).toFixed(0)}%
+                          </Badge>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              
               <div className="flex gap-2">
                 <Input
                   value={inputText}
