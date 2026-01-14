@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -24,8 +24,11 @@ import {
   Zap,
   Thermometer,
   Sparkles,
-  Cpu
+  Cpu,
+  Database,
+  Lightbulb
 } from 'lucide-react';
+import type { MemoryFragment } from '@/lib/sentient-observer/holographic-memory';
 
 import { useSentientObserver } from '@/hooks/useSentientObserver';
 import { useCognitiveObserver } from '@/hooks/useCognitiveObserver';
@@ -93,6 +96,28 @@ const SentientObserverApp: React.FC = () => {
     tickCount,
     isRunning
   );
+
+  // Memory integration state
+  const [recalledMemories, setRecalledMemories] = useState<{ fragment: MemoryFragment; similarity: number }[]>([]);
+  const [lastInputStatus, setLastInputStatus] = useState<{ stored: boolean } | null>(null);
+
+  // Enhanced input handler with memory integration
+  const handleEnhancedInput = useCallback(() => {
+    if (!userInput.trim()) return;
+    
+    // Process through cognitive memory system
+    const result = cognitive.processUserInput(userInput, coherence);
+    setRecalledMemories(result.recalled);
+    setLastInputStatus({ stored: result.stored });
+    
+    // Also run original oscillator excitation
+    handleInput();
+    
+    // Clear status after a delay
+    setTimeout(() => {
+      setLastInputStatus(null);
+    }, 3000);
+  }, [userInput, coherence, cognitive, handleInput]);
 
   return (
     <div className="min-h-screen bg-background p-4">
@@ -255,31 +280,100 @@ const SentientObserverApp: React.FC = () => {
                   </Card>
                 </div>
 
-                {/* Input Section */}
-                <Card>
+                {/* Input Section with Memory Integration */}
+                <Card className="border-primary/30">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2">
                       <Zap className="h-4 w-4" />
                       Sensory Input
+                      {cognitive.memory.fragments.size > 0 && (
+                        <Badge variant="outline" className="ml-auto text-xs">
+                          <Database className="h-3 w-3 mr-1" />
+                          {cognitive.memory.fragments.size} memories
+                        </Badge>
+                      )}
                     </CardTitle>
                     <CardDescription>
-                      Enter text to excite oscillators and influence the observer state
+                      Enter text to excite oscillators and store/recall cognitive memories
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-3">
                     <div className="flex gap-2">
                       <Input
                         value={userInput}
                         onChange={e => setUserInput(e.target.value)}
                         placeholder="Enter text to encode..."
-                        onKeyDown={e => e.key === 'Enter' && handleInput()}
+                        onKeyDown={e => e.key === 'Enter' && handleEnhancedInput()}
                       />
-                      <Button onClick={handleInput}>
+                      <Button onClick={handleEnhancedInput}>
                         <Send className="h-4 w-4" />
                       </Button>
                     </div>
+                    
+                    {/* Memory Recall Panel */}
+                    {recalledMemories.length > 0 && (
+                      <div className="p-3 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-lg animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Lightbulb className="h-4 w-4 text-primary animate-pulse" />
+                          <span className="text-sm font-medium text-primary">Related Memories Recalled</span>
+                        </div>
+                        <div className="space-y-2">
+                          {recalledMemories.slice(0, 3).map((recall, i) => (
+                            <div 
+                              key={recall.fragment.id} 
+                              className="flex items-start gap-2 p-2 bg-background/50 rounded border border-border/50"
+                            >
+                              <div 
+                                className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
+                                style={{ 
+                                  backgroundColor: `hsl(${280 - recall.similarity * 80}, 70%, 50%)`,
+                                  boxShadow: `0 0 6px hsl(${280 - recall.similarity * 80}, 70%, 50%)`
+                                }}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-foreground truncate">
+                                  {recall.fragment.content}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Progress 
+                                    value={recall.similarity * 100} 
+                                    className="h-1 flex-1 max-w-[100px]" 
+                                  />
+                                  <span className="text-xs text-muted-foreground font-mono">
+                                    {(recall.similarity * 100).toFixed(0)}%
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {recalledMemories.length > 3 && (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            +{recalledMemories.length - 3} more related memories
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Last Input Status */}
+                    {lastInputStatus && (
+                      <div className={`text-xs flex items-center gap-2 ${lastInputStatus.stored ? 'text-green-500' : 'text-muted-foreground'}`}>
+                        {lastInputStatus.stored ? (
+                          <>
+                            <CheckCircle className="h-3 w-3" />
+                            Stored as memory (coherence: {(coherence * 100).toFixed(0)}%)
+                          </>
+                        ) : (
+                          <>
+                            <AlertTriangle className="h-3 w-3" />
+                            Not stored (coherence too low)
+                          </>
+                        )}
+                      </div>
+                    )}
+                    
                     {inputHistory.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
+                      <div className="flex flex-wrap gap-1">
                         {inputHistory.slice(-5).map((input, i) => (
                           <Badge key={i} variant="outline" className="text-xs">
                             {input.slice(0, 20)}
