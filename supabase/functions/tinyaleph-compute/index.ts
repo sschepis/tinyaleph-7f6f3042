@@ -29,29 +29,8 @@ function checkRateLimit(key: string): { allowed: boolean; remaining: number } {
   return { allowed: true, remaining: MAX_REQUESTS_PER_WINDOW - record.count };
 }
 
-// Get CORS headers with origin validation
-function getCorsHeaders(req: Request): Record<string, string> {
-  const origin = req.headers.get('origin') || '';
-  const allowedOrigins = [
-    'https://lovable.dev',
-    'https://www.lovable.dev',
-  ];
-  
-  // Allow localhost for development
-  const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
-  // Allow Lovable preview domains
-  const isLovablePreview = origin.includes('.lovable.app') || origin.includes('.lovableproject.com');
-  
-  const allowedOrigin = allowedOrigins.includes(origin) || isLocalhost || isLovablePreview
-    ? origin
-    : allowedOrigins[0];
-  
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  };
-}
+// Import shared CORS config
+import { getCorsHeaders, handleCorsPreflightIfNeeded } from '../_shared/cors.ts';
 
 // Input validation constants
 const MAX_ARRAY_SIZE = 1000;

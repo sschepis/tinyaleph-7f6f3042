@@ -3,6 +3,9 @@ project_id = "dqpchmrwpzshiyxtkcje"
 [functions.aleph-chat]
 verify_jwt = false
 
+[functions.symbolic-mind]
+verify_jwt = false
+
 [functions.tinyaleph-compute]
 verify_jwt = false
 

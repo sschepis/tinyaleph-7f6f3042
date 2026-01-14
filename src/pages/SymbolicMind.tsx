@@ -15,9 +15,7 @@ import {
   getDefaultAnchors 
 } from '@/lib/symbolic-mind/resonance-engine';
 import type { Message, MindState, SymbolicSymbol } from '@/lib/symbolic-mind/types';
-import { toast } from 'sonner';
-
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/symbolic-mind`;
+import { streamSymbolicMind } from '@/lib/ai-client';
 
 export default function SymbolicMind() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -89,106 +87,56 @@ export default function SymbolicMind() {
     // Stream response from LLM
     setIsStreaming(true);
     
-    try {
-      const response = await fetch(CHAT_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-        body: JSON.stringify({
-          userMessage: userText,
-          symbolicOutput: outputSymbols,
-          anchoringSymbols: finalState.anchoringSymbols.filter(a => 
-            finalState.activeSymbols.some(s => s.id === a.id)
-          ),
-          coherenceScore: finalState.coherence,
-          interferenceModel: interferenceModel,
-          conversationHistory: messages.slice(-10).map(m => ({
-            role: m.role,
-            content: m.content,
-          })),
-        }),
-      });
-      
-      if (!response.ok) {
-        if (response.status === 429) {
-          toast.error('Rate limit exceeded. Please wait a moment.');
-        } else if (response.status === 402) {
-          toast.error('Usage credits exhausted.');
-        } else {
-          toast.error('Failed to get response from the Mind.');
-        }
-        setIsStreaming(false);
-        setIsProcessing(false);
-        return;
-      }
-      
-      // Stream the response
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No reader');
-      
-      const decoder = new TextDecoder();
-      let assistantContent = '';
-      let textBuffer = '';
-      
-      // Create assistant message placeholder
-      const assistantMessage: Message = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: '',
-        symbols: outputSymbols,
-        coherence: finalState.coherence,
-        timestamp: new Date(),
-      };
-      
-      setMessages(prev => [...prev, assistantMessage]);
-      
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        textBuffer += decoder.decode(value, { stream: true });
-        
-        let newlineIndex: number;
-        while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
-          let line = textBuffer.slice(0, newlineIndex);
-          textBuffer = textBuffer.slice(newlineIndex + 1);
-          
-          if (line.endsWith('\r')) line = line.slice(0, -1);
-          if (line.startsWith(':') || line.trim() === '') continue;
-          if (!line.startsWith('data: ')) continue;
-          
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === '[DONE]') break;
-          
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) {
-              assistantContent += content;
-              setMessages(prev => 
-                prev.map(m => 
-                  m.id === assistantMessage.id 
-                    ? { ...m, content: assistantContent }
-                    : m
-                )
-              );
-            }
-          } catch {
-            textBuffer = line + '\n' + textBuffer;
-            break;
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error('Failed to communicate with the Symbolic Mind.');
-    }
+    // Create assistant message placeholder
+    const assistantMessage: Message = {
+      id: crypto.randomUUID(),
+      role: 'assistant',
+      content: '',
+      symbols: outputSymbols,
+      coherence: finalState.coherence,
+      timestamp: new Date(),
+    };
     
-    setIsStreaming(false);
-    setIsProcessing(false);
-    inputRef.current?.focus();
+    setMessages(prev => [...prev, assistantMessage]);
+    
+    let assistantContent = '';
+    
+    await streamSymbolicMind(
+      {
+        userMessage: userText,
+        symbolicOutput: outputSymbols,
+        anchoringSymbols: finalState.anchoringSymbols.filter(a => 
+          finalState.activeSymbols.some(s => s.id === a.id)
+        ),
+        coherenceScore: finalState.coherence,
+        conversationHistory: messages.slice(-10).map(m => ({
+          role: m.role,
+          content: m.content,
+        })),
+      },
+      {
+        onDelta: (content) => {
+          assistantContent += content;
+          setMessages(prev => 
+            prev.map(m => 
+              m.id === assistantMessage.id 
+                ? { ...m, content: assistantContent }
+                : m
+            )
+          );
+        },
+        onDone: () => {
+          setIsStreaming(false);
+          setIsProcessing(false);
+          inputRef.current?.focus();
+        },
+        onError: (error) => {
+          console.error('Streaming error:', error);
+          // Toast already shown by streamSymbolicMind
+        },
+      },
+      { showToasts: true }
+    );
   }, [isProcessing, mindState, anchoringSymbols, messages, interferenceModel]);
   
   const handleSubmit = (e: React.FormEvent) => {
