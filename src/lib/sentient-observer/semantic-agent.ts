@@ -342,9 +342,18 @@ export function createDefaultActions(agent: SemanticAgent): SemanticAgent {
   
   updated = registerAction(
     updated,
+    'Store Memory',
+    'Create a new memory from current observations to build knowledge base',
+    state => state.memoryCount < 10 && state.coherence > 0.3,
+    state => ({ memoryCount: state.memoryCount + 1 }),
+    0.4
+  );
+  
+  updated = registerAction(
+    updated,
     'Consolidate Memories',
     'Focus on strengthening existing memories by increasing coherence',
-    state => state.coherence < 0.8,
+    state => state.coherence < 0.8 && state.memoryCount > 0,
     state => ({ coherence: Math.min(1, state.coherence + 0.1) }),
     0.6
   );

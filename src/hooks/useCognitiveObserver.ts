@@ -229,6 +229,9 @@ export function useCognitiveObserver(
     return () => clearInterval(interval);
   }, []);
   
+  // Track memory storage from autonomous agent
+  const storeMemoryRef = useRef<(content: string, coh: number) => void>(() => {});
+  
   // Autonomous agent execution when simulation is running
   useEffect(() => {
     if (isAgentAutonomous && isSimulationRunning) {
@@ -238,6 +241,13 @@ export function useCognitiveObserver(
           if (selection) {
             const updatedAgent = executeAction(prevAgent, selection);
             setLastAgentAction(`${selection.action.name} → ${selection.targetGoal.description.slice(0, 30)}`);
+            
+            // If the action is memory-related and we need to store memories, actually store one
+            if (selection.action.name === 'Store Memory' && prevAgent.state.memoryCount < 3) {
+              // Generate a meaningful memory from current state
+              const memoryContent = `Observation at tick ${prevAgent.state.tickCount}: coherence=${prevAgent.state.coherence.toFixed(2)}, entropy=${prevAgent.state.entropy.toFixed(2)}`;
+              storeMemoryRef.current(memoryContent, prevAgent.state.coherence);
+            }
             
             // Add observation about action taken
             setReasoning(prev => addObservationFact(
@@ -279,6 +289,11 @@ export function useCognitiveObserver(
     
     return { fragmentId: result.fragmentId, location: result.location };
   }, [memory]);
+  
+  // Keep ref updated for autonomous agent access
+  useEffect(() => {
+    storeMemoryRef.current = storeMemory;
+  }, [storeMemory]);
   
   const searchMemory = useCallback((q: string) => {
     return recallMemory(memory, q);
