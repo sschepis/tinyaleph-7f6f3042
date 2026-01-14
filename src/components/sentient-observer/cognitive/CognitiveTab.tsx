@@ -16,29 +16,26 @@ import {
   Target,
   Sparkles,
   GitBranch,
-  Send,
   Play,
-  RotateCcw,
-  Search,
   Zap,
   AlertCircle,
-  Bot
+  Bot,
+  RotateCcw
 } from 'lucide-react';
 import { MemoryBrowserPanel } from './MemoryBrowserPanel';
 import { ReasoningPanel } from './ReasoningPanel';
 import { InferenceGraph } from './InferenceGraph';
 
 import type { HolographicMemory, MemoryFragment } from '@/lib/sentient-observer/holographic-memory';
-import type { SemanticAgent, ActionRecord, AgentGoal } from '@/lib/sentient-observer/semantic-agent';
-import type { Superposition, CollapseHistory, CollapseEvent } from '@/lib/sentient-observer/semantic-collapse';
-import type { ReasoningEngine, Fact, ReasoningStep } from '@/lib/sentient-observer/reasoning-engine';
+import type { SemanticAgent } from '@/lib/sentient-observer/semantic-agent';
+import type { Superposition, CollapseEvent } from '@/lib/sentient-observer/semantic-collapse';
+import type { ReasoningEngine } from '@/lib/sentient-observer/reasoning-engine';
 
 interface CognitiveTabProps {
   // State
   memory: HolographicMemory;
   agent: SemanticAgent;
   currentSuperposition: Superposition | null;
-  collapseHistory: CollapseHistory;
   reasoning: ReasoningEngine;
   coherence: number;
   isSimulationRunning: boolean;
@@ -49,24 +46,15 @@ interface CognitiveTabProps {
   lastAgentAction: string | null;
   
   // Memory actions
-  onStoreMemory: (content: string, coherence: number) => { fragmentId: string; location: { x: number; y: number } };
   onSearchMemory: (query: string) => { fragment: MemoryFragment; similarity: number; location: { x: number; y: number } }[];
-  onProcessUserInput: (input: string, coherence: number) => { stored: boolean; recalled: { fragment: MemoryFragment; similarity: number }[] };
   onReinjectMemory: (content: string) => void;
   
   // Agent actions
   onRunAgentStep: () => import('@/lib/sentient-observer/semantic-agent').ActionSelection | null;
-  getAgentGoals: () => AgentGoal[];
-  getAgentActions: () => ActionRecord[];
   
   // Collapse actions
   onCreateSuperposition: (input: string) => void;
   onTriggerCollapse: (coherence: number) => CollapseEvent | null;
-  
-  // Reasoning actions
-  onAddFact: (name: string, statement: string, confidence?: number) => void;
-  onRunInference: () => { newFacts: Fact[]; steps: ReasoningStep[] };
-  onQueryFacts: (question: string) => { fact: Fact; similarity: number }[];
   
   // Stats
   getMemoryStats: () => { totalMemories: number; peakCount: number; fieldEnergy: number; oldestMemory: number | null; newestMemory: number | null };
@@ -81,25 +69,17 @@ export const CognitiveTab: React.FC<CognitiveTabProps> = ({
   memory,
   agent,
   currentSuperposition,
-  collapseHistory,
   reasoning,
   coherence,
   isSimulationRunning,
   isAgentAutonomous,
   onSetAgentAutonomous,
   lastAgentAction,
-  onStoreMemory,
   onSearchMemory,
-  onProcessUserInput,
   onReinjectMemory,
   onRunAgentStep,
-  getAgentGoals,
-  getAgentActions,
   onCreateSuperposition,
   onTriggerCollapse,
-  onAddFact,
-  onRunInference,
-  onQueryFacts,
   getMemoryStats,
   getReasoningStats,
   getCollapseStats,
