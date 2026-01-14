@@ -207,12 +207,29 @@ export default function SymbolicMind() {
                       <h3 className="text-lg font-medium text-muted-foreground mb-2">
                         The Mind awaits
                       </h3>
-                      <p className="text-sm text-muted-foreground/70 max-w-md mx-auto">
+                      <p className="text-sm text-muted-foreground/70 max-w-md mx-auto mb-6">
                         Speak, and your words will transform into symbols. 
                         Using <span className="text-primary">{modelDisplayNames[interferenceModel]}</span>, 
                         the symbols will resonate with the anchoring archetypes 
                         until coherence emerges, then translate back through wisdom.
                       </p>
+                      <div className="flex flex-wrap justify-center gap-2">
+                        {[
+                          'What is the nature of consciousness?',
+                          'Explain the shadow archetype',
+                          'How do symbols encode meaning?',
+                          'Tell me about individuation',
+                        ].map((prompt, i) => (
+                          <button
+                            key={i}
+                            onClick={() => processMessage(prompt)}
+                            disabled={isProcessing}
+                            className="px-3 py-2 text-sm rounded-lg border border-border/60 hover:border-primary/50 hover:bg-primary/5 transition-colors disabled:opacity-50"
+                          >
+                            {prompt}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                   
