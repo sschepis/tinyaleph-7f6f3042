@@ -28,6 +28,7 @@ import {
   Pause
 } from 'lucide-react';
 import { HolographicMemoryPanel } from './HolographicMemoryPanel';
+import { MemoryBrowserPanel } from './MemoryBrowserPanel';
 import { AgencyPanel } from './AgencyPanel';
 import { CollapseVisualization } from './CollapseVisualization';
 import { ReasoningPanel } from './ReasoningPanel';
@@ -57,6 +58,7 @@ interface CognitiveTabProps {
   onStoreMemory: (content: string, coherence: number) => { fragmentId: string; location: { x: number; y: number } };
   onSearchMemory: (query: string) => { fragment: MemoryFragment; similarity: number; location: { x: number; y: number } }[];
   onProcessUserInput: (input: string, coherence: number) => { stored: boolean; recalled: { fragment: MemoryFragment; similarity: number }[] };
+  onReinjectMemory: (content: string) => void;
   
   // Agent actions
   onRunAgentStep: () => import('@/lib/sentient-observer/semantic-agent').ActionSelection | null;
@@ -95,6 +97,7 @@ export const CognitiveTab: React.FC<CognitiveTabProps> = ({
   onStoreMemory,
   onSearchMemory,
   onProcessUserInput,
+  onReinjectMemory,
   onRunAgentStep,
   getAgentGoals,
   getAgentActions,
@@ -115,6 +118,7 @@ export const CognitiveTab: React.FC<CognitiveTabProps> = ({
   const [factInput, setFactInput] = useState('');
   const [lastAction, setLastAction] = useState<string | null>(null);
   const [recalledMemories, setRecalledMemories] = useState<{ fragment: MemoryFragment; similarity: number }[]>([]);
+  const [selectedMemoryId, setSelectedMemoryId] = useState<string | null>(null);
   
   const memStats = getMemoryStats();
   const reasoningStats = getReasoningStats();
@@ -131,6 +135,15 @@ export const CognitiveTab: React.FC<CognitiveTabProps> = ({
     const results = onSearchMemory(searchQuery);
     setSearchResults(results);
   }, [searchQuery, onSearchMemory]);
+  
+  const handleReinjectMemory = useCallback((content: string) => {
+    onReinjectMemory(content);
+    setLastAction(`Re-injected: "${content.slice(0, 30)}..."`);
+  }, [onReinjectMemory]);
+  
+  const handleSearchResultClick = useCallback((fragment: MemoryFragment) => {
+    handleReinjectMemory(fragment.content);
+  }, [handleReinjectMemory]);
   
   const handleCreateSuperposition = useCallback(() => {
     if (!collapseInput.trim()) return;
@@ -239,95 +252,75 @@ export const CognitiveTab: React.FC<CognitiveTabProps> = ({
 
         {/* Memory Tab */}
         <TabsContent value="memory" className="space-y-4">
+          {/* Store/Search Controls */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Database className="h-4 w-4" />
-                Holographic Memory
+                Store & Search
               </CardTitle>
-              <CardDescription>
-                Store and retrieve memories using prime-based interference patterns
-              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3">
               {/* Store Memory */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Store Memory</label>
-                <div className="flex gap-2">
-                  <Input
-                    value={memoryInput}
-                    onChange={e => setMemoryInput(e.target.value)}
-                    placeholder="Enter content to store..."
-                    onKeyDown={e => e.key === 'Enter' && handleStoreMemory()}
-                  />
-                  <Button onClick={handleStoreMemory} size="sm">
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Higher coherence = stronger memory storage
-                </p>
+              <div className="flex gap-2">
+                <Input
+                  value={memoryInput}
+                  onChange={e => setMemoryInput(e.target.value)}
+                  placeholder="Enter content to store..."
+                  onKeyDown={e => e.key === 'Enter' && handleStoreMemory()}
+                />
+                <Button onClick={handleStoreMemory} size="sm">
+                  <Send className="h-4 w-4" />
+                </Button>
               </div>
               
               {/* Search Memory */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Search Memory</label>
-                <div className="flex gap-2">
-                  <Input
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    placeholder="Search for memories..."
-                    onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                  />
-                  <Button onClick={handleSearch} size="sm" variant="outline">
-                    <Search className="h-4 w-4" />
-                  </Button>
-                </div>
+              <div className="flex gap-2">
+                <Input
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Search for memories..."
+                  onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                />
+                <Button onClick={handleSearch} size="sm" variant="outline">
+                  <Search className="h-4 w-4" />
+                </Button>
               </div>
               
-              {/* Search Results */}
+              {/* Search Results - clickable for re-injection */}
               {searchResults.length > 0 && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Results</label>
-                  <ScrollArea className="h-[150px]">
-                    <div className="space-y-2">
-                      {searchResults.map((result, i) => (
-                        <div key={i} className="p-2 bg-muted/50 rounded text-sm">
-                          <div className="flex justify-between">
-                            <span className="font-medium truncate flex-1 mr-2">
-                              {result.fragment.content.slice(0, 50)}...
-                            </span>
-                            <Badge variant="outline">
-                              {(result.similarity * 100).toFixed(0)}%
-                            </Badge>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Location: ({result.location.x}, {result.location.y})
-                          </div>
+                <div className="space-y-1 pt-2 border-t">
+                  <label className="text-xs font-medium text-muted-foreground">Search Results (click to re-inject)</label>
+                  <div className="space-y-1">
+                    {searchResults.map((result, i) => (
+                      <div 
+                        key={i} 
+                        className="p-2 bg-muted/50 rounded text-sm cursor-pointer hover:bg-primary/10 hover:border-primary/30 border border-transparent transition-all"
+                        onClick={() => handleSearchResultClick(result.fragment)}
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium truncate flex-1 mr-2">
+                            {result.fragment.content.slice(0, 40)}...
+                          </span>
+                          <Badge variant="outline" className="text-xs">
+                            {(result.similarity * 100).toFixed(0)}%
+                          </Badge>
                         </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
-              
-              {/* Memory Stats */}
-              <div className="grid grid-cols-3 gap-2 pt-2 border-t">
-                <div className="p-2 bg-muted/30 rounded text-center">
-                  <div className="text-lg font-mono">{memStats.peakCount}</div>
-                  <div className="text-xs text-muted-foreground">Peaks</div>
-                </div>
-                <div className="p-2 bg-muted/30 rounded text-center">
-                  <div className="text-lg font-mono">{memStats.fieldEnergy.toFixed(1)}</div>
-                  <div className="text-xs text-muted-foreground">Field Energy</div>
-                </div>
-                <div className="p-2 bg-muted/30 rounded text-center">
-                  <div className="text-lg font-mono">{memStats.totalMemories}</div>
-                  <div className="text-xs text-muted-foreground">Total</div>
-                </div>
-              </div>
             </CardContent>
           </Card>
+          
+          {/* Memory Browser Panel */}
+          <MemoryBrowserPanel
+            memory={memory}
+            onReinjectMemory={handleReinjectMemory}
+            selectedMemoryId={selectedMemoryId || undefined}
+            onSelectMemory={setSelectedMemoryId}
+          />
         </TabsContent>
 
         {/* Agency Tab */}

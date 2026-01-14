@@ -118,6 +118,21 @@ const SentientObserverApp: React.FC = () => {
       setLastInputStatus(null);
     }, 3000);
   }, [userInput, coherence, cognitive, handleInput]);
+  
+  // Reinject memory content into the system
+  const handleReinjectMemory = useCallback((content: string) => {
+    // Process through cognitive memory system 
+    const result = cognitive.processUserInput(content, coherence);
+    setRecalledMemories(result.recalled);
+    
+    // Set it as input and excite oscillators
+    setUserInput(content);
+    
+    // Excite oscillators directly based on the content
+    setTimeout(() => {
+      handleInput();
+    }, 50);
+  }, [coherence, cognitive, setUserInput, handleInput]);
 
   return (
     <div className="min-h-screen bg-background p-4">
@@ -612,6 +627,7 @@ const SentientObserverApp: React.FC = () => {
                   onStoreMemory={cognitive.storeMemory}
                   onSearchMemory={cognitive.searchMemory}
                   onProcessUserInput={cognitive.processUserInput}
+                  onReinjectMemory={handleReinjectMemory}
                   onRunAgentStep={cognitive.runAgentStep}
                   getAgentGoals={cognitive.getAgentGoals}
                   getAgentActions={cognitive.getAgentActions}
