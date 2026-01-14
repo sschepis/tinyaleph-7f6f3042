@@ -236,6 +236,7 @@ const SentientObserverApp: React.FC = () => {
               coherence={coherence}
               onExciteOscillators={exciteByPrimes}
               isRunning={isRunning}
+              onConversationFact={cognitive.addConversationFact}
             />
             
             

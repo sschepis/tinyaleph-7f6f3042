@@ -12,7 +12,6 @@ import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import {
-  Brain,
   Database,
   Target,
   Sparkles,
@@ -22,10 +21,8 @@ import {
   RotateCcw,
   Search,
   Zap,
-  TrendingUp,
   AlertCircle,
-  Bot,
-  Pause
+  Bot
 } from 'lucide-react';
 import { HolographicMemoryPanel } from './HolographicMemoryPanel';
 import { MemoryBrowserPanel } from './MemoryBrowserPanel';
@@ -115,7 +112,6 @@ export const CognitiveTab: React.FC<CognitiveTabProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<{ fragment: MemoryFragment; similarity: number; location: { x: number; y: number } }[]>([]);
   const [collapseInput, setCollapseInput] = useState('');
-  const [factInput, setFactInput] = useState('');
   const [lastAction, setLastAction] = useState<string | null>(null);
   const [recalledMemories, setRecalledMemories] = useState<{ fragment: MemoryFragment; similarity: number }[]>([]);
   const [selectedMemoryId, setSelectedMemoryId] = useState<string | null>(null);
@@ -158,20 +154,6 @@ export const CognitiveTab: React.FC<CognitiveTabProps> = ({
     }
   }, [coherence, onTriggerCollapse]);
   
-  const handleAddFact = useCallback(() => {
-    if (!factInput.trim()) return;
-    onAddFact('User Input', factInput, 1);
-    setFactInput('');
-  }, [factInput, onAddFact]);
-  
-  const handleRunInference = useCallback(() => {
-    const result = onRunInference();
-    if (result.newFacts.length > 0) {
-      setLastAction(`Inferred ${result.newFacts.length} new facts`);
-    } else {
-      setLastAction('No new inferences possible');
-    }
-  }, [onRunInference]);
   
   const handleAgentStep = useCallback(() => {
     const selection = onRunAgentStep();
@@ -524,102 +506,11 @@ export const CognitiveTab: React.FC<CognitiveTabProps> = ({
           {/* Inference Graph */}
           <InferenceGraph reasoning={reasoning} />
           
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <GitBranch className="h-4 w-4" />
-                Reasoning Chain Engine
-              </CardTitle>
-              <CardDescription>
-                Fact-based inference with reasoning traces
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Add Fact */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Add Fact</label>
-                <div className="flex gap-2">
-                  <Input
-                    value={factInput}
-                    onChange={e => setFactInput(e.target.value)}
-                    placeholder="Enter a fact statement..."
-                    onKeyDown={e => e.key === 'Enter' && handleAddFact()}
-                  />
-                  <Button onClick={handleAddFact} size="sm">
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              
-              {/* Run Inference */}
-              <Button onClick={handleRunInference} className="w-full" variant="secondary">
-                <TrendingUp className="h-4 w-4 mr-2" />
-                Run Inference Chain
-              </Button>
-              
-              {/* Facts List */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Facts ({reasoningStats.totalFacts})</label>
-                <ScrollArea className="h-[150px]">
-                  <div className="space-y-1">
-                    {Array.from(reasoning.facts.values()).slice(-10).reverse().map(fact => (
-                      <div key={fact.id} className="p-2 bg-muted/30 rounded text-xs">
-                        <div className="flex justify-between items-start">
-                          <span className="font-medium">{fact.name}</span>
-                          <Badge 
-                            variant="outline" 
-                            className={`text-xs ${
-                              fact.source === 'input' ? 'border-blue-500/50' :
-                              fact.source === 'inferred' ? 'border-purple-500/50' :
-                              'border-green-500/50'
-                            }`}
-                          >
-                            {fact.source}
-                          </Badge>
-                        </div>
-                        <div className="text-muted-foreground mt-1">{fact.statement}</div>
-                        <div className="flex justify-between mt-1">
-                          <span className="text-muted-foreground">
-                            Confidence: {(fact.confidence * 100).toFixed(0)}%
-                          </span>
-                          {fact.derivedFrom.length > 0 && (
-                            <span className="text-muted-foreground">
-                              From {fact.derivedFrom.length} facts
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    {reasoning.facts.size === 0 && (
-                      <div className="text-center text-muted-foreground py-4">
-                        No facts yet - observations will be added automatically
-                      </div>
-                    )}
-                  </div>
-                </ScrollArea>
-              </div>
-              
-              {/* Reasoning Stats */}
-              <div className="grid grid-cols-4 gap-2 pt-2 border-t">
-                <div className="p-2 bg-muted/30 rounded text-center">
-                  <div className="text-sm font-mono">{reasoningStats.inputFacts}</div>
-                  <div className="text-xs text-muted-foreground">Input</div>
-                </div>
-                <div className="p-2 bg-muted/30 rounded text-center">
-                  <div className="text-sm font-mono">{reasoningStats.observationFacts}</div>
-                  <div className="text-xs text-muted-foreground">Observed</div>
-                </div>
-                <div className="p-2 bg-muted/30 rounded text-center">
-                  <div className="text-sm font-mono">{reasoningStats.inferredFacts}</div>
-                  <div className="text-xs text-muted-foreground">Inferred</div>
-                </div>
-                <div className="p-2 bg-muted/30 rounded text-center">
-                  <div className="text-sm font-mono">{(reasoningStats.averageConfidence * 100).toFixed(0)}%</div>
-                  <div className="text-xs text-muted-foreground">Avg Conf</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Autonomous Reasoning Panel */}
+          <ReasoningPanel
+            engine={reasoning}
+            isSimulationRunning={isSimulationRunning}
+          />
         </TabsContent>
       </Tabs>
 

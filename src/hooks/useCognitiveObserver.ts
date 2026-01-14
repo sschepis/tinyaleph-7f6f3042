@@ -99,6 +99,7 @@ interface CognitiveObserverReturn {
   // Reasoning actions
   addInputFact: (name: string, statement: string, confidence?: number) => void;
   addObservation: (observation: string, confidence: number) => void;
+  addConversationFact: (userMessage: string, response: string, coherence: number) => void;
   runInference: () => { newFacts: Fact[]; steps: ReasoningStep[] };
   queryFacts: (question: string) => { fact: Fact; similarity: number }[];
   getFactChain: (factId: string) => Fact[];
@@ -168,6 +169,9 @@ export function useCognitiveObserver(
   const lastEntropyRef = useRef(entropy);
   const observationCooldownRef = useRef(0);
   
+  // Auto-inference interval
+  const autoInferenceIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
   // Auto-sync agent state with oscillator state
   useEffect(() => {
     const activeCount = oscillators.filter(o => o.amplitude > 0.1).length;
@@ -229,6 +233,29 @@ export function useCognitiveObserver(
     }, 5000);
     return () => clearInterval(interval);
   }, []);
+  
+  // Autonomous inference - runs periodically when simulation is running
+  useEffect(() => {
+    if (isSimulationRunning) {
+      autoInferenceIntervalRef.current = setInterval(() => {
+        setReasoning(prev => {
+          const result = runReasoningChain(prev, 2);
+          return result.engine;
+        });
+      }, 3000); // Run inference every 3 seconds
+    } else {
+      if (autoInferenceIntervalRef.current) {
+        clearInterval(autoInferenceIntervalRef.current);
+        autoInferenceIntervalRef.current = null;
+      }
+    }
+    
+    return () => {
+      if (autoInferenceIntervalRef.current) {
+        clearInterval(autoInferenceIntervalRef.current);
+      }
+    };
+  }, [isSimulationRunning]);
   
   // Track memory storage from autonomous agent
   const storeMemoryRef = useRef<(content: string, coh: number) => void>(() => {});
@@ -440,6 +467,20 @@ export function useCognitiveObserver(
     setReasoning(prev => addObservationFact(prev, observation, confidence));
   }, []);
   
+  // Add conversation facts automatically from SymbolicCore interactions
+  const addConversationFact = useCallback((userMessage: string, response: string, coh: number) => {
+    // Add the user's input as a fact
+    const inputName = `user_input_${Date.now()}`;
+    setReasoning(prev => {
+      let updated = addFact(prev, inputName, `User said: "${userMessage.slice(0, 50)}"`, coh, 'input');
+      // Add the response as an observation
+      if (response) {
+        updated = addObservationFact(updated, `System responded: "${response.slice(0, 40)}"`, coh * 0.9);
+      }
+      return updated;
+    });
+  }, []);
+  
   const runInference = useCallback(() => {
     const result = runReasoningChain(reasoning, 3);
     setReasoning(result.engine);
@@ -516,6 +557,7 @@ export function useCognitiveObserver(
     
     addInputFact,
     addObservation,
+    addConversationFact,
     runInference,
     queryFacts,
     getFactChain,
