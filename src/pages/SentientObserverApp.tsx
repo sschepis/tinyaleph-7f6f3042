@@ -90,7 +90,8 @@ const SentientObserverApp: React.FC = () => {
     coherence,
     entropy,
     explorationProgress,
-    tickCount
+    tickCount,
+    isRunning
   );
 
   return (
@@ -510,8 +511,13 @@ const SentientObserverApp: React.FC = () => {
                   collapseHistory={cognitive.collapseHistory}
                   reasoning={cognitive.reasoning}
                   coherence={coherence}
+                  isSimulationRunning={isRunning}
+                  isAgentAutonomous={cognitive.isAgentAutonomous}
+                  onSetAgentAutonomous={cognitive.setAgentAutonomous}
+                  lastAgentAction={cognitive.lastAgentAction}
                   onStoreMemory={cognitive.storeMemory}
                   onSearchMemory={cognitive.searchMemory}
+                  onProcessUserInput={cognitive.processUserInput}
                   onRunAgentStep={cognitive.runAgentStep}
                   getAgentGoals={cognitive.getAgentGoals}
                   getAgentActions={cognitive.getAgentActions}

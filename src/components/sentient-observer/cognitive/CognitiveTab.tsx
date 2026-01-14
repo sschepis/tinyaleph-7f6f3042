@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
 import {
   Brain,
   Database,
@@ -22,12 +23,15 @@ import {
   Search,
   Zap,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  Bot,
+  Pause
 } from 'lucide-react';
 import { HolographicMemoryPanel } from './HolographicMemoryPanel';
 import { AgencyPanel } from './AgencyPanel';
 import { CollapseVisualization } from './CollapseVisualization';
 import { ReasoningPanel } from './ReasoningPanel';
+import { InferenceGraph } from './InferenceGraph';
 
 import type { HolographicMemory, MemoryFragment } from '@/lib/sentient-observer/holographic-memory';
 import type { SemanticAgent, ActionRecord, AgentGoal } from '@/lib/sentient-observer/semantic-agent';
@@ -42,10 +46,17 @@ interface CognitiveTabProps {
   collapseHistory: CollapseHistory;
   reasoning: ReasoningEngine;
   coherence: number;
+  isSimulationRunning: boolean;
+  
+  // Autonomous agent
+  isAgentAutonomous: boolean;
+  onSetAgentAutonomous: (enabled: boolean) => void;
+  lastAgentAction: string | null;
   
   // Memory actions
   onStoreMemory: (content: string, coherence: number) => { fragmentId: string; location: { x: number; y: number } };
   onSearchMemory: (query: string) => { fragment: MemoryFragment; similarity: number; location: { x: number; y: number } }[];
+  onProcessUserInput: (input: string, coherence: number) => { stored: boolean; recalled: { fragment: MemoryFragment; similarity: number }[] };
   
   // Agent actions
   onRunAgentStep: () => import('@/lib/sentient-observer/semantic-agent').ActionSelection | null;
@@ -77,8 +88,13 @@ export const CognitiveTab: React.FC<CognitiveTabProps> = ({
   collapseHistory,
   reasoning,
   coherence,
+  isSimulationRunning,
+  isAgentAutonomous,
+  onSetAgentAutonomous,
+  lastAgentAction,
   onStoreMemory,
   onSearchMemory,
+  onProcessUserInput,
   onRunAgentStep,
   getAgentGoals,
   getAgentActions,
@@ -98,6 +114,7 @@ export const CognitiveTab: React.FC<CognitiveTabProps> = ({
   const [collapseInput, setCollapseInput] = useState('');
   const [factInput, setFactInput] = useState('');
   const [lastAction, setLastAction] = useState<string | null>(null);
+  const [recalledMemories, setRecalledMemories] = useState<{ fragment: MemoryFragment; similarity: number }[]>([]);
   
   const memStats = getMemoryStats();
   const reasoningStats = getReasoningStats();
@@ -326,9 +343,38 @@ export const CognitiveTab: React.FC<CognitiveTabProps> = ({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Autonomous Mode Toggle */}
+              <div className="p-3 border rounded-lg bg-gradient-to-r from-primary/5 to-transparent">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Bot className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium">Autonomous Mode</span>
+                  </div>
+                  <Switch
+                    checked={isAgentAutonomous}
+                    onCheckedChange={onSetAgentAutonomous}
+                    disabled={!isSimulationRunning}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {!isSimulationRunning 
+                    ? 'Start simulation to enable autonomous mode'
+                    : isAgentAutonomous 
+                      ? 'Agent runs automatically every 2 seconds'
+                      : 'Agent waits for manual steps'
+                  }
+                </p>
+                {isAgentAutonomous && lastAgentAction && (
+                  <div className="mt-2 p-2 bg-primary/10 rounded text-xs flex items-center gap-2">
+                    <Zap className="h-3 w-3 text-primary animate-pulse" />
+                    <span className="text-primary">{lastAgentAction}</span>
+                  </div>
+                )}
+              </div>
+              
               {/* Action Controls */}
               <div className="flex gap-2">
-                <Button onClick={handleAgentStep} className="flex-1">
+                <Button onClick={handleAgentStep} className="flex-1" disabled={isAgentAutonomous}>
                   <Play className="h-4 w-4 mr-2" />
                   Run Agent Step
                 </Button>
@@ -482,6 +528,9 @@ export const CognitiveTab: React.FC<CognitiveTabProps> = ({
 
         {/* Reasoning Tab */}
         <TabsContent value="reasoning" className="space-y-4">
+          {/* Inference Graph */}
+          <InferenceGraph reasoning={reasoning} />
+          
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
@@ -518,7 +567,7 @@ export const CognitiveTab: React.FC<CognitiveTabProps> = ({
               {/* Facts List */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Facts ({reasoningStats.totalFacts})</label>
-                <ScrollArea className="h-[200px]">
+                <ScrollArea className="h-[150px]">
                   <div className="space-y-1">
                     {Array.from(reasoning.facts.values()).slice(-10).reverse().map(fact => (
                       <div key={fact.id} className="p-2 bg-muted/30 rounded text-xs">
