@@ -26,7 +26,7 @@ import { TransitionNetworkGraph } from './TransitionNetworkGraph';
 import { SYMBOL_DATABASE } from '@/lib/symbolic-mind/symbol-database';
 import type { SymbolicSymbol } from '@/lib/symbolic-mind/types';
 import type { Oscillator } from './types';
-import { supabase } from '@/integrations/supabase/client';
+import { streamSymbolicMind } from '@/lib/ai-client';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 
 interface NarrativePattern {
@@ -344,67 +344,29 @@ export function SymbolicLearningMode({ oscillators, coherence, onExciteOscillato
     setGeneratedStory(story);
     
     // Get LLM to narrate the story
-    try {
-      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/symbolic-mind`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+    await streamSymbolicMind(
+      {
+        userMessage: `Create a short narrative or story based on this symbolic sequence. Each symbol represents a story beat. Make it poetic and meaningful: ${story.map(s => `${s.unicode} ${s.name} (${s.meaning})`).join(' → ')}`,
+        symbolicOutput: story,
+        anchoringSymbols: story.slice(0, 3),
+        coherenceScore: coherence,
+        conversationHistory: [],
+        systemPromptOverride: "You are a mythic storyteller. Transform symbolic sequences into evocative micro-narratives. Be poetic, use metaphor, and honor the archetypal meanings. Keep it to 2-3 paragraphs."
+      },
+      {
+        onDelta: (content) => {
+          setLlmNarrative(prev => prev + content);
         },
-        body: JSON.stringify({
-          userMessage: `Create a short narrative or story based on this symbolic sequence. Each symbol represents a story beat. Make it poetic and meaningful: ${story.map(s => `${s.unicode} ${s.name} (${s.meaning})`).join(' → ')}`,
-          symbolicOutput: story,
-          anchoringSymbols: story.slice(0, 3),
-          coherenceScore: coherence,
-          conversationHistory: [],
-          systemPromptOverride: "You are a mythic storyteller. Transform symbolic sequences into evocative micro-narratives. Be poetic, use metaphor, and honor the archetypal meanings. Keep it to 2-3 paragraphs."
-        }),
-      });
-      
-      if (resp.ok && resp.body) {
-        const reader = resp.body.getReader();
-        const decoder = new TextDecoder();
-        let textBuffer = "";
-        let narrative = "";
-        
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          
-          textBuffer += decoder.decode(value, { stream: true });
-          
-          let newlineIndex: number;
-          while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
-            let line = textBuffer.slice(0, newlineIndex);
-            textBuffer = textBuffer.slice(newlineIndex + 1);
-            
-            if (line.endsWith("\r")) line = line.slice(0, -1);
-            if (line.startsWith(":") || line.trim() === "") continue;
-            if (!line.startsWith("data: ")) continue;
-            
-            const jsonStr = line.slice(6).trim();
-            if (jsonStr === "[DONE]") break;
-            
-            try {
-              const parsed = JSON.parse(jsonStr);
-              const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-              if (content) {
-                narrative += content;
-                setLlmNarrative(narrative);
-              }
-            } catch {
-              textBuffer = line + "\n" + textBuffer;
-              break;
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Narrative generation error:", error);
-      setLlmNarrative(story.map(s => s.meaning).join('. '));
-    }
-    
-    setIsGenerating(false);
+        onDone: () => {
+          setIsGenerating(false);
+        },
+        onError: () => {
+          setLlmNarrative(story.map(s => s.meaning).join('. '));
+          setIsGenerating(false);
+        },
+      },
+      { showToasts: true }
+    );
   }, [patterns, learnedModel, oscillators, storyLength, coherence, onExciteOscillators]);
   
   const resetGeneration = useCallback(() => {

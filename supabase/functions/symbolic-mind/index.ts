@@ -5,26 +5,8 @@ const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT = 20; // requests per minute
 const RATE_WINDOW = 60 * 1000; // 1 minute
 
-function getCorsHeaders(req: Request): Record<string, string> {
-  const origin = req.headers.get('origin') || '';
-  const allowedOrigins = [
-    'https://lovable.dev',
-    'https://www.lovable.dev',
-  ];
-  
-  const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
-  const isLovablePreview = origin.includes('.lovable.app') || origin.includes('.lovableproject.com');
-  
-  const allowedOrigin = allowedOrigins.includes(origin) || isLocalhost || isLovablePreview
-    ? origin
-    : allowedOrigins[0];
-  
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  };
-}
+// Import shared CORS config
+import { getCorsHeaders, handleCorsPreflightIfNeeded } from '../_shared/cors.ts';
 
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();

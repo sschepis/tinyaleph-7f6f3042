@@ -21,7 +21,7 @@ import { SYMBOL_DATABASE } from '@/lib/symbolic-mind/symbol-database';
 import { inferSymbolsFromText } from '@/lib/symbolic-mind/resonance-engine';
 import type { SymbolicSymbol } from '@/lib/symbolic-mind/types';
 import type { Oscillator } from './types';
-import { supabase } from '@/integrations/supabase/client';
+import { streamSymbolicMind } from '@/lib/ai-client';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 
 interface SymbolicMessage {
@@ -195,7 +195,7 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
     });
   }, []);
   
-  // Stream LLM response
+  // Stream LLM response using unified AI client
   const streamLLMResponse = useCallback(async (
     messageId: string,
     userMessage: string,
@@ -203,92 +203,47 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
     outputSymbols: SymbolicSymbol[],
     coherenceScore: number
   ) => {
-    try {
-      const conversationHistory = messages.slice(-6).map(m => ({
-        role: m.role === 'user' ? 'user' : 'assistant',
-        content: m.text
-      }));
-      
-      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/symbolic-mind`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+    const conversationHistory = messages.slice(-6).map(m => ({
+      role: m.role === 'user' ? 'user' : 'assistant',
+      content: m.text
+    }));
+    
+    let llmContent = '';
+    
+    await streamSymbolicMind(
+      {
+        userMessage,
+        symbolicOutput: outputSymbols,
+        anchoringSymbols: inputSymbols,
+        coherenceScore,
+        conversationHistory: conversationHistory as { role: string; content: string }[],
+      },
+      {
+        onDelta: (content) => {
+          llmContent += content;
+          setMessages(prev => prev.map(m => 
+            m.id === messageId 
+              ? { ...m, llmResponse: llmContent, isStreaming: true }
+              : m
+          ));
         },
-        body: JSON.stringify({
-          userMessage,
-          symbolicOutput: outputSymbols,
-          anchoringSymbols: inputSymbols,
-          coherenceScore,
-          conversationHistory
-        }),
-      });
-
-      if (!resp.ok || !resp.body) {
-        const errData = await resp.json().catch(() => ({}));
-        console.error("LLM error:", errData);
-        setMessages(prev => prev.map(m => 
-          m.id === messageId 
-            ? { ...m, llmResponse: outputSymbols.map(s => s.meaning).join(' → '), isStreaming: false }
-            : m
-        ));
-        return;
-      }
-
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let textBuffer = "";
-      let llmContent = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        textBuffer += decoder.decode(value, { stream: true });
-        
-        let newlineIndex: number;
-        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
-          let line = textBuffer.slice(0, newlineIndex);
-          textBuffer = textBuffer.slice(newlineIndex + 1);
-          
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (line.startsWith(":") || line.trim() === "") continue;
-          if (!line.startsWith("data: ")) continue;
-          
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === "[DONE]") break;
-          
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-            if (content) {
-              llmContent += content;
-              setMessages(prev => prev.map(m => 
-                m.id === messageId 
-                  ? { ...m, llmResponse: llmContent, isStreaming: true }
-                  : m
-              ));
-            }
-          } catch {
-            textBuffer = line + "\n" + textBuffer;
-            break;
-          }
-        }
-      }
-      
-      setMessages(prev => prev.map(m => 
-        m.id === messageId 
-          ? { ...m, isStreaming: false }
-          : m
-      ));
-    } catch (error) {
-      console.error("Stream error:", error);
-      setMessages(prev => prev.map(m => 
-        m.id === messageId 
-          ? { ...m, llmResponse: outputSymbols.map(s => s.meaning).join(' → '), isStreaming: false }
-          : m
-      ));
-    }
+        onDone: () => {
+          setMessages(prev => prev.map(m => 
+            m.id === messageId 
+              ? { ...m, isStreaming: false }
+              : m
+          ));
+        },
+        onError: () => {
+          setMessages(prev => prev.map(m => 
+            m.id === messageId 
+              ? { ...m, llmResponse: outputSymbols.map(s => s.meaning).join(' → '), isStreaming: false }
+              : m
+          ));
+        },
+      },
+      { showToasts: true }
+    );
   }, [messages]);
   
   const handleSend = useCallback(() => {
