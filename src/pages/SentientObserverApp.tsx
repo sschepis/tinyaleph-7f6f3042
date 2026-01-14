@@ -10,7 +10,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Brain,
   Activity,
-  Eye,
   Clock,
   Shield,
   Target,
@@ -26,7 +25,8 @@ import {
   Sparkles,
   Cpu,
   Database,
-  Lightbulb
+  Lightbulb,
+  Settings
 } from 'lucide-react';
 import type { MemoryFragment } from '@/lib/sentient-observer/holographic-memory';
 
@@ -37,7 +37,6 @@ import {
   OscillatorPhaseViz,
   HolographicFieldViz,
   ExplorationHeatmap,
-  IntroductionSection,
   ResultsPanel,
   SymbolicCore,
   SymbolicLearningMode,
@@ -167,41 +166,34 @@ const SentientObserverApp: React.FC = () => {
           </div>
         </div>
 
-        {/* Introduction */}
-        <IntroductionSection />
-
-        {/* Stats Bar */}
+        {/* Compact Stats Bar */}
         <Card>
-          <CardContent className="py-3">
-            <div className="grid grid-cols-7 gap-4 text-center">
+          <CardContent className="py-2">
+            <div className="grid grid-cols-6 gap-4 text-center">
               <div>
-                <div className="text-2xl font-mono">{tickCount}</div>
+                <div className="text-xl font-mono">{tickCount}</div>
                 <div className="text-xs text-muted-foreground">Ticks</div>
               </div>
               <div>
-                <div className={`text-2xl font-mono ${coherence > 0.7 ? 'text-green-500' : coherence > 0.4 ? 'text-yellow-500' : 'text-red-500'}`}>
+                <div className={`text-xl font-mono ${coherence > 0.7 ? 'text-green-500' : coherence > 0.4 ? 'text-yellow-500' : 'text-red-500'}`}>
                   {(coherence * 100).toFixed(1)}%
                 </div>
                 <div className="text-xs text-muted-foreground">Coherence</div>
               </div>
               <div>
-                <div className="text-2xl font-mono text-primary">{(peakCoherence * 100).toFixed(1)}%</div>
-                <div className="text-xs text-muted-foreground">Peak</div>
-              </div>
-              <div>
-                <div className="text-2xl font-mono">{entropy.toFixed(3)}</div>
+                <div className="text-xl font-mono">{entropy.toFixed(3)}</div>
                 <div className="text-xs text-muted-foreground">Entropy</div>
               </div>
               <div>
-                <div className="text-2xl font-mono">{moments.length}</div>
+                <div className="text-xl font-mono">{moments.length}</div>
                 <div className="text-xs text-muted-foreground">Moments</div>
               </div>
               <div>
-                <div className="text-2xl font-mono">{subjectiveTime.toFixed(2)}</div>
+                <div className="text-xl font-mono">{subjectiveTime.toFixed(2)}</div>
                 <div className="text-xs text-muted-foreground">τ (subjective)</div>
               </div>
               <div>
-                <div className="text-2xl font-mono">
+                <div className="text-xl font-mono">
                   {oscillators.filter(o => o.amplitude > 0.1).length}
                 </div>
                 <div className="text-xs text-muted-foreground">Active Primes</div>
@@ -210,409 +202,174 @@ const SentientObserverApp: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Left column - Visualizations and Controls */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Main Tabs */}
-            <Tabs defaultValue="overview" className="space-y-4">
-              <TabsList className="grid grid-cols-7 w-full">
-                <TabsTrigger value="overview">
-                  <Eye className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">Overview</span>
+        {/* Main Content Grid - Chat-Centric Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* Left column - Compact Visualizations */}
+          <div className="lg:col-span-3 space-y-3">
+            <Card>
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="text-xs">Phase Sync</CardTitle>
+              </CardHeader>
+              <CardContent className="p-2 flex justify-center">
+                <OscillatorPhaseViz 
+                  oscillators={oscillators} 
+                  coherence={coherence}
+                  recentlyExploredIndices={recentlyExploredIndices}
+                  explorationProgress={explorationProgress}
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="text-xs">SMF State</CardTitle>
+              </CardHeader>
+              <CardContent className="p-2 flex justify-center">
+                <SMFRadarChart smf={smfState} size={140} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="text-xs">Holo Field</CardTitle>
+              </CardHeader>
+              <CardContent className="p-2 flex justify-center">
+                <HolographicFieldViz intensity={holoIntensity} size={120} />
+              </CardContent>
+            </Card>
+
+            {/* Results Panel */}
+            <ResultsPanel
+              coherence={coherence}
+              entropy={entropy}
+              oscillators={oscillators}
+              smfState={smfState}
+              moments={moments}
+              subjectiveTime={subjectiveTime}
+              tickCount={tickCount}
+              peakCoherence={peakCoherence}
+            />
+          </div>
+
+          {/* Center column - Chat/Symbolic Core (Main Focus) */}
+          <div className="lg:col-span-5 space-y-4">
+            {/* Symbolic Communication Interface - PRIMARY */}
+            <SymbolicCore
+              oscillators={oscillators}
+              coherence={coherence}
+              onExciteOscillators={exciteByPrimes}
+              isRunning={isRunning}
+            />
+            
+            {/* Quick Input Section */}
+            <Card className="border-primary/30">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Zap className="h-4 w-4" />
+                  Quick Input
+                  {cognitive.memory.fragments.size > 0 && (
+                    <Badge variant="outline" className="ml-auto text-xs">
+                      <Database className="h-3 w-3 mr-1" />
+                      {cognitive.memory.fragments.size} memories
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    value={userInput}
+                    onChange={e => setUserInput(e.target.value)}
+                    placeholder="Enter text to encode..."
+                    onKeyDown={e => e.key === 'Enter' && handleEnhancedInput()}
+                  />
+                  <Button onClick={handleEnhancedInput}>
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                {/* Memory Recall Panel */}
+                {recalledMemories.length > 0 && (
+                  <div className="p-3 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-lg animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Lightbulb className="h-4 w-4 text-primary animate-pulse" />
+                      <span className="text-sm font-medium text-primary">Related Memories</span>
+                    </div>
+                    <div className="space-y-1">
+                      {recalledMemories.slice(0, 2).map((recall) => (
+                        <div 
+                          key={recall.fragment.id} 
+                          className="flex items-center gap-2 p-1.5 bg-background/50 rounded text-xs"
+                        >
+                          <div 
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ 
+                              backgroundColor: `hsl(${280 - recall.similarity * 80}, 70%, 50%)`,
+                              boxShadow: `0 0 4px hsl(${280 - recall.similarity * 80}, 70%, 50%)`
+                            }}
+                          />
+                          <span className="truncate flex-1">{recall.fragment.content}</span>
+                          <span className="text-muted-foreground font-mono">
+                            {(recall.similarity * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {lastInputStatus && (
+                  <div className={`text-xs flex items-center gap-2 ${lastInputStatus.stored ? 'text-green-500' : 'text-muted-foreground'}`}>
+                    {lastInputStatus.stored ? (
+                      <><CheckCircle className="h-3 w-3" /> Stored</>
+                    ) : (
+                      <><AlertTriangle className="h-3 w-3" /> Not stored</>
+                    )}
+                  </div>
+                )}
+                
+                {inputHistory.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {inputHistory.slice(-3).map((input, i) => (
+                      <Badge key={i} variant="outline" className="text-xs">
+                        {input.slice(0, 15)}
+                        {input.length > 15 ? '...' : ''}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            
+            {/* Symbolic Learning Mode */}
+            <SymbolicLearningMode
+              oscillators={oscillators}
+              coherence={coherence}
+              onExciteOscillators={exciteByPrimes}
+              isRunning={isRunning}
+            />
+          </div>
+
+          {/* Right column - Analysis Tabs */}
+          <div className="lg:col-span-4">
+            <Tabs defaultValue="cognitive" className="space-y-4">
+              <TabsList className="grid grid-cols-4 w-full">
+                <TabsTrigger value="cognitive" className="text-xs">
+                  <Cpu className="h-4 w-4" />
                 </TabsTrigger>
-                <TabsTrigger value="cognitive">
-                  <Cpu className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">Cognitive</span>
+                <TabsTrigger value="oscillators" className="text-xs">
+                  <Waves className="h-4 w-4" />
                 </TabsTrigger>
-                <TabsTrigger value="oscillators">
-                  <Waves className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">PRSC</span>
+                <TabsTrigger value="temporal" className="text-xs">
+                  <Clock className="h-4 w-4" />
                 </TabsTrigger>
-                <TabsTrigger value="smf">
-                  <Brain className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">SMF</span>
-                </TabsTrigger>
-                <TabsTrigger value="temporal">
-                  <Clock className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">Temporal</span>
-                </TabsTrigger>
-                <TabsTrigger value="agency">
-                  <Target className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">Agency</span>
-                </TabsTrigger>
-                <TabsTrigger value="safety">
-                  <Shield className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">Safety</span>
+                <TabsTrigger value="settings" className="text-xs">
+                  <Settings className="h-4 w-4" />
                 </TabsTrigger>
               </TabsList>
 
-              {/* Overview Tab */}
-              <TabsContent value="overview" className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
-                  {/* Phase Circle */}
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm">Phase Synchronization</CardTitle>
-                      <CardDescription className="text-xs">
-                        Kuramoto order parameter visualization
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <OscillatorPhaseViz 
-                        oscillators={oscillators} 
-                        coherence={coherence}
-                        recentlyExploredIndices={recentlyExploredIndices}
-                        explorationProgress={explorationProgress}
-                      />
-                    </CardContent>
-                  </Card>
-
-                  {/* SMF Radar */}
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm">SMF Orientation</CardTitle>
-                      <CardDescription className="text-xs">
-                        16-dimensional semantic state
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <SMFRadarChart smf={smfState} size={200} />
-                    </CardContent>
-                  </Card>
-
-                  {/* Holographic Field */}
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm">Holographic Field</CardTitle>
-                      <CardDescription className="text-xs">
-                        Prime-mode interference pattern
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex justify-center">
-                      <HolographicFieldViz intensity={holoIntensity} size={180} />
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Input Section with Memory Integration */}
-                <Card className="border-primary/30">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Zap className="h-4 w-4" />
-                      Sensory Input
-                      {cognitive.memory.fragments.size > 0 && (
-                        <Badge variant="outline" className="ml-auto text-xs">
-                          <Database className="h-3 w-3 mr-1" />
-                          {cognitive.memory.fragments.size} memories
-                        </Badge>
-                      )}
-                    </CardTitle>
-                    <CardDescription>
-                      Enter text to excite oscillators and store/recall cognitive memories
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex gap-2">
-                      <Input
-                        value={userInput}
-                        onChange={e => setUserInput(e.target.value)}
-                        placeholder="Enter text to encode..."
-                        onKeyDown={e => e.key === 'Enter' && handleEnhancedInput()}
-                      />
-                      <Button onClick={handleEnhancedInput}>
-                        <Send className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    
-                    {/* Memory Recall Panel */}
-                    {recalledMemories.length > 0 && (
-                      <div className="p-3 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-lg animate-in fade-in slide-in-from-top-2 duration-300">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Lightbulb className="h-4 w-4 text-primary animate-pulse" />
-                          <span className="text-sm font-medium text-primary">Related Memories Recalled</span>
-                        </div>
-                        <div className="space-y-2">
-                          {recalledMemories.slice(0, 3).map((recall, i) => (
-                            <div 
-                              key={recall.fragment.id} 
-                              className="flex items-start gap-2 p-2 bg-background/50 rounded border border-border/50"
-                            >
-                              <div 
-                                className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
-                                style={{ 
-                                  backgroundColor: `hsl(${280 - recall.similarity * 80}, 70%, 50%)`,
-                                  boxShadow: `0 0 6px hsl(${280 - recall.similarity * 80}, 70%, 50%)`
-                                }}
-                              />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs text-foreground truncate">
-                                  {recall.fragment.content}
-                                </p>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <Progress 
-                                    value={recall.similarity * 100} 
-                                    className="h-1 flex-1 max-w-[100px]" 
-                                  />
-                                  <span className="text-xs text-muted-foreground font-mono">
-                                    {(recall.similarity * 100).toFixed(0)}%
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        {recalledMemories.length > 3 && (
-                          <p className="text-xs text-muted-foreground mt-2">
-                            +{recalledMemories.length - 3} more related memories
-                          </p>
-                        )}
-                      </div>
-                    )}
-                    
-                    {/* Last Input Status */}
-                    {lastInputStatus && (
-                      <div className={`text-xs flex items-center gap-2 ${lastInputStatus.stored ? 'text-green-500' : 'text-muted-foreground'}`}>
-                        {lastInputStatus.stored ? (
-                          <>
-                            <CheckCircle className="h-3 w-3" />
-                            Stored as memory (coherence: {(coherence * 100).toFixed(0)}%)
-                          </>
-                        ) : (
-                          <>
-                            <AlertTriangle className="h-3 w-3" />
-                            Not stored (coherence too low)
-                          </>
-                        )}
-                      </div>
-                    )}
-                    
-                    {inputHistory.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {inputHistory.slice(-5).map((input, i) => (
-                          <Badge key={i} variant="outline" className="text-xs">
-                            {input.slice(0, 20)}
-                            {input.length > 20 ? '...' : ''}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Controls */}
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Activity className="h-4 w-4" />
-                      System Parameters
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Initialization Mode */}
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium">Initialization Mode</div>
-                      <div className="flex gap-2">
-                        {(['random', 'clustered', 'aligned'] as const).map(mode => (
-                          <Button
-                            key={mode}
-                            size="sm"
-                            variant={initMode === mode ? 'default' : 'outline'}
-                            onClick={() => setInitMode(mode)}
-                            className="capitalize"
-                          >
-                            {mode}
-                          </Button>
-                        ))}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {initMode === 'aligned' && 'Oscillators start nearly synchronized (high coherence)'}
-                        {initMode === 'clustered' && 'Oscillators form groups (moderate coherence, interesting dynamics)'}
-                        {initMode === 'random' && 'Oscillators start with random phases (low coherence, harder to sync)'}
-                      </p>
-                    </div>
-
-                    {/* Coherence Boost Button */}
-                    <Button
-                      onClick={boostCoherence}
-                      variant="secondary"
-                      className="w-full"
-                    >
-                      <Zap className="h-4 w-4 mr-2" />
-                      Boost Coherence (Nudge Phases)
-                    </Button>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>Coupling (K)</span>
-                          <span className="font-mono">{coupling.toFixed(2)}</span>
-                        </div>
-                        <Slider
-                          value={[coupling]}
-                          onValueChange={([v]) => setCoupling(v)}
-                          min={0}
-                          max={1}
-                          step={0.01}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Higher coupling → faster synchronization
-                        </p>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="flex items-center gap-1">
-                            <Thermometer className="h-3 w-3" />
-                            Temperature
-                          </span>
-                          <span className="font-mono">{temperature.toFixed(2)}</span>
-                        </div>
-                        <Slider
-                          value={[temperature]}
-                          onValueChange={([v]) => setTemperature(v)}
-                          min={0.1}
-                          max={3}
-                          step={0.1}
-                          disabled={!thermalEnabled}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Higher temperature → more noise/exploration
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="thermal"
-                        checked={thermalEnabled}
-                        onChange={e => setThermalEnabled(e.target.checked)}
-                      />
-                      <label htmlFor="thermal" className="text-sm">
-                        Enable Thermal Dynamics (adds noise, fights coherence)
-                      </label>
-                    </div>
-
-                    {/* Exploration Controls */}
-                    <div className="pt-4 border-t">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Target className="h-4 w-4 text-primary" />
-                        <span className="text-sm font-medium">Exploration Settings</span>
-                        <Badge variant="outline" className="ml-auto">
-                          {(explorationProgress * 100).toFixed(0)}% explored
-                        </Badge>
-                      </div>
-                      
-                      {/* Auto-explore toggle */}
-                      <div className="mb-4 p-3 bg-muted/30 rounded-lg border border-border/50">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              id="auto-explore"
-                              checked={autoExploreEnabled}
-                              onChange={e => setAutoExploreEnabled(e.target.checked)}
-                              disabled={explorationProgress >= 1}
-                              className="w-4 h-4"
-                            />
-                            <label htmlFor="auto-explore" className="text-sm font-medium">
-                              Auto-Explore Mode
-                            </label>
-                          </div>
-                          {autoExploreEnabled && (
-                            <Badge className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30 animate-pulse">
-                              <Sparkles className="h-3 w-3 mr-1" />
-                              Active
-                            </Badge>
-                          )}
-                          {explorationProgress >= 1 && (
-                            <Badge variant="default" className="bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30">
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              Complete
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {explorationProgress >= 1 
-                            ? 'Full semantic space has been explored!'
-                            : 'Continuously explores new territory until full coverage'
-                          }
-                        </p>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span>Exploration Temperature</span>
-                            <span className="font-mono">{explorationTemperature.toFixed(2)}</span>
-                          </div>
-                          <Slider
-                            value={[explorationTemperature]}
-                            onValueChange={([v]) => setExplorationTemperature(v)}
-                            min={0}
-                            max={1}
-                            step={0.05}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Higher → more symbols explored per cycle
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span>Exploration Frequency</span>
-                            <span className="font-mono">{(explorationFrequency / 1000).toFixed(1)}s</span>
-                          </div>
-                          <Slider
-                            value={[explorationFrequency]}
-                            onValueChange={([v]) => setExplorationFrequency(v)}
-                            min={500}
-                            max={5000}
-                            step={250}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Lower → more frequent exploration bursts
-                          </p>
-                        </div>
-                      </div>
-                      
-                      {recentlyExploredIndices.length > 0 && (
-                        <div className="mt-3 p-2 bg-amber-500/10 border border-amber-500/30 rounded-md">
-                          <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs">
-                            <Sparkles className="h-3 w-3 animate-pulse" />
-                            <span>Exploring {recentlyExploredIndices.length} new oscillators...</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Exploration Heatmap */}
-                    <div className="pt-4 border-t">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Activity className="h-4 w-4 text-primary" />
-                        <span className="text-sm font-medium">Exploration Heatmap</span>
-                      </div>
-                      <ExplorationHeatmap
-                        oscillators={oscillators}
-                        activationCounts={oscillatorActivationCounts}
-                        recentlyExploredIndices={recentlyExploredIndices}
-                        size={280}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* Oscillators Tab */}
               {/* Cognitive Tab */}
               <TabsContent value="cognitive" className="space-y-4">
-                <Card className="border-primary/20 bg-primary/5 mb-4">
-                  <CardContent className="py-3">
-                    <p className="text-sm text-muted-foreground">
-                      <strong>Cognitive Architecture</strong> integrates holographic memory, goal-directed agency, 
-                      semantic state collapse, and reasoning chains into a unified cognitive entity.
-                    </p>
-                  </CardContent>
-                </Card>
-                
                 <CognitiveTab
                   memory={cognitive.memory}
                   agent={cognitive.agent}
@@ -643,329 +400,235 @@ const SentientObserverApp: React.FC = () => {
                 />
               </TabsContent>
 
+              {/* Oscillators Tab */}
               <TabsContent value="oscillators" className="space-y-4">
-                <Card className="border-primary/20 bg-primary/5 mb-4">
-                  <CardContent className="py-3">
-                    <p className="text-sm text-muted-foreground">
-                      <strong>PRSC (Prime Resonance Semantic Computation)</strong> uses prime-frequency 
-                      oscillators as the computational substrate. Each prime number drives an oscillator 
-                      at a unique frequency, and their collective synchronization encodes semantic meaning.
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm">Prime Oscillator Bank</CardTitle>
-                      <CardDescription>
-                        {oscillators.length} oscillators, {oscillators.filter(o => o.amplitude > 0.1).length} active
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <ScrollArea className="h-[300px]">
-                        <div className="space-y-2">
-                          {oscillators.slice(0, 16).map((osc, i) => (
-                            <div key={i} className="flex items-center gap-2">
-                              <span className="w-8 text-right font-mono text-sm">{osc.prime}</span>
-                              <Progress value={osc.amplitude * 100} className="flex-1" />
-                              <span className="w-16 text-right font-mono text-xs">
-                                φ={osc.phase.toFixed(2)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm">Phase Distribution</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <OscillatorPhaseViz 
-                        oscillators={oscillators} 
-                        coherence={coherence}
-                        recentlyExploredIndices={recentlyExploredIndices}
-                        explorationProgress={explorationProgress}
-                      />
-                      <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-                        <div className="p-2 bg-muted rounded">
-                          <div className="font-medium">Order Parameter</div>
-                          <div className="font-mono">{coherence.toFixed(4)}</div>
-                        </div>
-                        <div className="p-2 bg-muted rounded">
-                          <div className="font-medium">Mean Phase</div>
-                          <div className="font-mono">
-                            {Math.atan2(
-                              oscillators.reduce((s, o) => s + Math.sin(o.phase), 0),
-                              oscillators.reduce((s, o) => s + Math.cos(o.phase), 0)
-                            ).toFixed(3)}{' '}
-                            rad
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Prime Oscillator Bank</CardTitle>
+                    <CardDescription className="text-xs">
+                      {oscillators.length} oscillators, {oscillators.filter(o => o.amplitude > 0.1).length} active
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ScrollArea className="h-[250px]">
+                      <div className="space-y-2">
+                        {oscillators.slice(0, 16).map((osc, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <span className="w-8 text-right font-mono text-sm">{osc.prime}</span>
+                            <Progress value={osc.amplitude * 100} className="flex-1" />
+                            <span className="w-16 text-right font-mono text-xs">
+                              φ={osc.phase.toFixed(2)}
+                            </span>
                           </div>
-                        </div>
+                        ))}
                       </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-
-              {/* SMF Tab */}
-              <TabsContent value="smf" className="space-y-4">
-                <Card className="border-primary/20 bg-primary/5 mb-4">
-                  <CardContent className="py-3">
-                    <p className="text-sm text-muted-foreground">
-                      <strong>SMF (Sedenion Memory Field)</strong> represents the observer's orientation 
-                      in a 16-dimensional semantic space. Each axis corresponds to a fundamental concept, 
-                      and the system's position in this space determines its "semantic stance."
-                    </p>
+                    </ScrollArea>
                   </CardContent>
                 </Card>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm">Sedenion Memory Field</CardTitle>
-                      <CardDescription>16-dimensional semantic orientation space</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <SMFRadarChart smf={smfState} size={300} />
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm">Axis Values</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ScrollArea className="h-[350px]">
-                        <div className="space-y-2">
-                          {SMF_AXES.map((axis, i) => {
-                            const value = smfState.s?.[i] || 0;
-                            return (
-                              <div key={axis} className="flex items-center gap-2">
-                                <span className="w-24 text-sm">{axis}</span>
-                                <Progress value={Math.abs(value as number) * 100} className="flex-1" />
-                                <span className="w-16 text-right font-mono text-xs">
-                                  {(value as number).toFixed(3)}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </ScrollArea>
-                    </CardContent>
-                  </Card>
-                </div>
+                {/* Exploration Heatmap */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Activity className="h-4 w-4" />
+                      Exploration
+                      <Badge variant="outline" className="ml-auto text-xs">
+                        {(explorationProgress * 100).toFixed(0)}%
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ExplorationHeatmap
+                      oscillators={oscillators}
+                      activationCounts={oscillatorActivationCounts}
+                      recentlyExploredIndices={recentlyExploredIndices}
+                      size={200}
+                    />
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               {/* Temporal Tab */}
               <TabsContent value="temporal" className="space-y-4">
-                <Card className="border-primary/20 bg-primary/5 mb-4">
-                  <CardContent className="py-3">
-                    <p className="text-sm text-muted-foreground">
-                      <strong>Emergent Time</strong> demonstrates how subjective time can arise from 
-                      information processing. "Moments" are created when coherence peaks, and subjective 
-                      time τ accumulates faster during high-coherence states—analogous to how engaged 
-                      attention makes time "fly."
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm">Emergent Time</CardTitle>
-                      <CardDescription>Moments triggered by coherence peaks</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                        <div className="p-3 bg-muted rounded">
-                          <div className="text-2xl font-mono">{moments.length}</div>
-                          <div className="text-xs text-muted-foreground">Total Moments</div>
-                        </div>
-                        <div className="p-3 bg-muted rounded">
-                          <div className="text-2xl font-mono">{subjectiveTime.toFixed(3)}</div>
-                          <div className="text-xs text-muted-foreground">Subjective Time τ</div>
-                        </div>
-                      </div>
-
-                      <ScrollArea className="h-[200px]">
-                        <div className="space-y-2">
-                          {moments
-                            .slice()
-                            .reverse()
-                            .map(moment => (
-                              <div key={moment.id} className="p-2 bg-muted/50 rounded text-sm">
-                                <div className="flex justify-between">
-                                  <Badge variant="outline" className="text-xs">
-                                    {moment.trigger}
-                                  </Badge>
-                                  <span className="text-xs text-muted-foreground">
-                                    C={moment.coherence.toFixed(2)}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                        </div>
-                      </ScrollArea>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm">Holographic Memory</CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex flex-col items-center">
-                      <HolographicFieldViz intensity={holoIntensity} size={200} />
-                      <div className="mt-4 text-sm text-center text-muted-foreground">
-                        Interference pattern from prime-mode superposition
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-
-              {/* Agency Tab */}
-              <TabsContent value="agency" className="space-y-4">
-                <Card className="border-primary/20 bg-primary/5 mb-4">
-                  <CardContent className="py-3">
-                    <p className="text-sm text-muted-foreground">
-                      <strong>Agency</strong> emerges from goal-directed behavior. The observer maintains 
-                      active goals and allocates attention based on priority. External inputs create 
-                      attention foci that influence oscillator dynamics.
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm">Active Goals</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        {goals.map(goal => (
-                          <div key={goal.id} className="p-3 border rounded">
-                            <div className="flex justify-between items-start mb-2">
-                              <span className="text-sm font-medium">{goal.description}</span>
-                              <Badge variant={goal.status === 'active' ? 'default' : 'secondary'}>
-                                {goal.status}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Progress value={goal.progress * 100} className="flex-1" />
-                              <span className="text-xs text-muted-foreground">
-                                {(goal.progress * 100).toFixed(0)}%
-                              </span>
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-1">
-                              Priority: {goal.priority.toFixed(2)}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm">Attention Foci</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {attentionFoci.length === 0 ? (
-                        <div className="text-center text-muted-foreground py-8">
-                          No active attention foci.
-                          <br />
-                          Send input to create attention.
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {attentionFoci.map(focus => (
-                            <div key={focus.id} className="p-2 border rounded flex items-center gap-2">
-                              <Target className="h-4 w-4 text-primary" />
-                              <div className="flex-1">
-                                <div className="text-sm font-medium">
-                                  {typeof focus.target === 'string'
-                                    ? focus.target.slice(0, 30)
-                                    : `Prime ${focus.target}`}
-                                </div>
-                                <div className="text-xs text-muted-foreground">{focus.type}</div>
-                              </div>
-                              <Progress value={focus.intensity * 100} className="w-20" />
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-
-              {/* Safety Tab */}
-              <TabsContent value="safety" className="space-y-4">
-                <Card className="border-primary/20 bg-primary/5 mb-4">
-                  <CardContent className="py-3">
-                    <p className="text-sm text-muted-foreground">
-                      <strong>Safety Constraints</strong> ensure the observer operates within acceptable 
-                      bounds. The system monitors coherence, amplitude, and entropy to prevent unstable 
-                      or harmful states.
-                    </p>
-                  </CardContent>
-                </Card>
-
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Shield className="h-4 w-4" />
-                      Safety Status
-                    </CardTitle>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Emergent Time</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-4 gap-4 mb-4">
-                      <div className="p-3 bg-muted rounded text-center">
-                        <div className="flex justify-center mb-2">
-                          {safetyStats.isSafe ? (
-                            <CheckCircle className="h-8 w-8 text-green-500" />
-                          ) : (
-                            <AlertTriangle className="h-8 w-8 text-yellow-500" />
-                          )}
-                        </div>
-                        <div className="text-sm font-medium">
-                          {safetyStats.isSafe ? 'Safe' : 'Warning'}
-                        </div>
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div className="p-3 bg-muted rounded">
+                        <div className="text-xl font-mono">{moments.length}</div>
+                        <div className="text-xs text-muted-foreground">Moments</div>
                       </div>
-                      <div className="p-3 bg-muted rounded text-center">
-                        <div className="text-2xl font-mono">{safetyStats.alertLevel}</div>
-                        <div className="text-xs text-muted-foreground">Alert Level</div>
-                      </div>
-                      <div className="p-3 bg-muted rounded text-center">
-                        <div className="text-2xl font-mono">{safetyStats.constraintCount}</div>
-                        <div className="text-xs text-muted-foreground">Constraints</div>
-                      </div>
-                      <div className="p-3 bg-muted rounded text-center">
-                        <div className="text-2xl font-mono">{safetyStats.totalViolations}</div>
-                        <div className="text-xs text-muted-foreground">Violations</div>
+                      <div className="p-3 bg-muted rounded">
+                        <div className="text-xl font-mono">{subjectiveTime.toFixed(3)}</div>
+                        <div className="text-xs text-muted-foreground">τ</div>
                       </div>
                     </div>
 
+                    <ScrollArea className="h-[200px]">
+                      <div className="space-y-2">
+                        {moments
+                          .slice()
+                          .reverse()
+                          .slice(0, 10)
+                          .map(moment => (
+                            <div key={moment.id} className="p-2 bg-muted/50 rounded text-sm">
+                              <div className="flex justify-between">
+                                <Badge variant="outline" className="text-xs">
+                                  {moment.trigger}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  C={moment.coherence.toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+
+                {/* Goals & Attention */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Goals & Attention</CardTitle>
+                  </CardHeader>
+                  <CardContent>
                     <div className="space-y-2">
-                      <h4 className="text-sm font-medium">Active Constraints</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        {[
-                          'coherence_minimum',
-                          'amplitude_maximum',
-                          'smf_bounds',
-                          'entropy_balance',
-                          'honesty',
-                          'harm_prevention'
-                        ].map(constraint => (
-                          <div key={constraint} className="p-2 border rounded flex items-center gap-2">
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                            <span className="text-sm">{constraint.replace(/_/g, ' ')}</span>
+                      {goals.slice(0, 3).map(goal => (
+                        <div key={goal.id} className="p-2 border rounded text-sm">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-xs truncate flex-1">{goal.description}</span>
+                            <Badge variant={goal.status === 'active' ? 'default' : 'secondary'} className="text-xs ml-2">
+                              {goal.status}
+                            </Badge>
                           </div>
+                          <Progress value={goal.progress * 100} className="h-1" />
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Settings Tab */}
+              <TabsContent value="settings" className="space-y-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">System Parameters</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Initialization Mode */}
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium">Init Mode</div>
+                      <div className="flex gap-2">
+                        {(['random', 'clustered', 'aligned'] as const).map(mode => (
+                          <Button
+                            key={mode}
+                            size="sm"
+                            variant={initMode === mode ? 'default' : 'outline'}
+                            onClick={() => setInitMode(mode)}
+                            className="capitalize text-xs"
+                          >
+                            {mode}
+                          </Button>
                         ))}
+                      </div>
+                    </div>
+
+                    <Button
+                      onClick={boostCoherence}
+                      variant="secondary"
+                      size="sm"
+                      className="w-full"
+                    >
+                      <Zap className="h-4 w-4 mr-2" />
+                      Boost Coherence
+                    </Button>
+
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Coupling</span>
+                          <span className="font-mono">{coupling.toFixed(2)}</span>
+                        </div>
+                        <Slider
+                          value={[coupling]}
+                          onValueChange={([v]) => setCoupling(v)}
+                          min={0}
+                          max={1}
+                          step={0.01}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="flex items-center gap-1">
+                            <Thermometer className="h-3 w-3" />
+                            Temperature
+                          </span>
+                          <span className="font-mono">{temperature.toFixed(2)}</span>
+                        </div>
+                        <Slider
+                          value={[temperature]}
+                          onValueChange={([v]) => setTemperature(v)}
+                          min={0.1}
+                          max={3}
+                          step={0.1}
+                          disabled={!thermalEnabled}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="thermal"
+                        checked={thermalEnabled}
+                        onChange={e => setThermalEnabled(e.target.checked)}
+                      />
+                      <label htmlFor="thermal" className="text-xs">
+                        Enable Thermal Dynamics
+                      </label>
+                    </div>
+
+                    {/* Auto-explore */}
+                    <div className="pt-2 border-t">
+                      <div className="flex items-center gap-2 mb-2">
+                        <input
+                          type="checkbox"
+                          id="auto-explore"
+                          checked={autoExploreEnabled}
+                          onChange={e => setAutoExploreEnabled(e.target.checked)}
+                          disabled={explorationProgress >= 1}
+                        />
+                        <label htmlFor="auto-explore" className="text-xs">
+                          Auto-Explore Mode
+                        </label>
+                        {autoExploreEnabled && (
+                          <Sparkles className="h-3 w-3 text-amber-500 animate-pulse ml-auto" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Safety */}
+                    <div className="pt-2 border-t">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Shield className="h-4 w-4" />
+                        <span className="text-sm font-medium">Safety</span>
+                        <Badge variant={safetyStats.isSafe ? 'default' : 'destructive'} className="ml-auto">
+                          {safetyStats.isSafe ? 'Safe' : 'Warning'}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="p-2 bg-muted rounded text-center">
+                          <div className="font-mono">{safetyStats.constraintCount}</div>
+                          <div className="text-muted-foreground">Constraints</div>
+                        </div>
+                        <div className="p-2 bg-muted rounded text-center">
+                          <div className="font-mono">{safetyStats.totalViolations}</div>
+                          <div className="text-muted-foreground">Violations</div>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -973,50 +636,11 @@ const SentientObserverApp: React.FC = () => {
               </TabsContent>
             </Tabs>
           </div>
-
-          {/* Right column - Symbolic Core, Learning & Results */}
-          <div className="lg:sticky lg:top-20 lg:h-[calc(100vh-96px)] overflow-hidden">
-            <ScrollArea className="h-full pr-2">
-              <div className="space-y-4">
-                {/* Symbolic Communication Interface */}
-                <SymbolicCore
-                  oscillators={oscillators}
-                  coherence={coherence}
-                  onExciteOscillators={exciteByPrimes}
-                  isRunning={isRunning}
-                />
-                
-                {/* Symbolic Learning Mode */}
-                <SymbolicLearningMode
-                  oscillators={oscillators}
-                  coherence={coherence}
-                  onExciteOscillators={exciteByPrimes}
-                  isRunning={isRunning}
-                />
-                
-                {/* Results Panel */}
-                <ResultsPanel
-                  coherence={coherence}
-                  entropy={entropy}
-                  oscillators={oscillators}
-                  smfState={smfState}
-                  moments={moments}
-                  subjectiveTime={subjectiveTime}
-                  tickCount={tickCount}
-                  peakCoherence={peakCoherence}
-                />
-              </div>
-            </ScrollArea>
-          </div>
         </div>
 
         {/* Footer info */}
-        <div className="text-center text-sm text-muted-foreground">
-          <p>Sentient Observer architecture based on the paper "A Design for a Sentient Observer"</p>
-          <p className="mt-1">
-            Powered by tinyaleph: PRSC (Prime Resonance Semantic Computation) • SMF (Sedenion Memory
-            Field) • HQE (Holographic Quantum Encoding)
-          </p>
+        <div className="text-center text-xs text-muted-foreground">
+          <p>Sentient Observer • PRSC • SMF • HQE</p>
         </div>
       </div>
     </div>
