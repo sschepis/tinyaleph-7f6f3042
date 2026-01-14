@@ -82,6 +82,7 @@ interface CognitiveObserverReturn {
   storeMemory: (content: string, coherence: number) => { fragmentId: string; location: { x: number; y: number } };
   searchMemory: (query: string) => { fragment: MemoryFragment; similarity: number; location: { x: number; y: number } }[];
   processUserInput: (input: string, coherence: number) => { stored: boolean; recalled: { fragment: MemoryFragment; similarity: number }[] };
+  reinjectMemory: (content: string) => void;
   
   // Agent actions
   updateObserverState: (update: Partial<AgentState>) => void;
@@ -329,6 +330,28 @@ export function useCognitiveObserver(
     return { stored, recalled: recalled.map(r => ({ fragment: r.fragment, similarity: r.similarity })) };
   }, [memory]);
   
+  // Reinject memory - this callback will be passed up to trigger oscillator effects
+  const reinjectMemoryCallbackRef = useRef<((content: string) => void) | null>(null);
+  
+  const reinjectMemory = useCallback((content: string) => {
+    // Add observation about reinjection
+    setReasoning(prev => addObservationFact(
+      prev,
+      `Memory re-injected: "${content.slice(0, 30)}..."`,
+      0.8
+    ));
+    
+    // Call the external callback if set
+    if (reinjectMemoryCallbackRef.current) {
+      reinjectMemoryCallbackRef.current(content);
+    }
+  }, []);
+  
+  // Allow external code to set the reinject callback
+  const setReinjectCallback = useCallback((callback: (content: string) => void) => {
+    reinjectMemoryCallbackRef.current = callback;
+  }, []);
+  
   // Agent actions
   const updateObserverState = useCallback((update: Partial<AgentState>) => {
     setAgent(prev => updateAgentState(prev, update));
@@ -479,6 +502,7 @@ export function useCognitiveObserver(
     storeMemory,
     searchMemory,
     processUserInput,
+    reinjectMemory,
     
     updateObserverState,
     runAgentStep,
