@@ -41,6 +41,7 @@ interface SymbolicCoreProps {
   coherence: number;
   onExciteOscillators: (primes: number[], amplitudes: number[]) => void;
   isRunning: boolean;
+  onConversationFact?: (userMessage: string, response: string, coherence: number) => void;
 }
 
 // Extract symbols from oscillator state with temperature-based probabilistic sampling
@@ -167,7 +168,7 @@ function SymbolEvolution({ messages }: { messages: SymbolicMessage[] }) {
   );
 }
 
-export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRunning }: SymbolicCoreProps) {
+export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRunning, onConversationFact }: SymbolicCoreProps) {
   const [messages, setMessages] = useState<SymbolicMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [selectedSymbols, setSelectedSymbols] = useState<SymbolicSymbol[]>([]);
@@ -233,6 +234,10 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
               ? { ...m, isStreaming: false }
               : m
           ));
+          // Report to reasoning engine
+          if (onConversationFact && llmContent) {
+            onConversationFact(userMessage, llmContent, coherenceScore);
+          }
         },
         onError: () => {
           setMessages(prev => prev.map(m => 
@@ -244,7 +249,7 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
       },
       { showToasts: true }
     );
-  }, [messages]);
+  }, [messages, onConversationFact]);
   
   const handleSend = useCallback(() => {
     let inputSymbols: SymbolicSymbol[];
@@ -291,9 +296,15 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
       
       if (enableLLM) {
         streamLLMResponse(messageId, text, inputSymbols, outputSymbols, coherence);
+      } else {
+        // Report to reasoning engine when LLM is disabled
+        const fallbackResponse = outputSymbols.map(s => s.meaning).join(' → ');
+        if (onConversationFact) {
+          onConversationFact(text, fallbackResponse, coherence);
+        }
       }
     }, 500);
-  }, [inputMode, inputText, selectedSymbols, oscillators, coherence, onExciteOscillators, enableLLM, streamLLMResponse]);
+  }, [inputMode, inputText, selectedSymbols, oscillators, coherence, onExciteOscillators, enableLLM, streamLLMResponse, onConversationFact]);
   
   return (
     <Card className="flex flex-col" style={{ height: '500px' }}>

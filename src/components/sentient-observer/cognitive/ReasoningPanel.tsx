@@ -2,18 +2,14 @@ import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Network,
   Lightbulb,
-  Search,
-  ChevronRight,
   ArrowRight,
   Sparkles,
-  BookOpen
+  BookOpen,
+  Activity
 } from 'lucide-react';
 import type { 
   ReasoningEngine, 
@@ -23,11 +19,7 @@ import type {
 
 interface ReasoningPanelProps {
   engine: ReasoningEngine;
-  onAddFact: (statement: string) => void;
-  onQuery: (question: string) => void;
-  onRunInference: () => void;
-  queryResults: { fact: Fact; similarity: number }[];
-  isInferring: boolean;
+  isSimulationRunning?: boolean;
 }
 
 function FactNode({ fact, isNew }: { fact: Fact; isNew?: boolean }) {
@@ -92,7 +84,7 @@ function InferenceChain({ step }: { step: ReasoningStep }) {
       <div className="flex items-center gap-1 text-[10px]">
         {/* Input facts */}
         <div className="flex flex-wrap gap-1">
-          {step.inputFacts.slice(0, 2).map((fact, idx) => (
+          {step.inputFacts.slice(0, 2).map((fact) => (
             <Badge key={fact.id} variant="secondary" className="text-[9px]">
               {fact.name.slice(0, 15)}
             </Badge>
@@ -116,22 +108,15 @@ function InferenceChain({ step }: { step: ReasoningStep }) {
 
 export function ReasoningPanel({
   engine,
-  onAddFact,
-  onQuery,
-  onRunInference,
-  queryResults,
-  isInferring
+  isSimulationRunning
 }: ReasoningPanelProps) {
-  const [factInput, setFactInput] = React.useState('');
-  const [queryInput, setQueryInput] = React.useState('');
-  
   const facts = useMemo(() => 
-    Array.from(engine.facts.values()).slice(-10).reverse(),
+    Array.from(engine.facts.values()).slice(-12).reverse(),
     [engine.facts]
   );
   
   const recentSteps = useMemo(() => 
-    engine.reasoningHistory.slice(-5).reverse(),
+    engine.reasoningHistory.slice(-6).reverse(),
     [engine.reasoningHistory]
   );
   
@@ -139,21 +124,9 @@ export function ReasoningPanel({
     totalFacts: engine.facts.size,
     inputFacts: Array.from(engine.facts.values()).filter(f => f.source === 'input').length,
     inferredFacts: Array.from(engine.facts.values()).filter(f => f.source === 'inferred').length,
+    observationFacts: Array.from(engine.facts.values()).filter(f => f.source === 'observation').length,
     ruleCount: engine.rules.length
   }), [engine]);
-  
-  const handleAddFact = () => {
-    if (factInput.trim()) {
-      onAddFact(factInput.trim());
-      setFactInput('');
-    }
-  };
-  
-  const handleQuery = () => {
-    if (queryInput.trim()) {
-      onQuery(queryInput.trim());
-    }
-  };
   
   return (
     <Card>
@@ -161,9 +134,19 @@ export function ReasoningPanel({
         <CardTitle className="text-sm flex items-center gap-2">
           <Lightbulb className="h-4 w-4 text-primary" />
           Reasoning Engine
+          {isSimulationRunning && (
+            <motion.div
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+              className="flex items-center gap-1 ml-auto"
+            >
+              <Activity className="h-3 w-3 text-green-500" />
+              <span className="text-[10px] text-green-500">Auto-reasoning</span>
+            </motion.div>
+          )}
         </CardTitle>
         <CardDescription className="text-xs">
-          Facts, inference rules, and reasoning traces
+          Autonomous fact inference from conversation
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -182,94 +165,10 @@ export function ReasoningPanel({
             <div className="text-[9px] text-muted-foreground">Inferred</div>
           </div>
           <div className="p-1.5 bg-muted/50 rounded">
-            <div className="text-sm font-mono">{stats.ruleCount}</div>
-            <div className="text-[9px] text-muted-foreground">Rules</div>
+            <div className="text-sm font-mono text-purple-500">{stats.observationFacts}</div>
+            <div className="text-[9px] text-muted-foreground">Observed</div>
           </div>
         </div>
-        
-        {/* Add Fact */}
-        <div className="space-y-1">
-          <div className="text-xs font-medium flex items-center gap-1">
-            <BookOpen className="h-3 w-3" />
-            Add Fact
-          </div>
-          <div className="flex gap-2">
-            <Input
-              value={factInput}
-              onChange={e => setFactInput(e.target.value)}
-              placeholder="Enter a fact..."
-              className="h-8 text-xs"
-              onKeyDown={e => e.key === 'Enter' && handleAddFact()}
-            />
-            <Button size="sm" onClick={handleAddFact} className="h-8">
-              Add
-            </Button>
-          </div>
-        </div>
-        
-        {/* Query */}
-        <div className="space-y-1">
-          <div className="text-xs font-medium flex items-center gap-1">
-            <Search className="h-3 w-3" />
-            Query Knowledge
-          </div>
-          <div className="flex gap-2">
-            <Input
-              value={queryInput}
-              onChange={e => setQueryInput(e.target.value)}
-              placeholder="Ask a question..."
-              className="h-8 text-xs"
-              onKeyDown={e => e.key === 'Enter' && handleQuery()}
-            />
-            <Button size="sm" onClick={handleQuery} className="h-8">
-              <Search className="h-3 w-3" />
-            </Button>
-          </div>
-        </div>
-        
-        {/* Query Results */}
-        {queryResults.length > 0 && (
-          <div className="space-y-1">
-            <div className="text-xs font-medium">Results</div>
-            <ScrollArea className="h-20">
-              <div className="space-y-1 pr-2">
-                {queryResults.map(result => (
-                  <div 
-                    key={result.fact.id}
-                    className="flex items-center justify-between p-1.5 bg-muted/30 rounded text-xs"
-                  >
-                    <span className="truncate">{result.fact.statement}</span>
-                    <Badge variant="outline" className="text-[10px]">
-                      {(result.similarity * 100).toFixed(0)}%
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
-        )}
-        
-        {/* Run Inference */}
-        <Button 
-          onClick={onRunInference}
-          disabled={isInferring}
-          className="w-full h-8 text-xs"
-          variant="secondary"
-        >
-          {isInferring ? (
-            <motion.span
-              animate={{ opacity: [1, 0.5, 1] }}
-              transition={{ duration: 0.8, repeat: Infinity }}
-            >
-              Reasoning...
-            </motion.span>
-          ) : (
-            <>
-              <Network className="h-3 w-3 mr-1" />
-              Run Inference Step
-            </>
-          )}
-        </Button>
         
         {/* Recent Inferences */}
         {recentSteps.length > 0 && (
@@ -294,7 +193,7 @@ export function ReasoningPanel({
             <BookOpen className="h-3 w-3" />
             Knowledge Base
           </div>
-          <ScrollArea className="h-28">
+          <ScrollArea className="h-36">
             <div className="space-y-1.5 pr-2">
               <AnimatePresence>
                 {facts.map((fact, idx) => (
@@ -303,7 +202,7 @@ export function ReasoningPanel({
               </AnimatePresence>
               {facts.length === 0 && (
                 <div className="text-center text-muted-foreground text-xs py-4">
-                  No facts yet
+                  Start a conversation to populate the knowledge base
                 </div>
               )}
             </div>
