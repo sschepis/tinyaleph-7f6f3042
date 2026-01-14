@@ -43,8 +43,31 @@ export const InferenceGraph: React.FC<InferenceGraphProps> = ({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const animationRef = useRef<number>();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 300, height: 200 });
   const [nodes, setNodes] = useState<GraphNode[]>([]);
   const [edges, setEdges] = useState<GraphEdge[]>([]);
+
+  // Measure container size
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setDimensions({
+          width: Math.max(rect.width, 200),
+          height: isExpanded ? 350 : 220
+        });
+      }
+    };
+
+    updateDimensions();
+    const resizeObserver = new ResizeObserver(updateDimensions);
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    return () => resizeObserver.disconnect();
+  }, [isExpanded]);
 
   // Build graph from reasoning engine
   const graphData = useMemo(() => {
@@ -59,8 +82,8 @@ export const InferenceGraph: React.FC<InferenceGraphProps> = ({
         type: 'fact',
         label: fact.name.slice(0, 20),
         data: fact,
-        x: 100 + Math.random() * 200,
-        y: 50 + Math.random() * 150,
+        x: dimensions.width * 0.2 + Math.random() * dimensions.width * 0.6,
+        y: dimensions.height * 0.2 + Math.random() * dimensions.height * 0.6,
         vx: 0,
         vy: 0,
         source: fact.source,
@@ -81,8 +104,8 @@ export const InferenceGraph: React.FC<InferenceGraphProps> = ({
         type: 'rule',
         label: step.ruleName.slice(0, 15),
         data: { ruleId: step.ruleId, ruleName: step.ruleName },
-        x: 150 + Math.random() * 150,
-        y: 100 + Math.random() * 100,
+        x: dimensions.width * 0.3 + Math.random() * dimensions.width * 0.4,
+        y: dimensions.height * 0.3 + Math.random() * dimensions.height * 0.4,
         vx: 0,
         vy: 0
       };
@@ -159,11 +182,11 @@ export const InferenceGraph: React.FC<InferenceGraphProps> = ({
             }
           });
           
-          // Center gravity
-          const centerX = isExpanded ? 200 : 120;
-          const centerY = isExpanded ? 150 : 100;
-          node.vx += (centerX - node.x) * 0.001;
-          node.vy += (centerY - node.y) * 0.001;
+          // Center gravity - use actual dimensions
+          const centerX = dimensions.width / 2;
+          const centerY = dimensions.height / 2;
+          node.vx += (centerX - node.x) * 0.002;
+          node.vy += (centerY - node.y) * 0.002;
           
           // Apply velocity with damping
           node.x += node.vx;
@@ -171,11 +194,10 @@ export const InferenceGraph: React.FC<InferenceGraphProps> = ({
           node.vx *= 0.85;
           node.vy *= 0.85;
           
-          // Bounds
-          const maxX = isExpanded ? 380 : 220;
-          const maxY = isExpanded ? 280 : 180;
-          node.x = Math.max(20, Math.min(maxX, node.x));
-          node.y = Math.max(20, Math.min(maxY, node.y));
+          // Bounds - use actual dimensions with padding
+          const padding = 25;
+          node.x = Math.max(padding, Math.min(dimensions.width - padding, node.x));
+          node.y = Math.max(padding, Math.min(dimensions.height - padding, node.y));
         }
         
         return newNodes;
@@ -191,7 +213,7 @@ export const InferenceGraph: React.FC<InferenceGraphProps> = ({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [nodes.length, edges, isExpanded]);
+  }, [nodes.length, edges, dimensions.width, dimensions.height]);
 
   const handleNodeClick = useCallback((node: GraphNode) => {
     setSelectedNodeId(node.id);
@@ -212,8 +234,6 @@ export const InferenceGraph: React.FC<InferenceGraphProps> = ({
   };
 
   const selectedNode = nodes.find(n => n.id === selectedNodeId);
-  const svgWidth = isExpanded ? 400 : 240;
-  const svgHeight = isExpanded ? 300 : 200;
 
   if (nodes.length === 0) {
     return (
@@ -246,8 +266,17 @@ export const InferenceGraph: React.FC<InferenceGraphProps> = ({
       </CardHeader>
       <CardContent className="space-y-3">
         {/* Graph SVG */}
-        <div className="relative border rounded-lg bg-muted/20 overflow-hidden">
-          <svg width={svgWidth} height={svgHeight} className="w-full">
+        <div 
+          ref={containerRef}
+          className="relative border rounded-lg bg-muted/20 overflow-hidden"
+          style={{ height: isExpanded ? 350 : 220 }}
+        >
+          <svg 
+            width={dimensions.width} 
+            height={dimensions.height} 
+            viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
+            className="w-full h-full"
+          >
             <defs>
               <marker
                 id="arrowhead"
