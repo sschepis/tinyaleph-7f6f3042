@@ -73,9 +73,15 @@ interface CognitiveObserverReturn {
   collapseHistory: CollapseHistory;
   reasoning: ReasoningEngine;
   
+  // Autonomous agent
+  isAgentAutonomous: boolean;
+  setAgentAutonomous: (enabled: boolean) => void;
+  lastAgentAction: string | null;
+  
   // Memory actions
   storeMemory: (content: string, coherence: number) => { fragmentId: string; location: { x: number; y: number } };
   searchMemory: (query: string) => { fragment: MemoryFragment; similarity: number; location: { x: number; y: number } }[];
+  processUserInput: (input: string, coherence: number) => { stored: boolean; recalled: { fragment: MemoryFragment; similarity: number }[] };
   
   // Agent actions
   updateObserverState: (update: Partial<AgentState>) => void;
@@ -118,7 +124,8 @@ export function useCognitiveObserver(
   coherence: number,
   entropy: number,
   explorationProgress: number,
-  tickCount: number
+  tickCount: number,
+  isSimulationRunning: boolean = false
 ): CognitiveObserverReturn {
   // Initialize cognitive systems
   const [memory, setMemory] = useState<HolographicMemory>(() => createHolographicMemory());
@@ -149,6 +156,11 @@ export function useCognitiveObserver(
     r = addDefaultRules(r);
     return r;
   });
+  
+  // Autonomous agent state
+  const [isAgentAutonomous, setAgentAutonomous] = useState(false);
+  const [lastAgentAction, setLastAgentAction] = useState<string | null>(null);
+  const agentStepIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Track state changes for auto-observations
   const lastCoherenceRef = useRef(coherence);
@@ -217,6 +229,42 @@ export function useCognitiveObserver(
     return () => clearInterval(interval);
   }, []);
   
+  // Autonomous agent execution when simulation is running
+  useEffect(() => {
+    if (isAgentAutonomous && isSimulationRunning) {
+      agentStepIntervalRef.current = setInterval(() => {
+        setAgent(prevAgent => {
+          const selection = selectAction(prevAgent);
+          if (selection) {
+            const updatedAgent = executeAction(prevAgent, selection);
+            setLastAgentAction(`${selection.action.name} → ${selection.targetGoal.description.slice(0, 30)}`);
+            
+            // Add observation about action taken
+            setReasoning(prev => addObservationFact(
+              prev,
+              `Autonomous action: ${selection.action.name} for "${selection.targetGoal.description}"`,
+              selection.confidence
+            ));
+            
+            return updatedAgent;
+          }
+          return prevAgent;
+        });
+      }, 2000); // Run agent step every 2 seconds
+    } else {
+      if (agentStepIntervalRef.current) {
+        clearInterval(agentStepIntervalRef.current);
+        agentStepIntervalRef.current = null;
+      }
+    }
+    
+    return () => {
+      if (agentStepIntervalRef.current) {
+        clearInterval(agentStepIntervalRef.current);
+      }
+    };
+  }, [isAgentAutonomous, isSimulationRunning]);
+  
   // Memory actions
   const storeMemory = useCallback((content: string, coh: number) => {
     const result = encodeMemory(memory, content, coh);
@@ -234,6 +282,36 @@ export function useCognitiveObserver(
   
   const searchMemory = useCallback((q: string) => {
     return recallMemory(memory, q);
+  }, [memory]);
+  
+  // Process user input: auto-store high coherence, recall related memories
+  const processUserInput = useCallback((input: string, coh: number): { stored: boolean; recalled: { fragment: MemoryFragment; similarity: number }[] } => {
+    const recalled = recallMemory(memory, input, 0.3);
+    let stored = false;
+    
+    // Auto-store if coherence is high enough (> 0.5)
+    if (coh > 0.5 && input.length > 5) {
+      const result = encodeMemory(memory, input, coh);
+      setMemory(result.memory);
+      stored = true;
+      
+      setReasoning(prev => addObservationFact(
+        prev,
+        `Auto-stored high-coherence input: "${input.slice(0, 25)}..."`,
+        coh
+      ));
+    }
+    
+    // If we recalled related memories, add observation
+    if (recalled.length > 0) {
+      setReasoning(prev => addObservationFact(
+        prev,
+        `Recalled ${recalled.length} related memories for input`,
+        recalled[0].similarity
+      ));
+    }
+    
+    return { stored, recalled: recalled.map(r => ({ fragment: r.fragment, similarity: r.similarity })) };
   }, [memory]);
   
   // Agent actions
@@ -378,8 +456,14 @@ export function useCognitiveObserver(
     collapseHistory,
     reasoning,
     
+    // Autonomous agent
+    isAgentAutonomous,
+    setAgentAutonomous,
+    lastAgentAction,
+    
     storeMemory,
     searchMemory,
+    processUserInput,
     
     updateObserverState,
     runAgentStep,
