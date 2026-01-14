@@ -1,0 +1,317 @@
+import React, { useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Network,
+  Lightbulb,
+  Search,
+  ChevronRight,
+  ArrowRight,
+  Sparkles,
+  BookOpen
+} from 'lucide-react';
+import type { 
+  ReasoningEngine, 
+  Fact, 
+  ReasoningStep 
+} from '@/lib/sentient-observer/reasoning-engine';
+
+interface ReasoningPanelProps {
+  engine: ReasoningEngine;
+  onAddFact: (statement: string) => void;
+  onQuery: (question: string) => void;
+  onRunInference: () => void;
+  queryResults: { fact: Fact; similarity: number }[];
+  isInferring: boolean;
+}
+
+function FactNode({ fact, isNew }: { fact: Fact; isNew?: boolean }) {
+  const sourceColors = {
+    input: 'border-blue-500/30 bg-blue-500/5',
+    inferred: 'border-green-500/30 bg-green-500/5',
+    observation: 'border-purple-500/30 bg-purple-500/5'
+  };
+  
+  const sourceIcons = {
+    input: '📝',
+    inferred: '💡',
+    observation: '👁️'
+  };
+  
+  return (
+    <motion.div
+      initial={isNew ? { opacity: 0, scale: 0.9 } : false}
+      animate={{ opacity: 1, scale: 1 }}
+      className={`p-2 rounded-lg border ${sourceColors[fact.source]}`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1">
+          <div className="flex items-center gap-1 mb-0.5">
+            <span className="text-sm">{sourceIcons[fact.source]}</span>
+            <span className="text-[10px] font-medium text-muted-foreground">{fact.name}</span>
+          </div>
+          <p className="text-xs">{fact.statement}</p>
+        </div>
+        <Badge 
+          variant="outline" 
+          className={`text-[10px] shrink-0 ${
+            fact.confidence > 0.8 ? 'border-green-500 text-green-500' :
+            fact.confidence > 0.5 ? 'border-yellow-500 text-yellow-500' :
+            'border-red-500 text-red-500'
+          }`}
+        >
+          {(fact.confidence * 100).toFixed(0)}%
+        </Badge>
+      </div>
+      {fact.derivedFrom.length > 0 && (
+        <div className="mt-1 text-[9px] text-muted-foreground">
+          Derived from {fact.derivedFrom.length} fact(s)
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+function InferenceChain({ step }: { step: ReasoningStep }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="p-2 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border border-primary/20"
+    >
+      <div className="flex items-center gap-1 mb-1.5">
+        <Network className="h-3 w-3 text-primary" />
+        <span className="text-[10px] font-medium">{step.ruleName}</span>
+      </div>
+      
+      <div className="flex items-center gap-1 text-[10px]">
+        {/* Input facts */}
+        <div className="flex flex-wrap gap-1">
+          {step.inputFacts.slice(0, 2).map((fact, idx) => (
+            <Badge key={fact.id} variant="secondary" className="text-[9px]">
+              {fact.name.slice(0, 15)}
+            </Badge>
+          ))}
+        </div>
+        
+        <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+        
+        {/* Output fact */}
+        <Badge className="text-[9px] bg-primary/20 text-primary border-primary/30">
+          {step.outputFact.name.slice(0, 20)}
+        </Badge>
+      </div>
+      
+      <div className="mt-1 text-[9px] text-muted-foreground">
+        Confidence: {(step.confidence * 100).toFixed(0)}%
+      </div>
+    </motion.div>
+  );
+}
+
+export function ReasoningPanel({
+  engine,
+  onAddFact,
+  onQuery,
+  onRunInference,
+  queryResults,
+  isInferring
+}: ReasoningPanelProps) {
+  const [factInput, setFactInput] = React.useState('');
+  const [queryInput, setQueryInput] = React.useState('');
+  
+  const facts = useMemo(() => 
+    Array.from(engine.facts.values()).slice(-10).reverse(),
+    [engine.facts]
+  );
+  
+  const recentSteps = useMemo(() => 
+    engine.reasoningHistory.slice(-5).reverse(),
+    [engine.reasoningHistory]
+  );
+  
+  const stats = useMemo(() => ({
+    totalFacts: engine.facts.size,
+    inputFacts: Array.from(engine.facts.values()).filter(f => f.source === 'input').length,
+    inferredFacts: Array.from(engine.facts.values()).filter(f => f.source === 'inferred').length,
+    ruleCount: engine.rules.length
+  }), [engine]);
+  
+  const handleAddFact = () => {
+    if (factInput.trim()) {
+      onAddFact(factInput.trim());
+      setFactInput('');
+    }
+  };
+  
+  const handleQuery = () => {
+    if (queryInput.trim()) {
+      onQuery(queryInput.trim());
+    }
+  };
+  
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Lightbulb className="h-4 w-4 text-primary" />
+          Reasoning Engine
+        </CardTitle>
+        <CardDescription className="text-xs">
+          Facts, inference rules, and reasoning traces
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {/* Stats */}
+        <div className="grid grid-cols-4 gap-2 text-center">
+          <div className="p-1.5 bg-muted/50 rounded">
+            <div className="text-sm font-mono">{stats.totalFacts}</div>
+            <div className="text-[9px] text-muted-foreground">Facts</div>
+          </div>
+          <div className="p-1.5 bg-muted/50 rounded">
+            <div className="text-sm font-mono text-blue-500">{stats.inputFacts}</div>
+            <div className="text-[9px] text-muted-foreground">Input</div>
+          </div>
+          <div className="p-1.5 bg-muted/50 rounded">
+            <div className="text-sm font-mono text-green-500">{stats.inferredFacts}</div>
+            <div className="text-[9px] text-muted-foreground">Inferred</div>
+          </div>
+          <div className="p-1.5 bg-muted/50 rounded">
+            <div className="text-sm font-mono">{stats.ruleCount}</div>
+            <div className="text-[9px] text-muted-foreground">Rules</div>
+          </div>
+        </div>
+        
+        {/* Add Fact */}
+        <div className="space-y-1">
+          <div className="text-xs font-medium flex items-center gap-1">
+            <BookOpen className="h-3 w-3" />
+            Add Fact
+          </div>
+          <div className="flex gap-2">
+            <Input
+              value={factInput}
+              onChange={e => setFactInput(e.target.value)}
+              placeholder="Enter a fact..."
+              className="h-8 text-xs"
+              onKeyDown={e => e.key === 'Enter' && handleAddFact()}
+            />
+            <Button size="sm" onClick={handleAddFact} className="h-8">
+              Add
+            </Button>
+          </div>
+        </div>
+        
+        {/* Query */}
+        <div className="space-y-1">
+          <div className="text-xs font-medium flex items-center gap-1">
+            <Search className="h-3 w-3" />
+            Query Knowledge
+          </div>
+          <div className="flex gap-2">
+            <Input
+              value={queryInput}
+              onChange={e => setQueryInput(e.target.value)}
+              placeholder="Ask a question..."
+              className="h-8 text-xs"
+              onKeyDown={e => e.key === 'Enter' && handleQuery()}
+            />
+            <Button size="sm" onClick={handleQuery} className="h-8">
+              <Search className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+        
+        {/* Query Results */}
+        {queryResults.length > 0 && (
+          <div className="space-y-1">
+            <div className="text-xs font-medium">Results</div>
+            <ScrollArea className="h-20">
+              <div className="space-y-1 pr-2">
+                {queryResults.map(result => (
+                  <div 
+                    key={result.fact.id}
+                    className="flex items-center justify-between p-1.5 bg-muted/30 rounded text-xs"
+                  >
+                    <span className="truncate">{result.fact.statement}</span>
+                    <Badge variant="outline" className="text-[10px]">
+                      {(result.similarity * 100).toFixed(0)}%
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+        )}
+        
+        {/* Run Inference */}
+        <Button 
+          onClick={onRunInference}
+          disabled={isInferring}
+          className="w-full h-8 text-xs"
+          variant="secondary"
+        >
+          {isInferring ? (
+            <motion.span
+              animate={{ opacity: [1, 0.5, 1] }}
+              transition={{ duration: 0.8, repeat: Infinity }}
+            >
+              Reasoning...
+            </motion.span>
+          ) : (
+            <>
+              <Network className="h-3 w-3 mr-1" />
+              Run Inference Step
+            </>
+          )}
+        </Button>
+        
+        {/* Recent Inferences */}
+        {recentSteps.length > 0 && (
+          <div className="space-y-1.5">
+            <div className="text-xs font-medium flex items-center gap-1">
+              <Sparkles className="h-3 w-3" />
+              Recent Inferences
+            </div>
+            <ScrollArea className="h-28">
+              <div className="space-y-1.5 pr-2">
+                {recentSteps.map(step => (
+                  <InferenceChain key={step.id} step={step} />
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+        )}
+        
+        {/* Facts List */}
+        <div className="space-y-1.5">
+          <div className="text-xs font-medium flex items-center gap-1">
+            <BookOpen className="h-3 w-3" />
+            Knowledge Base
+          </div>
+          <ScrollArea className="h-28">
+            <div className="space-y-1.5 pr-2">
+              <AnimatePresence>
+                {facts.map((fact, idx) => (
+                  <FactNode key={fact.id} fact={fact} isNew={idx === 0} />
+                ))}
+              </AnimatePresence>
+              {facts.length === 0 && (
+                <div className="text-center text-muted-foreground text-xs py-4">
+                  No facts yet
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default ReasoningPanel;
