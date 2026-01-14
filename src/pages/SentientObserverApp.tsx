@@ -23,10 +23,12 @@ import {
   CheckCircle,
   Zap,
   Thermometer,
-  Sparkles
+  Sparkles,
+  Cpu
 } from 'lucide-react';
 
 import { useSentientObserver } from '@/hooks/useSentientObserver';
+import { useCognitiveObserver } from '@/hooks/useCognitiveObserver';
 import {
   SMFRadarChart,
   OscillatorPhaseViz,
@@ -38,6 +40,7 @@ import {
   SymbolicLearningMode,
   SMF_AXES
 } from '@/components/sentient-observer';
+import { CognitiveTab } from '@/components/sentient-observer/cognitive';
 
 const SentientObserverApp: React.FC = () => {
   const {
@@ -80,6 +83,15 @@ const SentientObserverApp: React.FC = () => {
     setExplorationFrequency,
     setAutoExploreEnabled
   } = useSentientObserver();
+
+  // Initialize cognitive systems
+  const cognitive = useCognitiveObserver(
+    oscillators,
+    coherence,
+    entropy,
+    explorationProgress,
+    tickCount
+  );
 
   return (
     <div className="min-h-screen bg-background p-4">
@@ -163,30 +175,34 @@ const SentientObserverApp: React.FC = () => {
           <div className="lg:col-span-2 space-y-4">
             {/* Main Tabs */}
             <Tabs defaultValue="overview" className="space-y-4">
-              <TabsList className="grid grid-cols-6 w-full">
+              <TabsList className="grid grid-cols-7 w-full">
                 <TabsTrigger value="overview">
-                  <Eye className="h-4 w-4 mr-2" />
-                  Overview
+                  <Eye className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Overview</span>
+                </TabsTrigger>
+                <TabsTrigger value="cognitive">
+                  <Cpu className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Cognitive</span>
                 </TabsTrigger>
                 <TabsTrigger value="oscillators">
-                  <Waves className="h-4 w-4 mr-2" />
-                  PRSC
+                  <Waves className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">PRSC</span>
                 </TabsTrigger>
                 <TabsTrigger value="smf">
-                  <Brain className="h-4 w-4 mr-2" />
-                  SMF
+                  <Brain className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">SMF</span>
                 </TabsTrigger>
                 <TabsTrigger value="temporal">
-                  <Clock className="h-4 w-4 mr-2" />
-                  Temporal
+                  <Clock className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Temporal</span>
                 </TabsTrigger>
                 <TabsTrigger value="agency">
-                  <Target className="h-4 w-4 mr-2" />
-                  Agency
+                  <Target className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Agency</span>
                 </TabsTrigger>
                 <TabsTrigger value="safety">
-                  <Shield className="h-4 w-4 mr-2" />
-                  Safety
+                  <Shield className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Safety</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -476,6 +492,41 @@ const SentientObserverApp: React.FC = () => {
               </TabsContent>
 
               {/* Oscillators Tab */}
+              {/* Cognitive Tab */}
+              <TabsContent value="cognitive" className="space-y-4">
+                <Card className="border-primary/20 bg-primary/5 mb-4">
+                  <CardContent className="py-3">
+                    <p className="text-sm text-muted-foreground">
+                      <strong>Cognitive Architecture</strong> integrates holographic memory, goal-directed agency, 
+                      semantic state collapse, and reasoning chains into a unified cognitive entity.
+                    </p>
+                  </CardContent>
+                </Card>
+                
+                <CognitiveTab
+                  memory={cognitive.memory}
+                  agent={cognitive.agent}
+                  currentSuperposition={cognitive.currentSuperposition}
+                  collapseHistory={cognitive.collapseHistory}
+                  reasoning={cognitive.reasoning}
+                  coherence={coherence}
+                  onStoreMemory={cognitive.storeMemory}
+                  onSearchMemory={cognitive.searchMemory}
+                  onRunAgentStep={cognitive.runAgentStep}
+                  getAgentGoals={cognitive.getAgentGoals}
+                  getAgentActions={cognitive.getAgentActions}
+                  onCreateSuperposition={cognitive.createMeaningSuperposition}
+                  onTriggerCollapse={cognitive.triggerCollapse}
+                  onAddFact={cognitive.addInputFact}
+                  onRunInference={cognitive.runInference}
+                  onQueryFacts={cognitive.queryFacts}
+                  getMemoryStats={cognitive.getMemoryStats}
+                  getReasoningStats={cognitive.getReasoningStats}
+                  getCollapseStats={cognitive.getCollapseStats}
+                  onReset={cognitive.resetCognitive}
+                />
+              </TabsContent>
+
               <TabsContent value="oscillators" className="space-y-4">
                 <Card className="border-primary/20 bg-primary/5 mb-4">
                   <CardContent className="py-3">
