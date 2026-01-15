@@ -479,10 +479,34 @@ ${conversation}`;
     }
   }, []);
 
+  // Reset conversation while keeping perspectives
+  const resetConversation = useCallback(() => {
+    messageHistoryRef.current = [];
+    setState(prev => ({
+      ...prev,
+      messages: [{
+        id: 'init',
+        role: 'system',
+        content: 'Conversation reset. Your perspectives are still active - ask a new question to begin.',
+        timestamp: new Date()
+      }],
+      quantumState: INITIAL_QUANTUM_STATE,
+      semanticMetrics: INITIAL_SEMANTIC_METRICS,
+      metaObservation: INITIAL_META_OBSERVATION,
+      fieldIntegration: null,
+      perspectiveResponses: {},
+      activatedArchetypes: [],
+      symbolicField: INITIAL_SYMBOLIC_FIELD,
+      trigrams: null,
+      tarot: null
+    }));
+  }, []);
+
   return {
     state,
     togglePerspective,
     sendMessage,
-    addMessage
+    addMessage,
+    resetConversation
   };
 }

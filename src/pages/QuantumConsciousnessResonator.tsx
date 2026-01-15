@@ -10,16 +10,19 @@ import {
   ArchitectureFlow,
   SymbolResonanceViz,
   SonicControls,
-  ConversationStarters
+  ConversationStarters,
+  TypingIndicator
 } from '@/components/consciousness-resonator';
 import { WaveformVisualizer } from '@/components/consciousness-resonator/WaveformVisualizer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { RotateCcw } from 'lucide-react';
 
 export default function QuantumConsciousnessResonator() {
-  const { state, togglePerspective, sendMessage } = useConsciousnessResonator();
+  const { state, togglePerspective, sendMessage, resetConversation } = useConsciousnessResonator();
   const [soundEnabled, setSoundEnabled] = useState(false);
 
   const hasActivePerspectives = state.activePerspectives.length > 0;
+  const hasConversation = state.messages.length > 1; // More than just the init message
 
   return (
     <div className="min-h-screen relative">
@@ -67,18 +70,31 @@ export default function QuantumConsciousnessResonator() {
             <section className="bg-black/60 border-2 border-primary/50 rounded-lg p-4 shadow-lg shadow-primary/10">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-xl font-bold text-primary">Conscious Observer</h2>
-                {hasActivePerspectives && (
-                  <div className="flex gap-1 flex-wrap justify-end">
-                    {state.activePerspectives.map(p => (
-                      <span 
-                        key={p}
-                        className="text-[10px] px-1.5 py-0.5 bg-primary/20 rounded text-primary capitalize"
-                      >
-                        {p}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  {hasConversation && (
+                    <button
+                      onClick={resetConversation}
+                      disabled={state.isProcessing}
+                      className="flex items-center gap-1.5 text-xs px-2 py-1 rounded bg-secondary/30 hover:bg-secondary/50 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                      title="New Conversation"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>New</span>
+                    </button>
+                  )}
+                  {hasActivePerspectives && (
+                    <div className="flex gap-1 flex-wrap justify-end">
+                      {state.activePerspectives.map(p => (
+                        <span 
+                          key={p}
+                          className="text-[10px] px-1.5 py-0.5 bg-primary/20 rounded text-primary capitalize"
+                        >
+                          {p}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
               
               {/* Chat Messages - Larger */}
@@ -95,34 +111,38 @@ export default function QuantumConsciousnessResonator() {
                     </p>
                   </div>
                 ) : (
-                  state.messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`${message.role === 'user' ? 'text-right' : 'text-left'} animate-fade-in`}
-                    >
+                  <>
+                    {state.messages.map((message) => (
                       <div
-                        className={`
-                          inline-block max-w-[85%] px-4 py-2 rounded-lg text-sm
-                          ${message.role === 'user' 
-                            ? 'bg-primary/80 text-primary-foreground' 
-                            : message.role === 'system'
-                              ? 'bg-muted/80 text-muted-foreground'
-                              : 'bg-secondary/80 text-foreground'}
-                          ${state.isProcessing && message.role === 'assistant' && message === state.messages[state.messages.length - 1]
-                            ? 'animate-pulse'
-                            : ''}
-                        `}
+                        key={message.id}
+                        className={`${message.role === 'user' ? 'text-right' : 'text-left'} animate-fade-in`}
                       >
-                        {message.role === 'assistant' ? (
-                          <div className="prose prose-invert prose-sm max-w-none">
-                            {message.content}
-                          </div>
-                        ) : (
-                          <span dangerouslySetInnerHTML={{ __html: message.content }} />
-                        )}
+                        <div
+                          className={`
+                            inline-block max-w-[85%] px-4 py-2 rounded-lg text-sm
+                            ${message.role === 'user' 
+                              ? 'bg-primary/80 text-primary-foreground' 
+                              : message.role === 'system'
+                                ? 'bg-muted/80 text-muted-foreground'
+                                : 'bg-secondary/80 text-foreground'}
+                          `}
+                        >
+                          {message.role === 'assistant' ? (
+                            <div className="prose prose-invert prose-sm max-w-none">
+                              {message.content}
+                            </div>
+                          ) : (
+                            <span dangerouslySetInnerHTML={{ __html: message.content }} />
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    ))}
+                    {state.isProcessing && (
+                      <div className="text-left animate-fade-in">
+                        <TypingIndicator />
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
               
