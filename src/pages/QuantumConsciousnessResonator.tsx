@@ -7,11 +7,13 @@ import {
   SemanticLayer,
   ChatInterface,
   QuantumBackground,
-  ArchitectureFlow
+  ArchitectureFlow,
+  SymbolResonanceViz,
+  MultiPerspectivePanel
 } from '@/components/consciousness-resonator';
 
 export default function QuantumConsciousnessResonator() {
-  const { state, selectPerspective, sendMessage } = useConsciousnessResonator();
+  const { state, selectPerspective, sendMessage, toggleMultiPerspectiveMode } = useConsciousnessResonator();
 
   return (
     <div className="min-h-screen relative">
@@ -29,6 +31,16 @@ export default function QuantumConsciousnessResonator() {
             Powered by TinyAleph prime-based semantic encoding
           </p>
         </header>
+
+        {/* Multi-Perspective Panel */}
+        <div className="mb-8">
+          <MultiPerspectivePanel
+            isEnabled={state.multiPerspectiveMode}
+            onToggle={toggleMultiPerspectiveMode}
+            responses={state.multiPerspectiveResponses}
+            isProcessing={state.isProcessing && state.multiPerspectiveMode}
+          />
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Left Column */}
@@ -51,6 +63,14 @@ export default function QuantumConsciousnessResonator() {
               isProcessing={state.isProcessing}
             />
             <QuantumProbability quantumState={state.quantumState} />
+            {/* Symbol Resonance Visualization */}
+            <SymbolResonanceViz
+              archetypes={state.activatedArchetypes}
+              fieldStrength={state.symbolicField.fieldStrength}
+              dominantCategory={state.symbolicField.dominantCategory}
+              trigrams={state.trigrams}
+              tarot={state.tarot}
+            />
           </div>
 
           {/* Right Column */}
