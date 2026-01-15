@@ -63,8 +63,8 @@ export function TreeVisualization({
 
       {/* Horizontal divider lines for consciousness layers */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-10">
-        <line x1="5%" y1="30%" x2="95%" y2="30%" stroke="white" strokeWidth="0.5" strokeDasharray="4 4" />
-        <line x1="5%" y1="58%" x2="95%" y2="58%" stroke="white" strokeWidth="0.5" strokeDasharray="4 4" />
+        <line x1="8%" y1="34%" x2="92%" y2="34%" stroke="white" strokeWidth="0.5" strokeDasharray="4 4" />
+        <line x1="8%" y1="56%" x2="92%" y2="56%" stroke="white" strokeWidth="0.5" strokeDasharray="4 4" />
       </svg>
 
       {/* Path connections */}
