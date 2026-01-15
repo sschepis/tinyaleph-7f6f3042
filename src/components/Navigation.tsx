@@ -211,7 +211,7 @@ const Navigation = () => {
               <ExternalLink className="w-3 h-3" />
             </a>
             <a
-              href="https://github.com/aleph-ai/tinyaleph"
+              href="https://github.com/sschepis/tinyaleph"
               target="_blank"
               rel="noopener noreferrer"
               className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
@@ -285,7 +285,7 @@ const Navigation = () => {
                     npm <ExternalLink className="w-3 h-3" />
                   </a>
                   <a
-                    href="https://github.com/aleph-ai/tinyaleph"
+                    href="https://github.com/sschepis/tinyaleph"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex-1 px-4 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center justify-center gap-2"
