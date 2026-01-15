@@ -125,7 +125,7 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
   const [entropy, setEntropy] = useState(0.5);
   const [temperature, setTemperature] = useState(0.5); // Lower default for less noise
   const [coupling, setCoupling] = useState(0.6); // Higher coupling for faster sync
-  const [thermalEnabled, setThermalEnabled] = useState(false); // Start without noise
+  const [thermalEnabled, setThermalEnabled] = useState(true); // Start with thermal dynamics enabled
 
   // Oscillator state
   const [oscillators, setOscillators] = useState<Oscillator[]>(createInitialOscillators);
@@ -178,7 +178,7 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
   const [oscillatorActivationCounts, setOscillatorActivationCounts] = useState<number[]>(() => 
     new Array(NUM_OSCILLATORS).fill(0)
   );
-  const [autoExploreEnabled, setAutoExploreEnabled] = useState(false);
+  const [autoExploreEnabled, setAutoExploreEnabled] = useState(true);
 
   // Animation frame ref
   const animationRef = useRef<number>(0);
@@ -537,7 +537,7 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
     setOscillatorActivationCounts(new Array(NUM_OSCILLATORS).fill(0));
     setRecentlyExploredIndices([]);
     setExplorationProgress(0);
-    setAutoExploreEnabled(false);
+    setAutoExploreEnabled(true);
     // Reset goals progress
     setGoals([
       { id: 'g1', description: 'Maintain coherence above 0.5', status: 'active', priority: 0.8, progress: 0.6 },
