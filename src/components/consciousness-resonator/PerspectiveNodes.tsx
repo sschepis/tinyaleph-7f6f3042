@@ -40,34 +40,43 @@ export function PerspectiveNodes({
               onClick={() => onTogglePerspective(perspectiveId)}
               className={`
                 relative w-full aspect-square rounded-full flex items-center justify-center
-                bg-black border-2 transition-all duration-300
+                border-2 transition-all duration-300
                 hover:scale-105 cursor-pointer
                 ${isActive 
-                  ? `${node.borderColor} shadow-lg ${node.glowColor}` 
-                  : 'border-muted/40 opacity-60 hover:opacity-80'}
+                  ? `${node.borderColor} ${node.glowColor} bg-gradient-to-br from-black to-black/80` 
+                  : 'border-muted/30 bg-black/40 hover:border-muted/50'}
               `}
-              animate={isActive ? { 
-                boxShadow: ['0 0 10px currentColor', '0 0 25px currentColor', '0 0 10px currentColor']
-              } : {}}
-              transition={isActive ? { 
-                duration: 2, 
-                repeat: Infinity 
-              } : {}}
+              style={isActive ? {
+                boxShadow: `0 0 20px ${node.color.includes('blue') ? 'rgba(59,130,246,0.5)' : 
+                  node.color.includes('purple') ? 'rgba(168,85,247,0.5)' :
+                  node.color.includes('green') ? 'rgba(34,197,94,0.5)' :
+                  node.color.includes('orange') ? 'rgba(249,115,22,0.5)' :
+                  node.color.includes('pink') ? 'rgba(236,72,153,0.5)' :
+                  'rgba(234,179,8,0.5)'}`
+              } : undefined}
+              whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              {/* Selection indicator */}
+              {/* Glow effect for active nodes */}
               {isActive && (
                 <motion.div
-                  className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  exit={{ scale: 0 }}
-                >
-                  <span className="text-[10px] text-primary-foreground">✓</span>
-                </motion.div>
+                  className="absolute inset-0 rounded-full opacity-30"
+                  style={{
+                    background: `radial-gradient(circle, ${
+                      node.color.includes('blue') ? 'rgba(59,130,246,0.4)' : 
+                      node.color.includes('purple') ? 'rgba(168,85,247,0.4)' :
+                      node.color.includes('green') ? 'rgba(34,197,94,0.4)' :
+                      node.color.includes('orange') ? 'rgba(249,115,22,0.4)' :
+                      node.color.includes('pink') ? 'rgba(236,72,153,0.4)' :
+                      'rgba(234,179,8,0.4)'
+                    } 0%, transparent 70%)`
+                  }}
+                  animate={{ opacity: [0.2, 0.4, 0.2] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                />
               )}
               
-              <span className={`text-center font-bold text-xs ${isActive ? node.color : 'text-muted-foreground'}`}>
+              <span className={`text-center font-bold text-xs relative z-10 ${isActive ? node.color : 'text-muted-foreground/60'}`}>
                 {node.name}
               </span>
             </motion.button>
