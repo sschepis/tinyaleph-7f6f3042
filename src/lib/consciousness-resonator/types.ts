@@ -1,5 +1,7 @@
 export type PerspectiveType = 'analytical' | 'creative' | 'ethical' | 'pragmatic' | 'emotional' | 'mediator';
 
+export type ArchetypeCategory = 'action' | 'wisdom' | 'emotion' | 'transformation' | 'creation' | 'spirit' | 'shadow';
+
 export interface PerspectiveNode {
   id: PerspectiveType;
   name: string;
@@ -52,6 +54,22 @@ export interface ConsciousnessMessage {
   perspective?: PerspectiveType;
 }
 
+export interface ActivatedArchetype {
+  id: string;
+  name: string;
+  symbol: string;
+  activation: number; // 0-1
+  primes: number[];
+  category: ArchetypeCategory;
+  matchedKeywords: string[];
+}
+
+export interface MultiPerspectiveResponse {
+  perspectives: Partial<Record<PerspectiveType, string>>;
+  synthesis: string | null;
+  processingNodes: PerspectiveType[];
+}
+
 export interface ResonatorState {
   activePerspective: PerspectiveType | null;
   quantumState: QuantumState;
@@ -60,4 +78,15 @@ export interface ResonatorState {
   fieldIntegration: FieldIntegration | null;
   messages: ConsciousnessMessage[];
   isProcessing: boolean;
+  // New fields
+  multiPerspectiveMode: boolean;
+  multiPerspectiveResponses: MultiPerspectiveResponse | null;
+  activatedArchetypes: ActivatedArchetype[];
+  symbolicField: {
+    dominantCategory: ArchetypeCategory;
+    fieldStrength: number;
+    primeSum: number;
+  };
+  trigrams: { upper: { name: string; symbol: string; meaning: string }; lower: { name: string; symbol: string; meaning: string } } | null;
+  tarot: { name: string; symbol: string; meaning: string } | null;
 }

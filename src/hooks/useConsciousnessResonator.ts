@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { 
   ResonatorState, 
@@ -7,9 +7,11 @@ import type {
   QuantumState,
   SemanticMetrics,
   MetaObservation,
-  FieldIntegration
+  MultiPerspectiveResponse,
+  ActivatedArchetype,
+  ArchetypeCategory
 } from '@/lib/consciousness-resonator/types';
-import { PERSPECTIVE_NODES } from '@/lib/consciousness-resonator/perspective-config';
+import { PERSPECTIVE_NODES, PERSPECTIVE_ORDER } from '@/lib/consciousness-resonator/perspective-config';
 import { 
   analyzeQuantumState, 
   analyzeSemanticMetrics,
@@ -17,6 +19,12 @@ import {
   parseFieldIntegration,
   generateHexagram 
 } from '@/lib/consciousness-resonator/quantum-analyzer';
+import {
+  analyzeArchetypes,
+  getActiveTrigram,
+  getActiveTarot,
+  calculateSymbolicField
+} from '@/lib/consciousness-resonator/archetype-analyzer';
 
 const INITIAL_QUANTUM_STATE: QuantumState = {
   entropy: 0.5,
@@ -46,6 +54,12 @@ const INITIAL_META_OBSERVATION: MetaObservation = {
   quality: 0
 };
 
+const INITIAL_SYMBOLIC_FIELD = {
+  dominantCategory: 'wisdom' as ArchetypeCategory,
+  fieldStrength: 0,
+  primeSum: 0
+};
+
 export function useConsciousnessResonator() {
   const [state, setState] = useState<ResonatorState>({
     activePerspective: null,
@@ -61,7 +75,13 @@ export function useConsciousnessResonator() {
         timestamp: new Date()
       }
     ],
-    isProcessing: false
+    isProcessing: false,
+    multiPerspectiveMode: false,
+    multiPerspectiveResponses: null,
+    activatedArchetypes: [],
+    symbolicField: INITIAL_SYMBOLIC_FIELD,
+    trigrams: null,
+    tarot: null
   });
 
   const messageHistoryRef = useRef<{ role: string; content: string }[]>([]);
@@ -99,6 +119,21 @@ export function useConsciousnessResonator() {
 
     return message.id;
   }, []);
+
+  // Toggle multi-perspective mode
+  const toggleMultiPerspectiveMode = useCallback((enabled: boolean) => {
+    setState(prev => ({
+      ...prev,
+      multiPerspectiveMode: enabled,
+      multiPerspectiveResponses: enabled ? prev.multiPerspectiveResponses : null
+    }));
+    
+    if (enabled) {
+      addMessage('system', '🔮 Multi-perspective mode activated. All nodes will respond simultaneously.');
+    } else {
+      addMessage('system', 'Single perspective mode restored.');
+    }
+  }, [addMessage]);
 
   // Select a perspective node
   const selectPerspective = useCallback((perspective: PerspectiveType) => {
@@ -187,8 +222,122 @@ export function useConsciousnessResonator() {
     return fullText;
   }, []);
 
-  // Send a message
-  const sendMessage = useCallback(async (content: string) => {
+  // Get non-streaming response
+  const getResponse = useCallback(async (
+    messages: { role: string; content: string }[],
+    systemPrompt: string
+  ): Promise<string> => {
+    const response = await supabase.functions.invoke('consciousness-resonator', {
+      body: { messages, systemPrompt }
+    });
+
+    if (response.error) throw response.error;
+    return response.data?.content || response.data || '';
+  }, []);
+
+  // Send multi-perspective message
+  const sendMultiPerspectiveMessage = useCallback(async (content: string) => {
+    setState(prev => ({ 
+      ...prev, 
+      isProcessing: true,
+      multiPerspectiveResponses: {
+        perspectives: {},
+        synthesis: null,
+        processingNodes: ['analytical', 'creative', 'ethical', 'pragmatic', 'emotional']
+      }
+    }));
+
+    addMessage('user', content);
+    addMessage('system', '⚡ Querying all perspective nodes in parallel...');
+
+    const perspectiveNodes: PerspectiveType[] = ['analytical', 'creative', 'ethical', 'pragmatic', 'emotional'];
+    const messages = [{ role: 'user', content }];
+
+    try {
+      // Query all perspectives in parallel
+      const perspectivePromises = perspectiveNodes.map(async (perspective) => {
+        const node = PERSPECTIVE_NODES[perspective];
+        const response = await getResponse(messages, node.systemPrompt + ' Be concise (max 100 words).');
+        return { perspective, response };
+      });
+
+      const results = await Promise.all(perspectivePromises);
+      
+      // Build perspectives object
+      const perspectives: Partial<Record<PerspectiveType, string>> = {};
+      let combinedText = '';
+      
+      for (const { perspective, response } of results) {
+        perspectives[perspective] = response;
+        combinedText += response + ' ';
+        
+        // Update state progressively
+        setState(prev => ({
+          ...prev,
+          multiPerspectiveResponses: {
+            ...prev.multiPerspectiveResponses!,
+            perspectives: { ...prev.multiPerspectiveResponses!.perspectives, [perspective]: response },
+            processingNodes: prev.multiPerspectiveResponses!.processingNodes.filter(p => p !== perspective)
+          }
+        }));
+      }
+
+      // Now get Mediator synthesis
+      const synthesisPerspectives = results.map(r => 
+        `${PERSPECTIVE_NODES[r.perspective].name}: ${r.response}`
+      ).join('\n\n');
+
+      const synthesisPrompt = `The following perspectives have been gathered on the question: "${content}"\n\n${synthesisPerspectives}\n\nAs the Mediator, synthesize these viewpoints into a unified insight that honors each perspective while revealing deeper connections. Be insightful but concise (max 150 words).`;
+
+      const synthesis = await getResponse(
+        [{ role: 'user', content: synthesisPrompt }],
+        PERSPECTIVE_NODES.mediator.systemPrompt
+      );
+
+      // Analyze archetypes from combined text
+      const archetypes = analyzeArchetypes(combinedText + ' ' + synthesis);
+      const symbolicField = calculateSymbolicField(archetypes);
+      const quantumState = analyzeQuantumState(combinedText);
+      const trigrams = getActiveTrigram(quantumState.hexagramLines);
+      const tarot = getActiveTarot(quantumState.entropy, archetypes);
+      const semanticMetrics = analyzeSemanticMetrics(combinedText);
+
+      setState(prev => ({
+        ...prev,
+        multiPerspectiveResponses: {
+          perspectives,
+          synthesis,
+          processingNodes: []
+        },
+        activatedArchetypes: archetypes,
+        symbolicField,
+        quantumState,
+        semanticMetrics,
+        trigrams,
+        tarot,
+        isProcessing: false
+      }));
+
+      addMessage('assistant', `**🔮 Mediator Synthesis:**\n\n${synthesis}`, 'mediator');
+
+      // Update message history
+      messageHistoryRef.current.push({ role: 'assistant', content: synthesis });
+
+      // Trigger meta-observation
+      if (messageHistoryRef.current.length >= 2) {
+        updateMetaObservation();
+        updateFieldIntegration();
+      }
+
+    } catch (error) {
+      console.error('Multi-perspective error:', error);
+      setState(prev => ({ ...prev, isProcessing: false }));
+      addMessage('system', error instanceof Error ? error.message : 'Multi-perspective query failed.');
+    }
+  }, [addMessage, getResponse]);
+
+  // Send a single-perspective message
+  const sendSinglePerspectiveMessage = useCallback(async (content: string) => {
     if (!state.activePerspective) {
       addMessage('system', 'Please select a perspective node first to establish a resonance field.');
       return;
@@ -244,11 +393,19 @@ export function useConsciousnessResonator() {
       // Analyze the response
       const quantumState = analyzeQuantumState(responseText);
       const semanticMetrics = analyzeSemanticMetrics(responseText);
+      const archetypes = analyzeArchetypes(content + ' ' + responseText);
+      const symbolicField = calculateSymbolicField(archetypes);
+      const trigrams = getActiveTrigram(quantumState.hexagramLines);
+      const tarot = getActiveTarot(quantumState.entropy, archetypes);
 
       setState(prev => ({
         ...prev,
         quantumState,
         semanticMetrics,
+        activatedArchetypes: archetypes,
+        symbolicField,
+        trigrams,
+        tarot,
         isProcessing: false
       }));
 
@@ -278,6 +435,15 @@ export function useConsciousnessResonator() {
       addMessage('system', error instanceof Error ? error.message : 'Resonance disrupted. Quantum field fluctuation detected.');
     }
   }, [state.activePerspective, addMessage, streamResponse]);
+
+  // Main send message function
+  const sendMessage = useCallback(async (content: string) => {
+    if (state.multiPerspectiveMode) {
+      return sendMultiPerspectiveMessage(content);
+    } else {
+      return sendSinglePerspectiveMessage(content);
+    }
+  }, [state.multiPerspectiveMode, sendMultiPerspectiveMessage, sendSinglePerspectiveMessage]);
 
   // Update meta-observation
   const updateMetaObservation = useCallback(async () => {
@@ -347,6 +513,7 @@ ${conversation}`;
     state,
     selectPerspective,
     sendMessage,
-    addMessage
+    addMessage,
+    toggleMultiPerspectiveMode
   };
 }
