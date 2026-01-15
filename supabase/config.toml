@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.tensorflow-compute]
 verify_jwt = false
+
+[functions.consciousness-resonator]
+verify_jwt = false
+
+[functions.sephirotic-oracle]
+verify_jwt = false
