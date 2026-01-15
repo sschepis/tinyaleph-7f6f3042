@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Languages, Sparkles, Clock } from 'lucide-react';
+import { Languages, Sparkles, Clock, RotateCcw } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import type { PathFlow, SephirahName } from '@/lib/sephirotic-oscillator/types';
 import { getPathBetween, getAssociationColor } from '@/lib/sephirotic-oscillator/path-letters';
 import { 
@@ -37,6 +38,14 @@ export function WordAnalysisPanel({ flows }: WordAnalysisPanelProps) {
   
   // Sequence counter for ordering
   const sequenceRef = useRef(0);
+  
+  // Clear the stream
+  const clearStream = () => {
+    setLetterStream([]);
+    setFoundWords([]);
+    activePathsRef.current.clear();
+    sequenceRef.current = 0;
+  };
   
   // Track flows and detect when paths FADE (drop below threshold)
   useEffect(() => {
@@ -143,9 +152,20 @@ export function WordAnalysisPanel({ flows }: WordAnalysisPanelProps) {
 
   return (
     <div className="bg-black/60 border border-primary/30 rounded-lg p-3 h-full flex flex-col">
-      <div className="flex items-center gap-2 mb-3">
-        <Languages className="w-4 h-4 text-primary" />
-        <h3 className="text-sm font-bold text-primary">Word Stream</h3>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Languages className="w-4 h-4 text-primary" />
+          <h3 className="text-sm font-bold text-primary">Word Stream</h3>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 text-muted-foreground hover:text-primary"
+          onClick={clearStream}
+          title="Clear stream"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+        </Button>
       </div>
       
       {/* Current letter stream - shown left to right in temporal order */}
