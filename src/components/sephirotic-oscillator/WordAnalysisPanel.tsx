@@ -17,31 +17,42 @@ interface WordAnalysisPanelProps {
 }
 
 const MAX_STREAM_LENGTH = 30;
-const LETTER_DECAY_MS = 8000; // Letters fade after 8 seconds
+const LETTER_DECAY_MS = 10000; // Letters fade after 10 seconds
+const ACTIVATION_COOLDOWN_MS = 800; // Minimum time between same letter activations
 
 export function WordAnalysisPanel({ flows }: WordAnalysisPanelProps) {
   const [letterStream, setLetterStream] = useState<PathActivation[]>([]);
   const [foundWords, setFoundWords] = useState<{ word: HebrewWord; fresh: boolean }[]>([]);
-  const lastFlowRef = useRef<string>('');
   
-  // Track flows and build letter stream
+  // Track last activation time for each path to prevent rapid re-triggers
+  const pathCooldownsRef = useRef<Map<string, number>>(new Map());
+  
+  // Track flows and build letter stream in temporal order
   useEffect(() => {
     if (flows.length === 0) return;
     
     const now = Date.now();
     const newActivations: PathActivation[] = [];
+    const cooldowns = pathCooldownsRef.current;
     
-    flows.forEach(flow => {
+    // Sort flows by strength (strongest first for this frame)
+    const sortedFlows = [...flows].sort((a, b) => b.strength - a.strength);
+    
+    sortedFlows.forEach((flow, index) => {
       const path = getPathBetween(flow.from, flow.to);
-      if (path && flow.strength > 0.05) {
-        const key = `${path.id}-${Math.floor(now / 500)}`; // Dedupe within 500ms
-        if (key !== lastFlowRef.current) {
-          lastFlowRef.current = key;
+      if (path && flow.strength > 0.03) {
+        const lastActivation = cooldowns.get(path.id) || 0;
+        
+        // Only add if cooldown has passed
+        if (now - lastActivation > ACTIVATION_COOLDOWN_MS) {
+          cooldowns.set(path.id, now);
+          
           newActivations.push({
             pathId: path.id,
             letter: path.letter,
             letterName: path.letterName,
-            timestamp: now,
+            // Stagger timestamps slightly to preserve order within a frame
+            timestamp: now + index * 10,
             energy: flow.strength,
             from: flow.from,
             to: flow.to
@@ -52,7 +63,8 @@ export function WordAnalysisPanel({ flows }: WordAnalysisPanelProps) {
     
     if (newActivations.length > 0) {
       setLetterStream(prev => {
-        const updated = [...prev, ...newActivations];
+        // Combine and sort by timestamp to maintain temporal order
+        const updated = [...prev, ...newActivations].sort((a, b) => a.timestamp - b.timestamp);
         // Keep only recent letters
         const cutoff = now - LETTER_DECAY_MS;
         const filtered = updated.filter(a => a.timestamp > cutoff);
@@ -100,47 +112,76 @@ export function WordAnalysisPanel({ flows }: WordAnalysisPanelProps) {
         <h3 className="text-sm font-bold text-primary">Word Stream</h3>
       </div>
       
-      {/* Current letter stream */}
+      {/* Current letter stream - shown left to right in temporal order */}
       <div className="mb-3">
-        <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-2">
-          <Clock className="w-3 h-3" />
-          <span>Letter Flow (recent)</span>
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-2">
+          <div className="flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            <span>Letter Flow</span>
+          </div>
+          {letterStream.length > 0 && (
+            <span className="text-[9px] font-mono opacity-60">
+              {letterStream.length} letters
+            </span>
+          )}
         </div>
-        <div className="bg-black/40 rounded-lg p-2 min-h-[48px] border border-white/5">
-          <div className="flex flex-wrap gap-1" dir="rtl">
+        <div className="bg-black/40 rounded-lg p-2 min-h-[56px] border border-white/5 overflow-hidden">
+          {/* Display oldest → newest (left to right for reading order) */}
+          <div className="flex flex-wrap gap-1.5 items-center" dir="ltr">
             <AnimatePresence mode="popLayout">
               {letterStream.length === 0 ? (
-                <span className="text-xs text-muted-foreground/40 italic" dir="ltr">
+                <span className="text-xs text-muted-foreground/40 italic">
                   Energy flow creates letters...
                 </span>
               ) : (
                 letterStream.map((activation, idx) => {
                   const path = getPathBetween(activation.from, activation.to);
                   const color = path ? getAssociationColor(path.association) : '#888';
+                  const age = Date.now() - activation.timestamp;
+                  const isRecent = age < 1500;
                   
                   return (
-                    <motion.span
-                      key={`${activation.pathId}-${activation.timestamp}-${idx}`}
-                      initial={{ scale: 1.5, opacity: 0 }}
+                    <motion.div
+                      key={`${activation.pathId}-${activation.timestamp}`}
+                      initial={{ scale: 1.5, opacity: 0, y: -10 }}
                       animate={{ 
                         scale: 1, 
-                        opacity: getLetterOpacity(activation.timestamp)
+                        opacity: getLetterOpacity(activation.timestamp),
+                        y: 0
                       }}
                       exit={{ scale: 0.5, opacity: 0 }}
-                      className="text-xl font-serif cursor-default"
-                      style={{ 
-                        color,
-                        textShadow: `0 0 8px ${color}60`
-                      }}
-                      title={activation.letterName}
+                      className="relative"
                     >
-                      {activation.letter}
-                    </motion.span>
+                      {/* Sequence number */}
+                      <span 
+                        className="absolute -top-1 -left-1 text-[7px] font-mono opacity-40"
+                        style={{ color }}
+                      >
+                        {idx + 1}
+                      </span>
+                      {/* Letter */}
+                      <span
+                        className={`text-xl font-serif cursor-default inline-block ${isRecent ? 'animate-pulse' : ''}`}
+                        style={{ 
+                          color,
+                          textShadow: isRecent 
+                            ? `0 0 12px ${color}, 0 0 20px ${color}60`
+                            : `0 0 6px ${color}40`
+                        }}
+                        title={`${activation.letterName} (${idx + 1})`}
+                      >
+                        {activation.letter}
+                      </span>
+                    </motion.div>
                   );
                 })
               )}
             </AnimatePresence>
           </div>
+          {/* Fade gradient on right edge when many letters */}
+          {letterStream.length > 10 && (
+            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-black/60 to-transparent pointer-events-none" />
+          )}
         </div>
       </div>
       
