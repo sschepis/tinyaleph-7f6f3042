@@ -174,8 +174,9 @@ export function useSephiroticOscillator() {
     }));
   }, []);
 
-  // Parse SSE stream response
+  // Parse SSE stream response - handles ReadableStream from edge function
   const parseSSEResponse = async (data: unknown): Promise<string> => {
+    // If it's already a string with SSE format, parse it
     if (typeof data === 'string') {
       let fullText = '';
       const lines = data.split('\n');
@@ -192,11 +193,43 @@ export function useSephiroticOscillator() {
           }
         }
       }
-      return fullText || String(data);
+      return fullText || data;
     }
     
+    // If response.data has a content property
     if (data && typeof data === 'object' && 'content' in data) {
       return String((data as { content: string }).content);
+    }
+    
+    // If response.data is a ReadableStream, we need to read it
+    if (data instanceof ReadableStream || (data && typeof data === 'object' && 'body' in data && (data as { body: unknown }).body instanceof ReadableStream)) {
+      const stream = data instanceof ReadableStream ? data : (data as { body: ReadableStream }).body;
+      const reader = stream.getReader();
+      const decoder = new TextDecoder();
+      let fullText = '';
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const jsonStr = line.slice(6);
+            if (jsonStr === '[DONE]') continue;
+            try {
+              const parsed = JSON.parse(jsonStr);
+              const content = parsed.choices?.[0]?.delta?.content;
+              if (content) fullText += content;
+            } catch {
+              // Skip non-JSON lines
+            }
+          }
+        }
+      }
+      return fullText;
     }
     
     return String(data || '');
