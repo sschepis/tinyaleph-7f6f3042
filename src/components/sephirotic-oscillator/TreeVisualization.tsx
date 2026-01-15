@@ -181,106 +181,112 @@ export function TreeVisualization({
           
           return (
             <Tooltip key={sephirah.id}>
-              <TooltipTrigger asChild>
-                <motion.button
-                  onClick={() => !meditationActive && onClickSephirah(sephirah.id)}
-                  disabled={meditationActive}
-                  className="absolute transform -translate-x-1/2 -translate-y-1/2 group"
-                  style={{
-                    left: `${sephirah.position.x}%`,
-                    top: `${sephirah.position.y}%`
-                  }}
-                  animate={{ scale: pulseScale }}
-                  transition={{ duration: 0.1 }}
-                  whileHover={!meditationActive ? { scale: 1.15 } : undefined}
-                  whileTap={!meditationActive ? { scale: 0.95 } : undefined}
-                >
-                  {/* Outer pulse ring - only when active */}
-                  {isActive && (
+              <div
+                className="absolute -translate-x-1/2 -translate-y-1/2"
+                style={{
+                  left: `${sephirah.position.x}%`,
+                  top: `${sephirah.position.y}%`
+                }}
+              >
+                <TooltipTrigger asChild>
+                  <motion.button
+                    onClick={() => !meditationActive && onClickSephirah(sephirah.id)}
+                    disabled={meditationActive}
+                    className="group"
+                    animate={{ scale: pulseScale }}
+                    transition={{ duration: 0.1 }}
+                    whileHover={!meditationActive ? { scale: 1.15 } : undefined}
+                    whileTap={!meditationActive ? { scale: 0.95 } : undefined}
+                  >
+                    {/* Outer pulse ring - only when active */}
+                    {isActive && (
+                      <motion.div
+                        className="absolute inset-[-8px] rounded-full"
+                        style={{ borderColor: sephirah.color }}
+                        animate={{
+                          scale: [1, 1.4, 1],
+                          opacity: [0.4, 0, 0.4],
+                          borderWidth: ['2px', '1px', '2px']
+                        }}
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                          ease: 'easeInOut'
+                        }}
+                      />
+                    )}
+
+                    {/* Glow aura */}
                     <motion.div
-                      className="absolute inset-[-8px] rounded-full"
-                      style={{ borderColor: sephirah.color }}
-                      animate={{
-                        scale: [1, 1.4, 1],
-                        opacity: [0.4, 0, 0.4],
-                        borderWidth: ['2px', '1px', '2px']
+                      className="absolute inset-[-4px] rounded-full blur-lg"
+                      style={{
+                        backgroundColor: sephirah.color,
+                        opacity: isActive ? 0.3 + energy * 0.3 : 0.05
                       }}
+                      animate={
+                        isActive
+                          ? {
+                              scale: [1, 1.2, 1],
+                              opacity: [0.3 + energy * 0.2, 0.4 + energy * 0.3, 0.3 + energy * 0.2]
+                            }
+                          : undefined
+                      }
                       transition={{
-                        duration: 2,
+                        duration: 2.5,
                         repeat: Infinity,
                         ease: 'easeInOut'
                       }}
                     />
-                  )}
-                  
-                  {/* Glow aura */}
-                  <motion.div
-                    className="absolute inset-[-4px] rounded-full blur-lg"
-                    style={{
-                      backgroundColor: sephirah.color,
-                      opacity: isActive ? 0.3 + energy * 0.3 : 0.05
-                    }}
-                    animate={isActive ? {
-                      scale: [1, 1.2, 1],
-                      opacity: [0.3 + energy * 0.2, 0.4 + energy * 0.3, 0.3 + energy * 0.2]
-                    } : undefined}
-                    transition={{
-                      duration: 2.5,
-                      repeat: Infinity,
-                      ease: 'easeInOut'
-                    }}
-                  />
-                  
-                  {/* Main node */}
-                  <div
-                    className={`
+
+                    {/* Main node */}
+                    <div
+                      className={`
                       relative w-16 h-16 md:w-[72px] md:h-[72px] rounded-full 
                       flex flex-col items-center justify-center
                       transition-all duration-500 backdrop-blur-sm
-                      ${isActive 
-                        ? 'bg-black/90' 
-                        : 'bg-black/70 group-hover:bg-black/80'}
+                      ${isActive ? 'bg-black/90' : 'bg-black/70 group-hover:bg-black/80'}
                     `}
-                    style={{
-                      border: `2px solid ${isActive ? sephirah.color : 'rgba(120, 120, 140, 0.4)'}`,
-                      boxShadow: isActive 
-                        ? `0 0 30px ${sephirah.color}50, 0 0 60px ${sephirah.color}20, inset 0 0 20px ${sephirah.color}15` 
-                        : 'inset 0 0 20px rgba(0,0,0,0.5)'
-                    }}
-                  >
-                    {/* Inner glow ring */}
-                    {isActive && (
-                      <div 
-                        className="absolute inset-1 rounded-full opacity-20"
+                      style={{
+                        border: `2px solid ${isActive ? sephirah.color : 'rgba(120, 120, 140, 0.4)'}`,
+                        boxShadow: isActive
+                          ? `0 0 30px ${sephirah.color}50, 0 0 60px ${sephirah.color}20, inset 0 0 20px ${sephirah.color}15`
+                          : 'inset 0 0 20px rgba(0,0,0,0.5)'
+                      }}
+                    >
+                      {/* Inner glow ring */}
+                      {isActive && (
+                        <div
+                          className="absolute inset-1 rounded-full opacity-20"
+                          style={{
+                            background: `radial-gradient(circle, ${sephirah.color}40 0%, transparent 70%)`
+                          }}
+                        />
+                      )}
+
+                      <span
+                        className="text-xl md:text-2xl relative z-10"
                         style={{
-                          background: `radial-gradient(circle, ${sephirah.color}40 0%, transparent 70%)`
+                          textShadow: isActive ? `0 0 10px ${sephirah.color}` : undefined,
+                          opacity: isActive ? 1 : 0.7
                         }}
-                      />
-                    )}
-                    
-                    <span 
-                      className="text-xl md:text-2xl relative z-10"
-                      style={{ 
-                        textShadow: isActive ? `0 0 10px ${sephirah.color}` : undefined,
-                        opacity: isActive ? 1 : 0.7
-                      }}
-                    >
-                      {sephirah.planetarySymbol}
-                    </span>
-                    <span 
-                      className="text-[9px] md:text-[10px] font-bold tracking-widest relative z-10 mt-0.5"
-                      style={{ 
-                        color: isActive ? sephirah.color : 'rgba(180, 180, 200, 0.6)',
-                        textShadow: isActive ? `0 0 8px ${sephirah.color}80` : undefined
-                      }}
-                    >
-                      {sephirah.name.toUpperCase()}
-                    </span>
-                  </div>
-                </motion.button>
-              </TooltipTrigger>
-              <TooltipContent 
-                side="right" 
+                      >
+                        {sephirah.planetarySymbol}
+                      </span>
+                      <span
+                        className="text-[9px] md:text-[10px] font-bold tracking-widest relative z-10 mt-0.5"
+                        style={{
+                          color: isActive ? sephirah.color : 'rgba(180, 180, 200, 0.6)',
+                          textShadow: isActive ? `0 0 8px ${sephirah.color}80` : undefined
+                        }}
+                      >
+                        {sephirah.name.toUpperCase()}
+                      </span>
+                    </div>
+                  </motion.button>
+                </TooltipTrigger>
+              </div>
+              <TooltipContent
+                side="right"
                 className="bg-black/95 border max-w-[220px] backdrop-blur-xl"
                 style={{ borderColor: `${sephirah.color}40` }}
               >
@@ -294,14 +300,16 @@ export function TreeVisualization({
                       <p className="text-[10px] text-muted-foreground">{sephirah.hebrewName}</p>
                     </div>
                   </div>
-                  <p className="text-xs font-medium" style={{ color: sephirah.color }}>{sephirah.meaning}</p>
+                  <p className="text-xs font-medium" style={{ color: sephirah.color }}>
+                    {sephirah.meaning}
+                  </p>
                   <p className="text-xs text-muted-foreground">{sephirah.psychologicalAspect}</p>
                   <div className="flex items-center gap-2 pt-2 border-t border-border/30">
                     <span className="text-[10px] text-muted-foreground">Energy</span>
                     <div className="flex-1 h-2 bg-black/50 rounded-full overflow-hidden border border-white/10">
-                      <motion.div 
+                      <motion.div
                         className="h-full rounded-full"
-                        style={{ 
+                        style={{
                           backgroundColor: sephirah.color,
                           boxShadow: `0 0 10px ${sephirah.color}`
                         }}
