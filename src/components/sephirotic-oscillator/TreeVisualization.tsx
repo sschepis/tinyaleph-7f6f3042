@@ -12,6 +12,13 @@ interface TreeVisualizationProps {
   meditationActive: boolean;
 }
 
+// Calculate flow strength through a specific path
+function getPathFlowStrength(flows: PathFlow[], from: SephirahName, to: SephirahName): number {
+  return flows
+    .filter(f => (f.from === from && f.to === to) || (f.from === to && f.to === from))
+    .reduce((sum, f) => sum + f.strength, 0);
+}
+
 // Calculate midpoint and perpendicular offset for label placement
 function getPathLabelPosition(from: { x: number; y: number }, to: { x: number; y: number }) {
   const midX = (from.x + to.x) / 2;
@@ -213,45 +220,102 @@ export function TreeVisualization({
           ));
         })}
         
-        {/* Hebrew letter labels on paths */}
+        {/* Hebrew letter labels on paths - with flow-based animation */}
         {paths.map(({ from, to, key, hebrewPath }) => {
           if (!hebrewPath) return null;
           
           const labelPos = getPathLabelPosition(from.position, to.position);
           const fromNode = oscillators.get(from.id);
           const toNode = oscillators.get(to.id);
-          const isActive = (fromNode?.energy || 0) > 0.15 || (toNode?.energy || 0) > 0.15;
+          const nodeEnergy = Math.max(fromNode?.energy || 0, toNode?.energy || 0);
+          const isActive = nodeEnergy > 0.15;
+          
+          // Get actual flow through this path
+          const flowStrength = getPathFlowStrength(flows, from.id, to.id);
+          const isFlowing = flowStrength > 0.01;
+          const flowIntensity = Math.min(1, flowStrength * 5);
+          
           const pathColor = getAssociationColor(hebrewPath.association);
           
           return (
             <g key={`${key}-label`}>
+              {/* Outer pulse ring when flowing */}
+              {isFlowing && (
+                <motion.circle
+                  cx={`${labelPos.x}%`}
+                  cy={`${labelPos.y}%`}
+                  r="10"
+                  fill="none"
+                  stroke={pathColor}
+                  strokeWidth="2"
+                  initial={{ r: 10, opacity: 0.8 }}
+                  animate={{ 
+                    r: [10, 18, 10],
+                    opacity: [0.6 * flowIntensity, 0, 0.6 * flowIntensity]
+                  }}
+                  transition={{
+                    duration: 1.5,
+                    repeat: Infinity,
+                    ease: 'easeOut'
+                  }}
+                />
+              )}
+              
               {/* Background circle for letter */}
-              <circle
+              <motion.circle
                 cx={`${labelPos.x}%`}
                 cy={`${labelPos.y}%`}
                 r="10"
-                fill="rgba(0, 0, 0, 0.85)"
+                fill="rgba(0, 0, 0, 0.9)"
                 stroke={pathColor}
-                strokeWidth={isActive ? 1.5 : 0.5}
-                strokeOpacity={isActive ? 0.9 : 0.4}
-                filter={isActive ? "url(#glow-subtle)" : undefined}
+                strokeWidth={isFlowing ? 2 : isActive ? 1.5 : 0.5}
+                animate={{
+                  strokeOpacity: isFlowing ? [0.9, 1, 0.9] : isActive ? 0.9 : 0.4,
+                  scale: isFlowing ? [1, 1.1, 1] : 1
+                }}
+                transition={{
+                  duration: 0.8,
+                  repeat: isFlowing ? Infinity : 0,
+                  ease: 'easeInOut'
+                }}
+                style={{
+                  filter: isFlowing 
+                    ? `drop-shadow(0 0 ${6 + flowIntensity * 8}px ${pathColor})`
+                    : isActive 
+                      ? `drop-shadow(0 0 4px ${pathColor}80)` 
+                      : undefined
+                }}
               />
+              
               {/* Hebrew letter */}
-              <text
+              <motion.text
                 x={`${labelPos.x}%`}
                 y={`${labelPos.y}%`}
                 textAnchor="middle"
                 dominantBaseline="central"
                 fill={pathColor}
-                fontSize="12"
+                fontSize={isFlowing ? "14" : "12"}
                 fontFamily="serif"
-                opacity={isActive ? 1 : 0.6}
+                fontWeight={isFlowing ? "bold" : "normal"}
+                animate={{
+                  opacity: isFlowing ? 1 : isActive ? 0.9 : 0.6,
+                  scale: isFlowing ? [1, 1.15, 1] : 1
+                }}
+                transition={{
+                  duration: 0.6,
+                  repeat: isFlowing ? Infinity : 0,
+                  ease: 'easeInOut'
+                }}
                 style={{ 
-                  filter: isActive ? `drop-shadow(0 0 4px ${pathColor})` : undefined 
+                  filter: isFlowing 
+                    ? `drop-shadow(0 0 ${4 + flowIntensity * 6}px ${pathColor})`
+                    : isActive 
+                      ? `drop-shadow(0 0 3px ${pathColor})` 
+                      : undefined 
                 }}
               >
                 {hebrewPath.letter}
-              </text>
+              </motion.text>
             </g>
           );
         })}

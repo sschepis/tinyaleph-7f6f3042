@@ -4,7 +4,9 @@ import {
   MeditationPanel,
   SystemMetrics,
   OracleChat,
-  SoundControls
+  SoundControls,
+  PathAnalysisPanel,
+  WordAnalysisPanel
 } from '@/components/sephirotic-oscillator';
 
 export default function SephiroticOscillator() {
@@ -24,23 +26,23 @@ export default function SephiroticOscillator() {
       {/* Background pattern */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-violet-900/10 via-transparent to-transparent pointer-events-none" />
       
-      <div className="container mx-auto px-4 py-6 relative z-10">
+      <div className="container mx-auto px-4 py-4 relative z-10">
         {/* Header */}
-        <header className="text-center mb-6">
-          <h1 className="text-3xl md:text-4xl font-bold mb-2">
+        <header className="text-center mb-4">
+          <h1 className="text-2xl md:text-3xl font-bold mb-1">
             <span className="bg-gradient-to-r from-violet-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
               Sephirotic Oscillator
             </span>
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Cavity resonator network • Each node constrains energy flow • Click to excite
+          <p className="text-xs text-muted-foreground">
+            Cavity resonator network • 22 Hebrew letter paths • Click to excite
           </p>
         </header>
 
-        {/* Main Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          {/* Left Sidebar */}
-          <div className="lg:col-span-3 space-y-4">
+        {/* Main Layout - responsive grid */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
+          {/* Left Sidebar - System & Meditation */}
+          <div className="xl:col-span-2 space-y-3">
             <SystemMetrics
               totalEnergy={state.totalEnergy}
               coherence={state.coherence}
@@ -57,7 +59,7 @@ export default function SephiroticOscillator() {
           </div>
 
           {/* Center - Tree Visualization */}
-          <div className="lg:col-span-5">
+          <div className="xl:col-span-4">
             <div className="bg-black/40 border border-primary/20 rounded-lg p-2 aspect-[3/4]">
               <TreeVisualization
                 oscillators={state.oscillators}
@@ -69,8 +71,21 @@ export default function SephiroticOscillator() {
             </div>
           </div>
 
-          {/* Right Sidebar - Chat */}
-          <div className="lg:col-span-4 h-[600px]">
+          {/* Right Side - Analysis Panels */}
+          <div className="xl:col-span-3 space-y-3">
+            <div className="h-[280px]">
+              <PathAnalysisPanel
+                flows={state.flows}
+                oscillators={state.oscillators}
+              />
+            </div>
+            <div className="h-[320px]">
+              <WordAnalysisPanel flows={state.flows} />
+            </div>
+          </div>
+
+          {/* Far Right - Chat */}
+          <div className="xl:col-span-3 h-[620px]">
             <OracleChat
               messages={state.messages}
               isProcessing={state.isProcessing}
