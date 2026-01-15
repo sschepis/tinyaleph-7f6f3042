@@ -1,7 +1,9 @@
 import { motion } from 'framer-motion';
-import { Activity, Zap, BarChart3 } from 'lucide-react';
-import type { PillarType, SephirahName } from '@/lib/sephirotic-oscillator/types';
+import { Activity, Zap, BarChart3, Radio } from 'lucide-react';
+import type { PillarType, SephirahName, OscillatorNode } from '@/lib/sephirotic-oscillator/types';
+import type { ResonatorNode } from '@/lib/sephirotic-oscillator/resonator-physics';
 import { SEPHIROT } from '@/lib/sephirotic-oscillator/tree-config';
+import { RESONATOR_PROPERTIES } from '@/lib/sephirotic-oscillator/resonator-physics';
 import { describeTreeState } from '@/lib/sephirotic-oscillator/semantic-analyzer';
 
 interface SystemMetricsProps {
@@ -9,6 +11,7 @@ interface SystemMetricsProps {
   coherence: number;
   dominantPillar: PillarType | null;
   activeSephirot: SephirahName[];
+  oscillators?: Map<SephirahName, ResonatorNode | OscillatorNode>;
 }
 
 const PILLAR_COLORS = {
@@ -27,13 +30,30 @@ export function SystemMetrics({
   totalEnergy,
   coherence,
   dominantPillar,
-  activeSephirot
+  activeSephirot,
+  oscillators
 }: SystemMetricsProps) {
   const stateDescription = describeTreeState(
     activeSephirot, 
     coherence, 
     dominantPillar
   );
+  
+  // Calculate average Q-factor and resonance for active nodes
+  const activeResonatorData = activeSephirot.map(id => {
+    const node = oscillators?.get(id) as ResonatorNode | undefined;
+    const props = RESONATOR_PROPERTIES[id];
+    return {
+      id,
+      qFactor: props.qFactor,
+      resonance: node && 'resonance' in node ? node.resonance : 0,
+      storedEnergy: node && 'storedEnergy' in node ? node.storedEnergy : 0
+    };
+  });
+  
+  const avgResonance = activeResonatorData.length > 0
+    ? activeResonatorData.reduce((sum, d) => sum + d.resonance, 0) / activeResonatorData.length
+    : 0;
 
   return (
     <div className="bg-black/60 border border-primary/30 rounded-lg p-4 space-y-4">
@@ -60,12 +80,30 @@ export function SystemMetrics({
         </div>
       </div>
 
+      {/* Resonance Bar */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between text-xs">
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <Radio className="w-3 h-3" />
+            Cavity Resonance
+          </span>
+          <span className="font-mono">{(avgResonance * 100).toFixed(0)}%</span>
+        </div>
+        <div className="h-2 bg-secondary/30 rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-gradient-to-r from-amber-500 to-rose-500 rounded-full"
+            animate={{ width: `${avgResonance * 100}%` }}
+            transition={{ duration: 0.3 }}
+          />
+        </div>
+      </div>
+
       {/* Coherence Bar */}
       <div className="space-y-1">
         <div className="flex items-center justify-between text-xs">
           <span className="flex items-center gap-1.5 text-muted-foreground">
             <BarChart3 className="w-3 h-3" />
-            Coherence
+            Phase Coherence
           </span>
           <span className="font-mono">{(coherence * 100).toFixed(0)}%</span>
         </div>

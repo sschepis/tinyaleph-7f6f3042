@@ -7,14 +7,16 @@ import type {
   MeditationSequence
 } from '@/lib/sephirotic-oscillator/types';
 import { 
-  initializeOscillators,
-  energizeSephirah,
-  propagateEnergy,
-  calculateCoherence,
-  calculateTotalEnergy,
-  getDominantPillar,
-  getActiveSephirot 
-} from '@/lib/sephirotic-oscillator/oscillator-engine';
+  initializeResonators,
+  energizeResonator,
+  propagateResonance,
+  calculateResonatorCoherence,
+  calculateTotalStoredEnergy,
+  getResonatorDominantPillar,
+  getActiveResonators,
+  RESONATOR_PROPERTIES,
+  type ResonatorNode
+} from '@/lib/sephirotic-oscillator/resonator-physics';
 import {
   analyzeSemanticActivation,
   buildSystemPrompt
@@ -22,8 +24,13 @@ import {
 import { SEPHIROT } from '@/lib/sephirotic-oscillator/tree-config';
 import { sephiroticSonicEngine } from '@/lib/sephirotic-oscillator/sonic-engine';
 
-const INITIAL_STATE: SephiroticState = {
-  oscillators: initializeOscillators(),
+// Extend state to use resonator nodes
+interface ResonatorState extends Omit<SephiroticState, 'oscillators'> {
+  oscillators: Map<SephirahName, ResonatorNode>;
+}
+
+const INITIAL_STATE: ResonatorState = {
+  oscillators: initializeResonators(),
   flows: [],
   totalEnergy: 0,
   coherence: 0,
@@ -35,19 +42,19 @@ const INITIAL_STATE: SephiroticState = {
   messages: [{
     id: 'init',
     role: 'system',
-    content: 'The Tree of Life awaits. Click nodes to energize them, or ask a question to activate semantic resonance.',
+    content: 'The Tree of Life awaits. Each Sephirah is a resonant cavity—click to inject energy, or ask a question to activate semantic resonance across the paths.',
     timestamp: new Date()
   }]
 };
 
 export function useSephiroticOscillator() {
-  const [state, setState] = useState<SephiroticState>(INITIAL_STATE);
+  const [state, setState] = useState<ResonatorState>(INITIAL_STATE);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const animationRef = useRef<number | null>(null);
   const meditationTimerRef = useRef<number | null>(null);
   const messageHistoryRef = useRef<{ role: string; content: string }[]>([]);
 
-  // Animation loop for oscillator propagation
+  // Animation loop for cavity resonator propagation
   useEffect(() => {
     let lastTime = performance.now();
     
@@ -56,15 +63,15 @@ export function useSephiroticOscillator() {
       lastTime = time;
       
       setState(prev => {
-        const { oscillators, flows } = propagateEnergy(prev.oscillators, dt * 2);
+        const { resonators, flows } = propagateResonance(prev.oscillators, dt * 2);
         return {
           ...prev,
-          oscillators,
+          oscillators: resonators,
           flows,
-          totalEnergy: calculateTotalEnergy(oscillators),
-          coherence: calculateCoherence(oscillators),
-          dominantPillar: getDominantPillar(oscillators),
-          activeSephirot: getActiveSephirot(oscillators)
+          totalEnergy: calculateTotalStoredEnergy(resonators),
+          coherence: calculateResonatorCoherence(resonators),
+          dominantPillar: getResonatorDominantPillar(resonators),
+          activeSephirot: getActiveResonators(resonators)
         };
       });
       
@@ -99,8 +106,9 @@ export function useSephiroticOscillator() {
     meditationTimerRef.current = window.setTimeout(() => {
       const currentSephirah = sequence.path[state.meditationStep];
       const sephirah = SEPHIROT[currentSephirah];
+      const props = RESONATOR_PROPERTIES[currentSephirah];
       
-      // Play meditation tone
+      // Play meditation tone at the sephirah's resonant frequency
       if (soundEnabled) {
         sephiroticSonicEngine.playMeditationStep(
           currentSephirah,
@@ -110,9 +118,10 @@ export function useSephiroticOscillator() {
         );
       }
       
+      // Inject energy at the cavity's resonant frequency for maximum absorption
       setState(prev => ({
         ...prev,
-        oscillators: energizeSephirah(prev.oscillators, currentSephirah, 0.8),
+        oscillators: energizeResonator(prev.oscillators, currentSephirah, 0.8, props.resonantFreq),
         meditationStep: prev.meditationStep + 1
       }));
     }, sequence.duration);
@@ -137,18 +146,20 @@ export function useSephiroticOscillator() {
     }
   }, [soundEnabled]);
 
-  // Click to energize a sephirah
+  // Click to energize a sephirah's cavity
   const clickSephirah = useCallback((sephirahId: SephirahName) => {
     const sephirah = SEPHIROT[sephirahId];
+    const props = RESONATOR_PROPERTIES[sephirahId];
     
-    // Play sound
+    // Play sound at resonant frequency
     if (soundEnabled) {
       sephiroticSonicEngine.playSephirahTone(sephirahId, sephirah.pillar, 0.6);
     }
     
+    // Inject energy at resonant frequency for optimal absorption
     setState(prev => ({
       ...prev,
-      oscillators: energizeSephirah(prev.oscillators, sephirahId, 0.6)
+      oscillators: energizeResonator(prev.oscillators, sephirahId, 0.6, props.resonantFreq)
     }));
   }, [soundEnabled]);
 
@@ -158,7 +169,7 @@ export function useSephiroticOscillator() {
       ...prev,
       meditationMode: sequence,
       meditationStep: 0,
-      oscillators: initializeOscillators()
+      oscillators: initializeResonators()
     }));
   }, []);
 
@@ -239,11 +250,14 @@ export function useSephiroticOscillator() {
   const sendMessage = useCallback(async (content: string) => {
     const { activated, energyMap } = analyzeSemanticActivation(content);
     
-    // Energize activated sephirot
+    // Energize activated sephirot cavities
     let newOscillators = state.oscillators;
     energyMap.forEach((energy, sephirahId) => {
       if (energy > 0.1) {
-        newOscillators = energizeSephirah(newOscillators, sephirahId, energy);
+        const props = RESONATOR_PROPERTIES[sephirahId];
+        // Inject at a slightly detuned frequency to simulate natural input
+        const inputFreq = props.resonantFreq * (0.9 + Math.random() * 0.2);
+        newOscillators = energizeResonator(newOscillators, sephirahId, energy, inputFreq);
         
         // Play resonance sounds for activated sephirot
         if (soundEnabled && energy > 0.2) {
@@ -324,7 +338,7 @@ export function useSephiroticOscillator() {
     messageHistoryRef.current = [];
     setState({
       ...INITIAL_STATE,
-      oscillators: initializeOscillators()
+      oscillators: initializeResonators()
     });
   }, []);
 
