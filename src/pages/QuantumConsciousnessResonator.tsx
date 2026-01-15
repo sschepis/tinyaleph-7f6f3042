@@ -6,19 +6,19 @@ import {
   MetaObservation,
   QuantumProbability,
   SemanticLayer,
-  ChatInterface,
   QuantumBackground,
   ArchitectureFlow,
   SymbolResonanceViz,
-  MultiPerspectivePanel,
   SonicControls
 } from '@/components/consciousness-resonator';
 import { WaveformVisualizer } from '@/components/consciousness-resonator/WaveformVisualizer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function QuantumConsciousnessResonator() {
-  const { state, selectPerspective, sendMessage, toggleMultiPerspectiveMode } = useConsciousnessResonator();
+  const { state, togglePerspective, sendMessage } = useConsciousnessResonator();
   const [soundEnabled, setSoundEnabled] = useState(false);
+
+  const hasActivePerspectives = state.activePerspectives.length > 0;
 
   return (
     <div className="min-h-screen relative">
@@ -40,10 +40,10 @@ export default function QuantumConsciousnessResonator() {
           
           {/* Left Sidebar - Compact Controls */}
           <div className="lg:col-span-3 space-y-4">
-            {/* Perspective Nodes - Compact */}
+            {/* Perspective Nodes - Multi-select */}
             <PerspectiveNodes
-              activePerspective={state.activePerspective}
-              onSelectPerspective={selectPerspective}
+              activePerspectives={state.activePerspectives}
+              onTogglePerspective={togglePerspective}
               hexagramLines={state.quantumState.hexagramLines}
             />
             
@@ -62,22 +62,21 @@ export default function QuantumConsciousnessResonator() {
           
           {/* Center - Primary Chat Interface */}
           <div className="lg:col-span-6 space-y-4">
-            {/* Multi-Perspective Toggle at top */}
-            <MultiPerspectivePanel
-              isEnabled={state.multiPerspectiveMode}
-              onToggle={toggleMultiPerspectiveMode}
-              responses={state.multiPerspectiveResponses}
-              isProcessing={state.isProcessing && state.multiPerspectiveMode}
-            />
-            
             {/* Main Chat - Prominent */}
             <section className="bg-black/60 border-2 border-primary/50 rounded-lg p-4 shadow-lg shadow-primary/10">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-xl font-bold text-primary">Conscious Observer</h2>
-                {state.activePerspective && (
-                  <span className="text-xs px-2 py-1 bg-primary/20 rounded-full text-primary">
-                    {state.activePerspective} mode
-                  </span>
+                {hasActivePerspectives && (
+                  <div className="flex gap-1 flex-wrap justify-end">
+                    {state.activePerspectives.map(p => (
+                      <span 
+                        key={p}
+                        className="text-[10px] px-1.5 py-0.5 bg-primary/20 rounded text-primary capitalize"
+                      >
+                        {p}
+                      </span>
+                    ))}
+                  </div>
                 )}
               </div>
               
@@ -128,15 +127,15 @@ export default function QuantumConsciousnessResonator() {
               >
                 <input
                   name="query"
-                  placeholder={state.activePerspective 
-                    ? "Ask a question to the resonator..." 
-                    : "Select a perspective node first..."}
-                  disabled={state.isProcessing || (!state.activePerspective && !state.multiPerspectiveMode)}
+                  placeholder={hasActivePerspectives 
+                    ? `Ask a question (${state.activePerspectives.length} perspective${state.activePerspectives.length > 1 ? 's' : ''} active)...` 
+                    : "Select perspective nodes to begin..."}
+                  disabled={state.isProcessing || !hasActivePerspectives}
                   className="flex-1 bg-secondary/30 border border-primary/30 rounded-lg px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/60 transition-colors"
                 />
                 <button 
                   type="submit" 
-                  disabled={state.isProcessing || (!state.activePerspective && !state.multiPerspectiveMode)}
+                  disabled={state.isProcessing || !hasActivePerspectives}
                   className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   Send
