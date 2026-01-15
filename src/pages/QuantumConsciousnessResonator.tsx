@@ -9,7 +9,8 @@ import {
   QuantumBackground,
   ArchitectureFlow,
   SymbolResonanceViz,
-  MultiPerspectivePanel
+  MultiPerspectivePanel,
+  SonicControls
 } from '@/components/consciousness-resonator';
 
 export default function QuantumConsciousnessResonator() {
@@ -87,6 +88,13 @@ export default function QuantumConsciousnessResonator() {
 
         <ArchitectureFlow />
       </div>
+      
+      {/* Sonic Controls - Fixed position */}
+      <SonicControls
+        archetypes={state.activatedArchetypes}
+        hexagramLines={state.quantumState.hexagramLines}
+        entropy={state.quantumState.entropy}
+      />
     </div>
   );
 }
