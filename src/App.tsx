@@ -38,7 +38,7 @@ import DiscreteExamples from "./pages/DiscreteExamples";
 import ObserverExamples from "./pages/ObserverExamples";
 import SentientObserverApp from "./pages/SentientObserverApp";
 import QuantumConsciousnessResonator from "./pages/QuantumConsciousnessResonator";
-// Docs pages
+import SephiroticOscillator from "./pages/SephiroticOscillator";
 import GettingStarted from "./pages/docs/GettingStarted";
 import UserGuide from "./pages/docs/UserGuide";
 import AppIdeas from "./pages/docs/AppIdeas";
