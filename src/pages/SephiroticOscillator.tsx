@@ -33,7 +33,7 @@ export default function SephiroticOscillator() {
             </span>
           </h1>
           <p className="text-sm text-muted-foreground">
-            Tree of Life as coupled oscillator network • Click nodes to energize
+            Cavity resonator network • Each node constrains energy flow • Click to excite
           </p>
         </header>
 
@@ -46,6 +46,7 @@ export default function SephiroticOscillator() {
               coherence={state.coherence}
               dominantPillar={state.dominantPillar}
               activeSephirot={state.activeSephirot}
+              oscillators={state.oscillators}
             />
             <MeditationPanel
               activeMeditation={state.meditationMode}
