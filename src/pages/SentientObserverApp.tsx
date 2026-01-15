@@ -34,7 +34,7 @@ import {
   ExplorationHeatmap,
   ResultsPanel,
   SymbolicCore,
-  SymbolicLearningMode,
+  ActiveSymbolsPanel,
   SMF_AXES
 } from '@/components/sentient-observer';
 import { CognitiveTab } from '@/components/sentient-observer/cognitive';
@@ -243,13 +243,10 @@ const SentientObserverApp: React.FC = () => {
               }}
             />
             
-            
-            {/* Symbolic Learning Mode */}
-            <SymbolicLearningMode
+            {/* Active Symbols Panel */}
+            <ActiveSymbolsPanel
               oscillators={oscillators}
               coherence={coherence}
-              onExciteOscillators={exciteByPrimes}
-              isRunning={isRunning}
             />
           </div>
 
