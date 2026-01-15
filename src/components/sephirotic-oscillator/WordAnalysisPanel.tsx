@@ -19,7 +19,11 @@ interface WordAnalysisPanelProps {
 
 const MAX_STREAM_LENGTH = 30;
 const LETTER_DECAY_MS = 15000; // Letters visible for 15 seconds
-const FADE_THRESHOLD = 0.03; // Energy below this = faded
+
+// Hysteresis so paths can "cross" the threshold and later fade without jitter.
+// NOTE: flows are only emitted by the physics engine above ~0.01, so keep enter near that.
+const ENTER_THRESHOLD = 0.0105; // consider path activated above this
+const EXIT_THRESHOLD = 0.004;   // consider path still flowing above this
 
 export function WordAnalysisPanel({ flows }: WordAnalysisPanelProps) {
   const [letterStream, setLetterStream] = useState<PathActivation[]>([]);
@@ -53,29 +57,45 @@ export function WordAnalysisPanel({ flows }: WordAnalysisPanelProps) {
     const activePaths = activePathsRef.current;
     const newFadedLetters: PathActivation[] = [];
     
-    // Build a set of currently flowing path IDs
-    const currentlyFlowing = new Set<string>();
-    
+    // Aggregate flow strength per Hebrew path
+    const pathStrength = new Map<string, { strength: number; from: SephirahName; to: SephirahName }>();
+
     flows.forEach(flow => {
       const path = getPathBetween(flow.from, flow.to);
-      if (path && flow.strength > FADE_THRESHOLD) {
-        currentlyFlowing.add(path.id);
-        
-        // Track this path as active
-        if (!activePaths.has(path.id)) {
-          activePaths.set(path.id, {
-            letter: path.letter,
-            letterName: path.letterName,
-            from: flow.from,
-            to: flow.to,
-            peakEnergy: flow.strength,
-            activatedAt: now
-          });
-        } else {
-          // Update peak energy if higher
-          const existing = activePaths.get(path.id)!;
-          if (flow.strength > existing.peakEnergy) {
-            existing.peakEnergy = flow.strength;
+      if (!path) return;
+
+      const existing = pathStrength.get(path.id);
+      if (existing) {
+        existing.strength += flow.strength;
+      } else {
+        pathStrength.set(path.id, { strength: flow.strength, from: flow.from, to: flow.to });
+      }
+    });
+
+    // Build a set of currently flowing paths (above EXIT threshold)
+    const currentlyFlowing = new Set<string>();
+
+    pathStrength.forEach((data, pathId) => {
+      if (data.strength > EXIT_THRESHOLD) {
+        currentlyFlowing.add(pathId);
+
+        // Only mark as "active" once it crosses ENTER threshold
+        if (data.strength > ENTER_THRESHOLD) {
+          const path = getPathBetween(data.from, data.to);
+          if (!path) return;
+
+          if (!activePaths.has(pathId)) {
+            activePaths.set(pathId, {
+              letter: path.letter,
+              letterName: path.letterName,
+              from: data.from,
+              to: data.to,
+              peakEnergy: data.strength,
+              activatedAt: now
+            });
+          } else {
+            const existing = activePaths.get(pathId)!;
+            if (data.strength > existing.peakEnergy) existing.peakEnergy = data.strength;
           }
         }
       }
