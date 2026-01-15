@@ -207,7 +207,7 @@ export function useConsciousnessResonator() {
     return fullText;
   }, []);
 
-  // Get non-streaming response
+  // Get non-streaming response (parses SSE stream and returns full text)
   const getResponse = useCallback(async (
     messages: { role: string; content: string }[],
     systemPrompt: string
@@ -217,7 +217,65 @@ export function useConsciousnessResonator() {
     });
 
     if (response.error) throw response.error;
-    return response.data?.content || response.data || '';
+    
+    // The edge function returns SSE stream, so we need to parse it
+    const data = response.data;
+    
+    // If it's already a string with SSE format, parse it
+    if (typeof data === 'string') {
+      let fullText = '';
+      const lines = data.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const jsonStr = line.slice(6);
+          if (jsonStr === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) fullText += content;
+          } catch {
+            // Skip non-JSON lines
+          }
+        }
+      }
+      return fullText || data;
+    }
+    
+    // If response.data has a content property
+    if (data?.content) return data.content;
+    
+    // If response.data is a ReadableStream, we need to read it
+    if (data instanceof ReadableStream || data?.body instanceof ReadableStream) {
+      const stream = data instanceof ReadableStream ? data : data.body;
+      const reader = stream.getReader();
+      const decoder = new TextDecoder();
+      let fullText = '';
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const jsonStr = line.slice(6);
+            if (jsonStr === '[DONE]') continue;
+            try {
+              const parsed = JSON.parse(jsonStr);
+              const content = parsed.choices?.[0]?.delta?.content;
+              if (content) fullText += content;
+            } catch {
+              // Skip non-JSON lines
+            }
+          }
+        }
+      }
+      return fullText;
+    }
+    
+    return String(data || '');
   }, []);
 
   // Send message - handles single or multiple perspectives
