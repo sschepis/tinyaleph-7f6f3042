@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import type { SephirahName, OscillatorNode, PathFlow } from '@/lib/sephirotic-oscillator/types';
 import { SEPHIROT, ALL_SEPHIROT } from '@/lib/sephirotic-oscillator/tree-config';
+import { HEBREW_PATHS, getPathBetween, getAssociationColor, type HebrewPath } from '@/lib/sephirotic-oscillator/path-letters';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TreeVisualizationProps {
@@ -11,6 +12,23 @@ interface TreeVisualizationProps {
   meditationActive: boolean;
 }
 
+// Calculate midpoint and perpendicular offset for label placement
+function getPathLabelPosition(from: { x: number; y: number }, to: { x: number; y: number }) {
+  const midX = (from.x + to.x) / 2;
+  const midY = (from.y + to.y) / 2;
+  
+  // Calculate perpendicular offset to avoid overlapping the line
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  
+  // Offset perpendicular to the path (to the left when going down-right)
+  const offsetX = len > 0 ? (-dy / len) * 2.5 : 0;
+  const offsetY = len > 0 ? (dx / len) * 2.5 : 0;
+  
+  return { x: midX + offsetX, y: midY + offsetY };
+}
+
 export function TreeVisualization({
   oscillators,
   flows,
@@ -18,10 +36,25 @@ export function TreeVisualization({
   onClickSephirah,
   meditationActive
 }: TreeVisualizationProps) {
-  // Generate paths between connected sephirot
-  const paths: { from: typeof SEPHIROT.keter; to: typeof SEPHIROT.keter; key: string }[] = [];
+  // Use the defined Hebrew paths instead of generating from connections
+  const paths: { from: typeof SEPHIROT.keter; to: typeof SEPHIROT.keter; key: string; hebrewPath?: HebrewPath }[] = [];
   const pathSet = new Set<string>();
   
+  // First add all Hebrew letter paths
+  HEBREW_PATHS.forEach(hp => {
+    const key = [hp.from, hp.to].sort().join('-');
+    if (!pathSet.has(key)) {
+      pathSet.add(key);
+      paths.push({
+        from: SEPHIROT[hp.from],
+        to: SEPHIROT[hp.to],
+        key,
+        hebrewPath: hp
+      });
+    }
+  });
+  
+  // Add any remaining connections from sephirot (like Daat connections) that aren't in Hebrew paths
   ALL_SEPHIROT.forEach(sephirah => {
     sephirah.connections.forEach(connectedId => {
       const key = [sephirah.id, connectedId].sort().join('-');
@@ -30,7 +63,8 @@ export function TreeVisualization({
         paths.push({
           from: sephirah,
           to: SEPHIROT[connectedId],
-          key
+          key,
+          hebrewPath: undefined
         });
       }
     });
@@ -91,27 +125,38 @@ export function TreeVisualization({
           </linearGradient>
         </defs>
         
-        {/* Base paths - always visible */}
-        {paths.map(({ from, to, key }) => (
-          <line
-            key={`${key}-base`}
-            x1={`${from.position.x}%`}
-            y1={`${from.position.y}%`}
-            x2={`${to.position.x}%`}
-            y2={`${to.position.y}%`}
-            stroke="rgba(100, 100, 120, 0.25)"
-            strokeWidth="1"
-          />
-        ))}
+        {/* Base paths - always visible with Hebrew letter colors */}
+        {paths.map(({ from, to, key, hebrewPath }) => {
+          const pathColor = hebrewPath 
+            ? getAssociationColor(hebrewPath.association)
+            : 'rgba(100, 100, 120, 0.4)';
+          
+          return (
+            <line
+              key={`${key}-base`}
+              x1={`${from.position.x}%`}
+              y1={`${from.position.y}%`}
+              x2={`${to.position.x}%`}
+              y2={`${to.position.y}%`}
+              stroke={pathColor}
+              strokeOpacity={hebrewPath ? 0.35 : 0.25}
+              strokeWidth="1.5"
+            />
+          );
+        })}
         
         {/* Active paths with glow */}
-        {paths.map(({ from, to, key }) => {
+        {paths.map(({ from, to, key, hebrewPath }) => {
           const fromNode = oscillators.get(from.id);
           const toNode = oscillators.get(to.id);
           const isActive = (fromNode?.energy || 0) > 0.15 || (toNode?.energy || 0) > 0.15;
           const flowStrength = Math.max(fromNode?.energy || 0, toNode?.energy || 0);
           
           if (!isActive) return null;
+          
+          const pathColor = hebrewPath 
+            ? getAssociationColor(hebrewPath.association)
+            : 'rgba(139, 92, 246, 1)';
           
           return (
             <motion.line
@@ -120,8 +165,9 @@ export function TreeVisualization({
               y1={`${from.position.y}%`}
               x2={`${to.position.x}%`}
               y2={`${to.position.y}%`}
-              stroke={`rgba(139, 92, 246, ${0.4 + flowStrength * 0.6})`}
-              strokeWidth={1.5 + flowStrength * 2}
+              stroke={pathColor}
+              strokeOpacity={0.4 + flowStrength * 0.6}
+              strokeWidth={1.5 + flowStrength * 2.5}
               filter="url(#glow-strong)"
               strokeLinecap="round"
               initial={{ pathLength: 0 }}
@@ -165,6 +211,49 @@ export function TreeVisualization({
               }}
             />
           ));
+        })}
+        
+        {/* Hebrew letter labels on paths */}
+        {paths.map(({ from, to, key, hebrewPath }) => {
+          if (!hebrewPath) return null;
+          
+          const labelPos = getPathLabelPosition(from.position, to.position);
+          const fromNode = oscillators.get(from.id);
+          const toNode = oscillators.get(to.id);
+          const isActive = (fromNode?.energy || 0) > 0.15 || (toNode?.energy || 0) > 0.15;
+          const pathColor = getAssociationColor(hebrewPath.association);
+          
+          return (
+            <g key={`${key}-label`}>
+              {/* Background circle for letter */}
+              <circle
+                cx={`${labelPos.x}%`}
+                cy={`${labelPos.y}%`}
+                r="10"
+                fill="rgba(0, 0, 0, 0.85)"
+                stroke={pathColor}
+                strokeWidth={isActive ? 1.5 : 0.5}
+                strokeOpacity={isActive ? 0.9 : 0.4}
+                filter={isActive ? "url(#glow-subtle)" : undefined}
+              />
+              {/* Hebrew letter */}
+              <text
+                x={`${labelPos.x}%`}
+                y={`${labelPos.y}%`}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill={pathColor}
+                fontSize="12"
+                fontFamily="serif"
+                opacity={isActive ? 1 : 0.6}
+                style={{ 
+                  filter: isActive ? `drop-shadow(0 0 4px ${pathColor})` : undefined 
+                }}
+              >
+                {hebrewPath.letter}
+              </text>
+            </g>
+          );
         })}
       </svg>
 
