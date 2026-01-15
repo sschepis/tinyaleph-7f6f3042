@@ -9,7 +9,8 @@ import {
   QuantumBackground,
   ArchitectureFlow,
   SymbolResonanceViz,
-  SonicControls
+  SonicControls,
+  ConversationStarters
 } from '@/components/consciousness-resonator';
 import { WaveformVisualizer } from '@/components/consciousness-resonator/WaveformVisualizer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -82,34 +83,47 @@ export default function QuantumConsciousnessResonator() {
               
               {/* Chat Messages - Larger */}
               <div className="h-[45vh] overflow-y-auto mb-4 bg-secondary/10 rounded-lg p-4 space-y-3 border border-border/30">
-                {state.messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`${message.role === 'user' ? 'text-right' : 'text-left'} animate-fade-in`}
-                  >
-                    <div
-                      className={`
-                        inline-block max-w-[85%] px-4 py-2 rounded-lg text-sm
-                        ${message.role === 'user' 
-                          ? 'bg-primary/80 text-primary-foreground' 
-                          : message.role === 'system'
-                            ? 'bg-muted/80 text-muted-foreground'
-                            : 'bg-secondary/80 text-foreground'}
-                        ${state.isProcessing && message.role === 'assistant' && message === state.messages[state.messages.length - 1]
-                          ? 'animate-pulse'
-                          : ''}
-                      `}
-                    >
-                      {message.role === 'assistant' ? (
-                        <div className="prose prose-invert prose-sm max-w-none">
-                          {message.content}
-                        </div>
-                      ) : (
-                        <span dangerouslySetInnerHTML={{ __html: message.content }} />
-                      )}
-                    </div>
+                {state.messages.length === 0 && hasActivePerspectives ? (
+                  <ConversationStarters 
+                    onSelectStarter={(message) => sendMessage(message)}
+                    disabled={state.isProcessing}
+                  />
+                ) : state.messages.length === 0 ? (
+                  <div className="h-full flex items-center justify-center">
+                    <p className="text-sm text-muted-foreground text-center">
+                      Select perspective nodes on the left to begin exploring
+                    </p>
                   </div>
-                ))}
+                ) : (
+                  state.messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`${message.role === 'user' ? 'text-right' : 'text-left'} animate-fade-in`}
+                    >
+                      <div
+                        className={`
+                          inline-block max-w-[85%] px-4 py-2 rounded-lg text-sm
+                          ${message.role === 'user' 
+                            ? 'bg-primary/80 text-primary-foreground' 
+                            : message.role === 'system'
+                              ? 'bg-muted/80 text-muted-foreground'
+                              : 'bg-secondary/80 text-foreground'}
+                          ${state.isProcessing && message.role === 'assistant' && message === state.messages[state.messages.length - 1]
+                            ? 'animate-pulse'
+                            : ''}
+                        `}
+                      >
+                        {message.role === 'assistant' ? (
+                          <div className="prose prose-invert prose-sm max-w-none">
+                            {message.content}
+                          </div>
+                        ) : (
+                          <span dangerouslySetInnerHTML={{ __html: message.content }} />
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
               
               {/* Input - Prominent */}
