@@ -4,8 +4,7 @@ import type {
   SephiroticState, 
   SephirahName, 
   ChatMessage, 
-  MeditationSequence,
-  OscillatorNode 
+  MeditationSequence
 } from '@/lib/sephirotic-oscillator/types';
 import { 
   initializeOscillators,
@@ -20,6 +19,8 @@ import {
   analyzeSemanticActivation,
   buildSystemPrompt
 } from '@/lib/sephirotic-oscillator/semantic-analyzer';
+import { SEPHIROT } from '@/lib/sephirotic-oscillator/tree-config';
+import { sephiroticSonicEngine } from '@/lib/sephirotic-oscillator/sonic-engine';
 
 const INITIAL_STATE: SephiroticState = {
   oscillators: initializeOscillators(),
@@ -41,6 +42,7 @@ const INITIAL_STATE: SephiroticState = {
 
 export function useSephiroticOscillator() {
   const [state, setState] = useState<SephiroticState>(INITIAL_STATE);
+  const [soundEnabled, setSoundEnabled] = useState(false);
   const animationRef = useRef<number | null>(null);
   const meditationTimerRef = useRef<number | null>(null);
   const messageHistoryRef = useRef<{ role: string; content: string }[]>([]);
@@ -96,6 +98,17 @@ export function useSephiroticOscillator() {
     
     meditationTimerRef.current = window.setTimeout(() => {
       const currentSephirah = sequence.path[state.meditationStep];
+      const sephirah = SEPHIROT[currentSephirah];
+      
+      // Play meditation tone
+      if (soundEnabled) {
+        sephiroticSonicEngine.playMeditationStep(
+          currentSephirah,
+          sephirah.pillar,
+          state.meditationStep,
+          sequence.path.length
+        );
+      }
       
       setState(prev => ({
         ...prev,
@@ -109,17 +122,35 @@ export function useSephiroticOscillator() {
         clearTimeout(meditationTimerRef.current);
       }
     };
-  }, [state.meditationMode, state.meditationStep]);
+  }, [state.meditationMode, state.meditationStep, soundEnabled]);
 
   const generateId = () => `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
+  // Toggle sound
+  const toggleSound = useCallback(async () => {
+    if (soundEnabled) {
+      sephiroticSonicEngine.disable();
+      setSoundEnabled(false);
+    } else {
+      await sephiroticSonicEngine.enable();
+      setSoundEnabled(true);
+    }
+  }, [soundEnabled]);
+
   // Click to energize a sephirah
   const clickSephirah = useCallback((sephirahId: SephirahName) => {
+    const sephirah = SEPHIROT[sephirahId];
+    
+    // Play sound
+    if (soundEnabled) {
+      sephiroticSonicEngine.playSephirahTone(sephirahId, sephirah.pillar, 0.6);
+    }
+    
     setState(prev => ({
       ...prev,
       oscillators: energizeSephirah(prev.oscillators, sephirahId, 0.6)
     }));
-  }, []);
+  }, [soundEnabled]);
 
   // Start a meditation sequence
   const startMeditation = useCallback((sequence: MeditationSequence) => {
@@ -127,7 +158,6 @@ export function useSephiroticOscillator() {
       ...prev,
       meditationMode: sequence,
       meditationStep: 0,
-      // Reset oscillators to low energy
       oscillators: initializeOscillators()
     }));
   }, []);
@@ -174,18 +204,24 @@ export function useSephiroticOscillator() {
 
   // Send message and get AI response
   const sendMessage = useCallback(async (content: string) => {
-    // Analyze semantic content to activate sephirot
-    const { activated, energyMap, dominantTheme } = analyzeSemanticActivation(content);
+    const { activated, energyMap } = analyzeSemanticActivation(content);
     
     // Energize activated sephirot
     let newOscillators = state.oscillators;
     energyMap.forEach((energy, sephirahId) => {
       if (energy > 0.1) {
         newOscillators = energizeSephirah(newOscillators, sephirahId, energy);
+        
+        // Play resonance sounds for activated sephirot
+        if (soundEnabled && energy > 0.2) {
+          const sephirah = SEPHIROT[sephirahId];
+          setTimeout(() => {
+            sephiroticSonicEngine.playSephirahTone(sephirahId, sephirah.pillar, energy * 0.5, 1.2);
+          }, Math.random() * 200);
+        }
       }
     });
     
-    // Add user message
     const userMessage: ChatMessage = {
       id: generateId(),
       role: 'user',
@@ -201,7 +237,6 @@ export function useSephiroticOscillator() {
       isProcessing: true
     }));
     
-    // Build conversation history
     messageHistoryRef.current.push({ role: 'user', content });
     
     try {
@@ -249,7 +284,7 @@ export function useSephiroticOscillator() {
         isProcessing: false
       }));
     }
-  }, [state.oscillators]);
+  }, [state.oscillators, soundEnabled]);
 
   // Reset the system
   const reset = useCallback(() => {
@@ -262,6 +297,8 @@ export function useSephiroticOscillator() {
 
   return {
     state,
+    soundEnabled,
+    toggleSound,
     clickSephirah,
     startMeditation,
     stopMeditation,

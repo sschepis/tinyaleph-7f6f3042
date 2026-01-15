@@ -3,12 +3,15 @@ import {
   TreeVisualization,
   MeditationPanel,
   SystemMetrics,
-  OracleChat
+  OracleChat,
+  SoundControls
 } from '@/components/sephirotic-oscillator';
 
 export default function SephiroticOscillator() {
   const {
     state,
+    soundEnabled,
+    toggleSound,
     clickSephirah,
     startMeditation,
     stopMeditation,
@@ -76,6 +79,9 @@ export default function SephiroticOscillator() {
           </div>
         </div>
       </div>
+      
+      {/* Sound Controls */}
+      <SoundControls soundEnabled={soundEnabled} onToggle={toggleSound} />
     </div>
   );
 }
