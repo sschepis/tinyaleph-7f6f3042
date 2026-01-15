@@ -8,6 +8,7 @@ export interface PerspectiveNode {
   color: string;
   borderColor: string;
   glowColor: string;
+  description: string;
   systemPrompt: string;
 }
 
