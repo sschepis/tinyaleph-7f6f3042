@@ -9,3 +9,4 @@ export { ArchitectureFlow } from './ArchitectureFlow';
 export { SymbolResonanceViz } from './SymbolResonanceViz';
 export { MultiPerspectivePanel } from './MultiPerspectivePanel';
 export { SonicControls } from './SonicControls';
+export { WaveformVisualizer } from './WaveformVisualizer';
