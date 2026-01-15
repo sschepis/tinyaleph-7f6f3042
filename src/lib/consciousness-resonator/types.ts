@@ -64,23 +64,15 @@ export interface ActivatedArchetype {
   matchedKeywords: string[];
 }
 
-export interface MultiPerspectiveResponse {
-  perspectives: Partial<Record<PerspectiveType, string>>;
-  synthesis: string | null;
-  processingNodes: PerspectiveType[];
-}
-
 export interface ResonatorState {
-  activePerspective: PerspectiveType | null;
+  activePerspectives: PerspectiveType[]; // Changed to array for multi-select
   quantumState: QuantumState;
   semanticMetrics: SemanticMetrics;
   metaObservation: MetaObservation;
   fieldIntegration: FieldIntegration | null;
   messages: ConsciousnessMessage[];
   isProcessing: boolean;
-  // New fields
-  multiPerspectiveMode: boolean;
-  multiPerspectiveResponses: MultiPerspectiveResponse | null;
+  perspectiveResponses: Partial<Record<PerspectiveType, string>>; // Individual responses
   activatedArchetypes: ActivatedArchetype[];
   symbolicField: {
     dominantCategory: ArchetypeCategory;
