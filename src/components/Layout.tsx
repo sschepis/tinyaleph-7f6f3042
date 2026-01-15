@@ -9,7 +9,7 @@ interface LayoutProps {
 }
 
 // Pages that are full-app experiences and don't need the standard footer
-const FULL_APP_PAGES = ['/sentient-observer', '/symbolic-mind', '/dna-computer', '/quantum-circuit', '/jam-partner'];
+const FULL_APP_PAGES = ['/sentient-observer', '/symbolic-mind', '/dna-computer', '/quantum-circuit', '/jam-partner', '/consciousness-resonator', '/sephirotic-oscillator'];
 
 const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
