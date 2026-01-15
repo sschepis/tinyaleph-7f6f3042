@@ -112,6 +112,7 @@ export interface PathActivation {
   energy: number;
   from: SephirahName;
   to: SephirahName;
+  sequence?: number; // Order in which letter was added to stream
 }
 
 // Get category color

@@ -17,54 +17,90 @@ interface WordAnalysisPanelProps {
 }
 
 const MAX_STREAM_LENGTH = 30;
-const LETTER_DECAY_MS = 10000; // Letters fade after 10 seconds
-const ACTIVATION_COOLDOWN_MS = 800; // Minimum time between same letter activations
+const LETTER_DECAY_MS = 15000; // Letters visible for 15 seconds
+const FADE_THRESHOLD = 0.03; // Energy below this = faded
 
 export function WordAnalysisPanel({ flows }: WordAnalysisPanelProps) {
   const [letterStream, setLetterStream] = useState<PathActivation[]>([]);
   const [foundWords, setFoundWords] = useState<{ word: HebrewWord; fresh: boolean }[]>([]);
   
-  // Track last activation time for each path to prevent rapid re-triggers
-  const pathCooldownsRef = useRef<Map<string, number>>(new Map());
+  // Track which paths are currently "active" (above threshold)
+  // When they drop below threshold, we add the letter to the stream
+  const activePathsRef = useRef<Map<string, { 
+    letter: string; 
+    letterName: string;
+    from: SephirahName; 
+    to: SephirahName;
+    peakEnergy: number;
+    activatedAt: number;
+  }>>(new Map());
   
-  // Track flows and build letter stream in temporal order
+  // Sequence counter for ordering
+  const sequenceRef = useRef(0);
+  
+  // Track flows and detect when paths FADE (drop below threshold)
   useEffect(() => {
-    if (flows.length === 0) return;
-    
     const now = Date.now();
-    const newActivations: PathActivation[] = [];
-    const cooldowns = pathCooldownsRef.current;
+    const activePaths = activePathsRef.current;
+    const newFadedLetters: PathActivation[] = [];
     
-    // Sort flows by strength (strongest first for this frame)
-    const sortedFlows = [...flows].sort((a, b) => b.strength - a.strength);
+    // Build a set of currently flowing path IDs
+    const currentlyFlowing = new Set<string>();
     
-    sortedFlows.forEach((flow, index) => {
+    flows.forEach(flow => {
       const path = getPathBetween(flow.from, flow.to);
-      if (path && flow.strength > 0.03) {
-        const lastActivation = cooldowns.get(path.id) || 0;
+      if (path && flow.strength > FADE_THRESHOLD) {
+        currentlyFlowing.add(path.id);
         
-        // Only add if cooldown has passed
-        if (now - lastActivation > ACTIVATION_COOLDOWN_MS) {
-          cooldowns.set(path.id, now);
-          
-          newActivations.push({
-            pathId: path.id,
+        // Track this path as active
+        if (!activePaths.has(path.id)) {
+          activePaths.set(path.id, {
             letter: path.letter,
             letterName: path.letterName,
-            // Stagger timestamps slightly to preserve order within a frame
-            timestamp: now + index * 10,
-            energy: flow.strength,
             from: flow.from,
-            to: flow.to
+            to: flow.to,
+            peakEnergy: flow.strength,
+            activatedAt: now
           });
+        } else {
+          // Update peak energy if higher
+          const existing = activePaths.get(path.id)!;
+          if (flow.strength > existing.peakEnergy) {
+            existing.peakEnergy = flow.strength;
+          }
         }
       }
     });
     
-    if (newActivations.length > 0) {
+    // Check which previously active paths have now faded
+    activePaths.forEach((data, pathId) => {
+      if (!currentlyFlowing.has(pathId)) {
+        // This path has faded! Add its letter to the stream
+        sequenceRef.current += 1;
+        
+        newFadedLetters.push({
+          pathId,
+          letter: data.letter,
+          letterName: data.letterName,
+          timestamp: now,
+          energy: data.peakEnergy,
+          from: data.from,
+          to: data.to,
+          sequence: sequenceRef.current
+        });
+        
+        // Remove from active tracking
+        activePaths.delete(pathId);
+      }
+    });
+    
+    // Add faded letters to stream in order
+    if (newFadedLetters.length > 0) {
+      // Sort by when they were activated (earliest first)
+      newFadedLetters.sort((a, b) => a.timestamp - b.timestamp);
+      
       setLetterStream(prev => {
-        // Combine and sort by timestamp to maintain temporal order
-        const updated = [...prev, ...newActivations].sort((a, b) => a.timestamp - b.timestamp);
+        const updated = [...prev, ...newFadedLetters];
         // Keep only recent letters
         const cutoff = now - LETTER_DECAY_MS;
         const filtered = updated.filter(a => a.timestamp > cutoff);
@@ -117,7 +153,7 @@ export function WordAnalysisPanel({ flows }: WordAnalysisPanelProps) {
         <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-2">
           <div className="flex items-center gap-1">
             <Clock className="w-3 h-3" />
-            <span>Letter Flow</span>
+            <span>Letters (as they fade)</span>
           </div>
           {letterStream.length > 0 && (
             <span className="text-[9px] font-mono opacity-60">
@@ -125,24 +161,24 @@ export function WordAnalysisPanel({ flows }: WordAnalysisPanelProps) {
             </span>
           )}
         </div>
-        <div className="bg-black/40 rounded-lg p-2 min-h-[56px] border border-white/5 overflow-hidden">
+        <div className="bg-black/40 rounded-lg p-2 min-h-[56px] border border-white/5 overflow-hidden relative">
           {/* Display oldest → newest (left to right for reading order) */}
           <div className="flex flex-wrap gap-1.5 items-center" dir="ltr">
             <AnimatePresence mode="popLayout">
               {letterStream.length === 0 ? (
                 <span className="text-xs text-muted-foreground/40 italic">
-                  Energy flow creates letters...
+                  Letters appear as energy fades...
                 </span>
               ) : (
                 letterStream.map((activation, idx) => {
                   const path = getPathBetween(activation.from, activation.to);
                   const color = path ? getAssociationColor(path.association) : '#888';
                   const age = Date.now() - activation.timestamp;
-                  const isRecent = age < 1500;
+                  const isRecent = age < 2000;
                   
                   return (
                     <motion.div
-                      key={`${activation.pathId}-${activation.timestamp}`}
+                      key={`${activation.pathId}-${activation.sequence || activation.timestamp}`}
                       initial={{ scale: 1.5, opacity: 0, y: -10 }}
                       animate={{ 
                         scale: 1, 
