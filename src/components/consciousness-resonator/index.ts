@@ -10,3 +10,4 @@ export { SymbolResonanceViz } from './SymbolResonanceViz';
 export { SonicControls } from './SonicControls';
 export { WaveformVisualizer } from './WaveformVisualizer';
 export { ConversationStarters } from './ConversationStarters';
+export { TypingIndicator } from './TypingIndicator';
