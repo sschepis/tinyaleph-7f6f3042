@@ -92,6 +92,7 @@ const App = () => (
             <Route path="/sentient-observer" element={<SentientObserverApp />} />
             <Route path="/jam-partner" element={<JamPartner />} />
             <Route path="/consciousness-resonator" element={<QuantumConsciousnessResonator />} />
+            <Route path="/sephirotic-oscillator" element={<SephiroticOscillator />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
