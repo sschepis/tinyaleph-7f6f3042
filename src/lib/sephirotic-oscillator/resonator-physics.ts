@@ -1,8 +1,10 @@
 // Cavity Resonator Physics for Sephirotic Tree
 // Each Sephirah acts as a resonant cavity with specific properties
+// Paths between Sephirot act as waveguides with Hebrew letter properties
 
 import type { SephirahName, OscillatorNode, PathFlow, PillarType } from './types';
 import { SEPHIROT, SEPHIRAH_IDS } from './tree-config';
+import { getPathBetween, calculatePathTransmission } from './path-letters';
 
 // Resonator properties fixed by Kabbalistic meaning
 export interface ResonatorProperties {
@@ -179,34 +181,47 @@ export function propagateResonance(
       const leakRate = 1 / props.qFactor;
       const availableEnergy = node.storedEnergy * leakRate * dt * 10;
       
-      // Distribute to connected nodes based on impedance matching
+      // Distribute to connected nodes based on path (Hebrew letter) properties
       const connections = sephirah.connections;
-      const totalTransmission = connections.reduce((sum, connId) => {
-        const targetProps = RESONATOR_PROPERTIES[connId];
-        return sum + transmissionCoeff(props.impedance, targetProps.impedance);
-      }, 0);
       
-      connections.forEach(connId => {
+      // Calculate total weighted transmission through all paths
+      const transmissionWeights = connections.map(connId => {
+        const path = getPathBetween(id, connId);
+        if (path) {
+          // Use path's own transmission properties based on letter associations
+          return calculatePathTransmission(path, props.resonantFreq);
+        }
+        // Fallback for paths without Hebrew letters (like Daat connections)
         const targetProps = RESONATOR_PROPERTIES[connId];
-        const transmission = transmissionCoeff(props.impedance, targetProps.impedance);
+        return transmissionCoeff(props.impedance, targetProps.impedance);
+      });
+      
+      const totalTransmission = transmissionWeights.reduce((a, b) => a + b, 0);
+      
+      connections.forEach((connId, idx) => {
+        const path = getPathBetween(id, connId);
+        const pathTransmission = transmissionWeights[idx];
         const pathLength = getPathLength(id, connId);
         
-        // Standing wave condition: path length affects which modes can propagate
+        // Standing wave condition: path length + path bandwidth affects which modes propagate
+        const pathBandwidth = path?.bandwidth || 0.2;
         const modeEnergy = node.modeAmplitudes.reduce((sum, amp, i) => {
           const mode = props.modes[i];
-          // Check if this mode fits the path (simplified standing wave condition)
+          // Modes that match the path's resonance propagate better
           const wavelength = 2 / mode;
-          const fits = Math.abs((pathLength % wavelength) - wavelength / 2) < wavelength / 4;
-          return sum + (fits ? amp : amp * 0.2);
+          const fits = Math.abs((pathLength % wavelength) - wavelength / 2) < wavelength * pathBandwidth;
+          return sum + (fits ? amp : amp * 0.15);
         }, 0) / props.modes.length;
         
-        const energyOut = availableEnergy * (transmission / totalTransmission) * modeEnergy;
+        const energyOut = availableEnergy * (pathTransmission / Math.max(0.01, totalTransmission)) * modeEnergy;
         
         if (energyOut > 0.001) {
+          // Frequency is modulated by the path's resonant frequency
+          const pathFreq = path?.resonantFreq || props.resonantFreq;
           outgoing.push({ 
             to: connId, 
             energy: energyOut,
-            freq: props.resonantFreq * (1 + (node.phase % 0.2 - 0.1)) // Slight frequency modulation
+            freq: pathFreq * (1 + (node.phase % 0.1 - 0.05))
           });
         }
       });
