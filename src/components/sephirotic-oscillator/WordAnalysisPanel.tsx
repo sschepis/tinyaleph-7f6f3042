@@ -20,10 +20,10 @@ interface WordAnalysisPanelProps {
 const MAX_STREAM_LENGTH = 30;
 const LETTER_DECAY_MS = 15000; // Letters visible for 15 seconds
 
-// Hysteresis so paths can "cross" the threshold and later fade without jitter.
-// NOTE: flows are only emitted by the physics engine above ~0.01, so keep enter near that.
-const ENTER_THRESHOLD = 0.0105; // consider path activated above this
-const EXIT_THRESHOLD = 0.004;   // consider path still flowing above this
+// Physics engine only emits visualized flows above ~0.01.
+// So: a path is "active" when it appears in `flows`, and it "fades" when it disappears.
+const ENTER_THRESHOLD = 0.01; // record activation once we see it at least at the engine's emit threshold
+
 
 export function WordAnalysisPanel({ flows }: WordAnalysisPanelProps) {
   const [letterStream, setLetterStream] = useState<PathActivation[]>([]);
@@ -72,34 +72,34 @@ export function WordAnalysisPanel({ flows }: WordAnalysisPanelProps) {
       }
     });
 
-    // Build a set of currently flowing paths (above EXIT threshold)
+    // Build a set of currently flowing paths.
+    // If a path disappears from `flows`, we treat that as a fade event.
     const currentlyFlowing = new Set<string>();
 
     pathStrength.forEach((data, pathId) => {
-      if (data.strength > EXIT_THRESHOLD) {
-        currentlyFlowing.add(pathId);
+      currentlyFlowing.add(pathId);
 
-        // Only mark as "active" once it crosses ENTER threshold
-        if (data.strength > ENTER_THRESHOLD) {
-          const path = getPathBetween(data.from, data.to);
-          if (!path) return;
+      // Mark as "active" once it crosses the engine's emit threshold
+      if (data.strength >= ENTER_THRESHOLD) {
+        const path = getPathBetween(data.from, data.to);
+        if (!path) return;
 
-          if (!activePaths.has(pathId)) {
-            activePaths.set(pathId, {
-              letter: path.letter,
-              letterName: path.letterName,
-              from: data.from,
-              to: data.to,
-              peakEnergy: data.strength,
-              activatedAt: now
-            });
-          } else {
-            const existing = activePaths.get(pathId)!;
-            if (data.strength > existing.peakEnergy) existing.peakEnergy = data.strength;
-          }
+        if (!activePaths.has(pathId)) {
+          activePaths.set(pathId, {
+            letter: path.letter,
+            letterName: path.letterName,
+            from: data.from,
+            to: data.to,
+            peakEnergy: data.strength,
+            activatedAt: now
+          });
+        } else {
+          const existing = activePaths.get(pathId)!;
+          if (data.strength > existing.peakEnergy) existing.peakEnergy = data.strength;
         }
       }
     });
+
     
     // Check which previously active paths have now faded
     activePaths.forEach((data, pathId) => {
