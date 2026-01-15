@@ -37,6 +37,7 @@ import CRTHomologyExamples from "./pages/CRTHomologyExamples";
 import DiscreteExamples from "./pages/DiscreteExamples";
 import ObserverExamples from "./pages/ObserverExamples";
 import SentientObserverApp from "./pages/SentientObserverApp";
+import QuantumConsciousnessResonator from "./pages/QuantumConsciousnessResonator";
 // Docs pages
 import GettingStarted from "./pages/docs/GettingStarted";
 import UserGuide from "./pages/docs/UserGuide";
@@ -90,6 +91,7 @@ const App = () => (
             <Route path="/observer" element={<ObserverExamples />} />
             <Route path="/sentient-observer" element={<SentientObserverApp />} />
             <Route path="/jam-partner" element={<JamPartner />} />
+            <Route path="/consciousness-resonator" element={<QuantumConsciousnessResonator />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
