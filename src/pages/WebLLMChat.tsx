@@ -10,6 +10,8 @@ import { Slider } from '@/components/ui/slider';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Send, 
   Loader2, 
@@ -23,10 +25,21 @@ import {
   AlertCircle,
   CheckCircle2,
   Code,
-  MessageSquare
+  MessageSquare,
+  Gauge,
+  Timer,
+  Zap,
+  HardDrive,
+  FileJson,
+  RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { DEFAULT_SYSTEM_PROMPT } from '@/lib/webllm/types';
+import { 
+  DEFAULT_SYSTEM_PROMPT, 
+  DEFAULT_JSON_SCHEMA, 
+  AVAILABLE_MODELS,
+  ModelOption 
+} from '@/lib/webllm/types';
 
 export default function WebLLMChat() {
   const {
@@ -46,6 +59,8 @@ export default function WebLLMChat() {
   const [useStreaming, setUseStreaming] = useState(true);
   const [showSettings, setShowSettings] = useState(true);
   const [showReasoning, setShowReasoning] = useState(true);
+  const [schemaError, setSchemaError] = useState<string | null>(null);
+  const [selectedModelId, setSelectedModelId] = useState(config.modelId);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom
@@ -71,6 +86,28 @@ export default function WebLLMChat() {
     }
   };
 
+  const handleModelChange = (modelId: string) => {
+    setSelectedModelId(modelId);
+    if (state.modelLoaded && modelId !== config.modelId) {
+      // Model will be loaded when user clicks the load button
+    }
+    updateConfig({ modelId });
+  };
+
+  const handleSchemaChange = (schema: string) => {
+    setSchemaError(null);
+    if (schema.trim()) {
+      try {
+        JSON.parse(schema);
+        updateConfig({ jsonSchema: schema });
+      } catch (e) {
+        setSchemaError('Invalid JSON schema');
+      }
+    } else {
+      updateConfig({ jsonSchema: null });
+    }
+  };
+
   const formatJSON = (content: string) => {
     try {
       const parsed = JSON.parse(content);
@@ -89,9 +126,16 @@ export default function WebLLMChat() {
     }
   };
 
+  const selectedModel = AVAILABLE_MODELS.find(m => m.id === selectedModelId);
+  const groupedModels = AVAILABLE_MODELS.reduce((acc, model) => {
+    if (!acc[model.family]) acc[model.family] = [];
+    acc[model.family].push(model);
+    return acc;
+  }, {} as Record<string, ModelOption[]>);
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-6">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -101,7 +145,7 @@ export default function WebLLMChat() {
             <div>
               <h1 className="text-2xl font-bold">WebLLM Chat</h1>
               <p className="text-sm text-muted-foreground">
-                Local AI with DeepSeek R1 • Runs in your browser
+                Local AI • Runs entirely in your browser
               </p>
             </div>
           </div>
@@ -123,43 +167,76 @@ export default function WebLLMChat() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Settings Panel */}
           <div className="lg:col-span-1 space-y-4">
-            {/* Model Loading */}
+            {/* Model Selection & Loading */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Cpu className="w-4 h-4" />
-                  Model
+                  Model Selection
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="text-xs font-mono bg-muted/50 p-2 rounded">
-                  {config.modelId}
-                </div>
-                
-                {!state.modelLoaded && (
-                  <Button
-                    onClick={loadModel}
-                    disabled={state.isLoading}
-                    className="w-full"
-                  >
-                    {state.isLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Loading...
-                      </>
-                    ) : (
-                      <>
-                        <Download className="w-4 h-4 mr-2" />
-                        Load Model
-                      </>
-                    )}
-                  </Button>
+                <Select value={selectedModelId} onValueChange={handleModelChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a model" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-80">
+                    {Object.entries(groupedModels).map(([family, models]) => (
+                      <div key={family}>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
+                          {family}
+                        </div>
+                        {models.map((model) => (
+                          <SelectItem key={model.id} value={model.id}>
+                            <div className="flex items-center gap-2">
+                              <span>{model.name}</span>
+                              <span className="text-xs text-muted-foreground">({model.size})</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </div>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {selectedModel && (
+                  <div className="p-2 bg-muted/50 rounded text-xs space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Size:</span>
+                      <span>{selectedModel.size}</span>
+                    </div>
+                    <p className="text-muted-foreground">{selectedModel.description}</p>
+                  </div>
                 )}
+                
+                <Button
+                  onClick={() => loadModel(selectedModelId)}
+                  disabled={state.isLoading}
+                  className="w-full"
+                  variant={state.modelLoaded && selectedModelId === config.modelId ? "secondary" : "default"}
+                >
+                  {state.isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Loading...
+                    </>
+                  ) : state.modelLoaded && selectedModelId === config.modelId ? (
+                    <>
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      Reload Model
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4 mr-2" />
+                      Load Model
+                    </>
+                  )}
+                </Button>
 
                 {state.loadProgress && (
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>{state.loadProgress.text}</span>
+                      <span className="truncate max-w-[70%]">{state.loadProgress.text}</span>
                       <span>{Math.round(state.loadProgress.progress * 100)}%</span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
@@ -185,27 +262,88 @@ export default function WebLLMChat() {
               </CardContent>
             </Card>
 
-            {/* System Prompt */}
+            {/* Performance Stats */}
+            {state.performanceStats && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Gauge className="w-4 h-4" />
+                    Performance
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-2 bg-muted/50 rounded">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+                        <Zap className="w-3 h-3" />
+                        Tokens/sec
+                      </div>
+                      <p className="text-lg font-bold text-primary">
+                        {state.performanceStats.tokensPerSecond}
+                      </p>
+                    </div>
+                    <div className="p-2 bg-muted/50 rounded">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+                        <Timer className="w-3 h-3" />
+                        Inference
+                      </div>
+                      <p className="text-lg font-bold">
+                        {(state.performanceStats.inferenceTimeMs / 1000).toFixed(1)}s
+                      </p>
+                    </div>
+                    <div className="p-2 bg-muted/50 rounded">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+                        <MessageSquare className="w-3 h-3" />
+                        Tokens
+                      </div>
+                      <p className="text-sm font-medium">
+                        <span className="text-muted-foreground">{state.performanceStats.promptTokens}</span>
+                        <span className="mx-1">→</span>
+                        <span className="text-primary">{state.performanceStats.completionTokens}</span>
+                      </p>
+                    </div>
+                    <div className="p-2 bg-muted/50 rounded">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+                        <HardDrive className="w-3 h-3" />
+                        Memory
+                      </div>
+                      <p className="text-sm font-medium">
+                        {state.performanceStats.memoryUsedMB 
+                          ? `${state.performanceStats.memoryUsedMB} MB`
+                          : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t text-xs text-muted-foreground">
+                    Model loaded in {(state.performanceStats.loadTimeMs / 1000).toFixed(1)}s
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Configuration Tabs */}
             <Card>
-              <Collapsible open={showSettings} onOpenChange={setShowSettings}>
-                <CollapsibleTrigger asChild>
-                  <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
-                    <CardTitle className="text-sm flex items-center justify-between">
-                      <span className="flex items-center gap-2">
-                        <Settings className="w-4 h-4" />
-                        System Prompt
-                      </span>
-                      <ChevronDown className={`w-4 h-4 transition-transform ${showSettings ? 'rotate-180' : ''}`} />
-                    </CardTitle>
-                  </CardHeader>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <CardContent className="space-y-4">
+              <Tabs defaultValue="prompt" className="w-full">
+                <CardHeader className="pb-2">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="prompt" className="text-xs">
+                      <Settings className="w-3 h-3 mr-1" />
+                      Prompt
+                    </TabsTrigger>
+                    <TabsTrigger value="schema" className="text-xs">
+                      <FileJson className="w-3 h-3 mr-1" />
+                      Schema
+                    </TabsTrigger>
+                  </TabsList>
+                </CardHeader>
+                
+                <TabsContent value="prompt" className="mt-0">
+                  <CardContent className="space-y-4 pt-2">
                     <Textarea
                       value={config.systemPrompt}
                       onChange={(e) => updateConfig({ systemPrompt: e.target.value })}
                       placeholder="Enter system prompt..."
-                      className="min-h-[200px] text-xs font-mono"
+                      className="min-h-[180px] text-xs font-mono"
                     />
                     <Button
                       variant="outline"
@@ -216,8 +354,46 @@ export default function WebLLMChat() {
                       Reset to Default
                     </Button>
                   </CardContent>
-                </CollapsibleContent>
-              </Collapsible>
+                </TabsContent>
+
+                <TabsContent value="schema" className="mt-0">
+                  <CardContent className="space-y-4 pt-2">
+                    <div className="text-xs text-muted-foreground mb-2">
+                      Define a JSON schema for structured responses. The model will attempt to match this format.
+                    </div>
+                    <Textarea
+                      value={config.jsonSchema || ''}
+                      onChange={(e) => handleSchemaChange(e.target.value)}
+                      placeholder="Enter JSON schema (optional)..."
+                      className={`min-h-[160px] text-xs font-mono ${schemaError ? 'border-destructive' : ''}`}
+                    />
+                    {schemaError && (
+                      <p className="text-xs text-destructive">{schemaError}</p>
+                    )}
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSchemaChange(DEFAULT_JSON_SCHEMA)}
+                        className="flex-1"
+                      >
+                        Use Example
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          updateConfig({ jsonSchema: null });
+                          setSchemaError(null);
+                        }}
+                        className="flex-1"
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                  </CardContent>
+                </TabsContent>
+              </Tabs>
             </Card>
 
             {/* Generation Settings */}
@@ -225,7 +401,7 @@ export default function WebLLMChat() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Sparkles className="w-4 h-4" />
-                  Generation Settings
+                  Generation
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -423,6 +599,11 @@ export default function WebLLMChat() {
                     </Button>
                   )}
                 </form>
+                {state.modelLoaded && (
+                  <p className="text-xs text-muted-foreground mt-2 text-center">
+                    Using {AVAILABLE_MODELS.find(m => m.id === config.modelId)?.name || config.modelId}
+                  </p>
+                )}
               </div>
             </Card>
           </div>

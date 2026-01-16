@@ -1,6 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import * as webllm from '@mlc-ai/web-llm';
-import { Message, WebLLMConfig, WebLLMState, DEFAULT_CONFIG, ModelLoadProgress } from '@/lib/webllm/types';
+import { 
+  Message, 
+  WebLLMConfig, 
+  WebLLMState, 
+  DEFAULT_CONFIG, 
+  PerformanceStats 
+} from '@/lib/webllm/types';
 
 export function useWebLLM(initialConfig: Partial<WebLLMConfig> = {}) {
   const [config, setConfig] = useState<WebLLMConfig>({ ...DEFAULT_CONFIG, ...initialConfig });
@@ -11,22 +17,46 @@ export function useWebLLM(initialConfig: Partial<WebLLMConfig> = {}) {
     loadProgress: null,
     error: null,
     modelLoaded: false,
+    performanceStats: null,
   });
   
   const engineRef = useRef<webllm.MLCEngine | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const loadStartTimeRef = useRef<number>(0);
+
+  // Get memory usage if available
+  const getMemoryUsage = useCallback((): number | null => {
+    if ('memory' in performance) {
+      const mem = (performance as any).memory;
+      return Math.round(mem.usedJSHeapSize / 1024 / 1024);
+    }
+    return null;
+  }, []);
 
   // Initialize engine
-  const loadModel = useCallback(async () => {
-    if (state.modelLoaded || state.isLoading) return;
+  const loadModel = useCallback(async (modelId?: string) => {
+    const targetModelId = modelId || config.modelId;
     
-    setState(prev => ({ ...prev, isLoading: true, error: null }));
-    const startTime = Date.now();
+    // If switching models, unload the current one
+    if (state.modelLoaded && engineRef.current && modelId && modelId !== config.modelId) {
+      engineRef.current = null;
+      setState(prev => ({ ...prev, modelLoaded: false }));
+    }
+    
+    if (state.isLoading) return;
+    
+    setState(prev => ({ 
+      ...prev, 
+      isLoading: true, 
+      error: null,
+      performanceStats: null,
+    }));
+    loadStartTimeRef.current = Date.now();
 
     try {
-      const engine = await webllm.CreateMLCEngine(config.modelId, {
+      const engine = await webllm.CreateMLCEngine(targetModelId, {
         initProgressCallback: (report) => {
-          const elapsed = (Date.now() - startTime) / 1000;
+          const elapsed = (Date.now() - loadStartTimeRef.current) / 1000;
           setState(prev => ({
             ...prev,
             loadProgress: {
@@ -39,12 +69,28 @@ export function useWebLLM(initialConfig: Partial<WebLLMConfig> = {}) {
       });
       
       engineRef.current = engine;
+      const loadTimeMs = Date.now() - loadStartTimeRef.current;
+      
       setState(prev => ({
         ...prev,
         isLoading: false,
         modelLoaded: true,
         loadProgress: null,
+        performanceStats: {
+          tokensPerSecond: 0,
+          totalTokens: 0,
+          promptTokens: 0,
+          completionTokens: 0,
+          inferenceTimeMs: 0,
+          loadTimeMs,
+          memoryUsedMB: getMemoryUsage(),
+        },
       }));
+      
+      // Update config with the new model ID
+      if (modelId) {
+        setConfig(prev => ({ ...prev, modelId: targetModelId }));
+      }
     } catch (error) {
       console.error('Failed to load model:', error);
       setState(prev => ({
@@ -54,7 +100,7 @@ export function useWebLLM(initialConfig: Partial<WebLLMConfig> = {}) {
         loadProgress: null,
       }));
     }
-  }, [config.modelId, state.modelLoaded, state.isLoading]);
+  }, [config.modelId, state.modelLoaded, state.isLoading, getMemoryUsage]);
 
   // Send message and get response
   const sendMessage = useCallback(async (userMessage: string) => {
@@ -70,11 +116,18 @@ export function useWebLLM(initialConfig: Partial<WebLLMConfig> = {}) {
     setState(prev => ({ ...prev, isGenerating: true, error: null }));
 
     abortControllerRef.current = new AbortController();
+    const inferenceStart = Date.now();
 
     try {
+      // Build system prompt with optional JSON schema
+      let systemPrompt = config.systemPrompt;
+      if (config.jsonMode && config.jsonSchema) {
+        systemPrompt += `\n\nYou MUST respond with a JSON object matching this schema:\n${config.jsonSchema}`;
+      }
+
       // Build messages array with system prompt
       const chatMessages: webllm.ChatCompletionMessageParam[] = [
-        { role: 'system', content: config.systemPrompt },
+        { role: 'system', content: systemPrompt },
         ...messages.map(m => ({ role: m.role, content: m.content })),
         { role: 'user', content: userMessage },
       ];
@@ -93,6 +146,7 @@ export function useWebLLM(initialConfig: Partial<WebLLMConfig> = {}) {
       }
 
       const response = await engineRef.current.chat.completions.create(requestConfig);
+      const inferenceTimeMs = Date.now() - inferenceStart;
       
       const assistantContent = response.choices[0]?.message?.content || '';
       
@@ -114,6 +168,26 @@ export function useWebLLM(initialConfig: Partial<WebLLMConfig> = {}) {
       };
 
       setMessages(prev => [...prev, assistantMsg]);
+
+      // Update performance stats
+      const usage = response.usage;
+      if (usage) {
+        const completionTokens = usage.completion_tokens || 0;
+        const tokensPerSecond = completionTokens / (inferenceTimeMs / 1000);
+        
+        setState(prev => ({
+          ...prev,
+          performanceStats: {
+            ...prev.performanceStats!,
+            tokensPerSecond: Math.round(tokensPerSecond * 10) / 10,
+            totalTokens: usage.total_tokens || 0,
+            promptTokens: usage.prompt_tokens || 0,
+            completionTokens,
+            inferenceTimeMs,
+            memoryUsedMB: getMemoryUsage(),
+          },
+        }));
+      }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         console.log('Generation aborted');
@@ -128,7 +202,7 @@ export function useWebLLM(initialConfig: Partial<WebLLMConfig> = {}) {
       setState(prev => ({ ...prev, isGenerating: false }));
       abortControllerRef.current = null;
     }
-  }, [config, messages, state.isGenerating]);
+  }, [config, messages, state.isGenerating, getMemoryUsage]);
 
   // Stream message (alternative to sendMessage)
   const streamMessage = useCallback(async (userMessage: string, onToken: (token: string) => void) => {
@@ -143,9 +217,18 @@ export function useWebLLM(initialConfig: Partial<WebLLMConfig> = {}) {
     setMessages(prev => [...prev, userMsg]);
     setState(prev => ({ ...prev, isGenerating: true, error: null }));
 
+    const inferenceStart = Date.now();
+    let tokenCount = 0;
+
     try {
+      // Build system prompt with optional JSON schema
+      let systemPrompt = config.systemPrompt;
+      if (config.jsonMode && config.jsonSchema) {
+        systemPrompt += `\n\nYou MUST respond with a JSON object matching this schema:\n${config.jsonSchema}`;
+      }
+
       const chatMessages: webllm.ChatCompletionMessageParam[] = [
-        { role: 'system', content: config.systemPrompt },
+        { role: 'system', content: systemPrompt },
         ...messages.map(m => ({ role: m.role, content: m.content })),
         { role: 'user', content: userMessage },
       ];
@@ -167,8 +250,26 @@ export function useWebLLM(initialConfig: Partial<WebLLMConfig> = {}) {
       for await (const chunk of stream) {
         const delta = chunk.choices[0]?.delta?.content || '';
         fullContent += delta;
+        tokenCount++;
         onToken(delta);
+        
+        // Update live performance stats
+        const elapsed = Date.now() - inferenceStart;
+        if (elapsed > 0) {
+          setState(prev => ({
+            ...prev,
+            performanceStats: prev.performanceStats ? {
+              ...prev.performanceStats,
+              tokensPerSecond: Math.round((tokenCount / (elapsed / 1000)) * 10) / 10,
+              completionTokens: tokenCount,
+              inferenceTimeMs: elapsed,
+              memoryUsedMB: getMemoryUsage(),
+            } : null,
+          }));
+        }
       }
+
+      const inferenceTimeMs = Date.now() - inferenceStart;
 
       // Parse reasoning
       let reasoning: string | undefined;
@@ -188,6 +289,18 @@ export function useWebLLM(initialConfig: Partial<WebLLMConfig> = {}) {
       };
 
       setMessages(prev => [...prev, assistantMsg]);
+
+      // Final stats update
+      setState(prev => ({
+        ...prev,
+        performanceStats: prev.performanceStats ? {
+          ...prev.performanceStats,
+          tokensPerSecond: Math.round((tokenCount / (inferenceTimeMs / 1000)) * 10) / 10,
+          completionTokens: tokenCount,
+          inferenceTimeMs,
+          memoryUsedMB: getMemoryUsage(),
+        } : null,
+      }));
     } catch (error) {
       console.error('Streaming error:', error);
       setState(prev => ({
@@ -197,7 +310,7 @@ export function useWebLLM(initialConfig: Partial<WebLLMConfig> = {}) {
     } finally {
       setState(prev => ({ ...prev, isGenerating: false }));
     }
-  }, [config, messages, state.isGenerating]);
+  }, [config, messages, state.isGenerating, getMemoryUsage]);
 
   // Stop generation
   const stopGeneration = useCallback(() => {
