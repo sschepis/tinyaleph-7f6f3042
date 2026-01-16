@@ -86,11 +86,13 @@ function gcd(a: number, b: number): number {
 
 /**
  * Extract seed meanings from existing databases
+ * Priority: Symbol database > first prime of vocabulary words
+ * This prevents duplicate meanings from vocabulary word arrays
  */
 function extractSeeds(): Map<number, PrimeMeaning> {
   const seeds = new Map<number, PrimeMeaning>();
   
-  // From symbol database
+  // First pass: Symbol database (highest priority - unique meanings per prime)
   for (const [id, symbol] of Object.entries(SYMBOL_DATABASE)) {
     seeds.set(symbol.prime, {
       prime: symbol.prime,
@@ -99,16 +101,29 @@ function extractSeeds(): Map<number, PrimeMeaning> {
       derivedFrom: [],
       entropy: 0,
       isSeeded: true,
-      isRefined: true, // Seeds are already refined
+      isRefined: true,
       category: symbol.category,
       resonantWith: []
     });
   }
   
-  // From vocabulary (tinyaleph config)
+  // Second pass: Vocabulary - only assign to primes without meanings
+  // Use the word itself as meaning only for the FIRST prime in each word's array
+  // Track which meanings have been used to avoid duplicates
+  const usedMeanings = new Set<string>();
+  
+  // Collect all symbol database meanings to avoid
+  for (const symbol of Object.values(SYMBOL_DATABASE)) {
+    usedMeanings.add(symbol.meaning.toLowerCase());
+  }
+  
   for (const [word, primes] of Object.entries(minimalConfig.vocabulary)) {
+    // Only assign meaning to the first prime that doesn't already have one
+    // This prevents the same word being assigned to multiple primes
+    let assigned = false;
+    
     for (const p of primes) {
-      if (!seeds.has(p)) {
+      if (!seeds.has(p) && !assigned) {
         seeds.set(p, {
           prime: p,
           meaning: word,
@@ -116,11 +131,12 @@ function extractSeeds(): Map<number, PrimeMeaning> {
           derivedFrom: [],
           entropy: 0.1,
           isSeeded: true,
-          isRefined: true, // Vocabulary seeds are refined
+          isRefined: true,
           resonantWith: primes.filter(q => q !== p)
         });
-      } else {
-        // Enhance existing with resonance info
+        assigned = true;
+      } else if (seeds.has(p)) {
+        // Enhance existing with resonance info from vocabulary
         const existing = seeds.get(p)!;
         existing.resonantWith = [...new Set([...existing.resonantWith, ...primes.filter(q => q !== p)])];
       }
