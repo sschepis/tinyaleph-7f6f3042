@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Send, RotateCcw, MessageCircle } from 'lucide-react';
 import type { ChatMessage, SephirahName } from '@/lib/sephirotic-oscillator/types';
 import { SEPHIROT } from '@/lib/sephirotic-oscillator/tree-config';
+import { AssistantMessage } from '@/components/AssistantMessage';
 
 interface OracleChatProps {
   messages: ChatMessage[];
@@ -151,9 +152,11 @@ export function OracleChat({
                       ))}
                     </div>
                   )}
-                  <div className={message.role === 'assistant' ? 'prose prose-invert prose-sm max-w-none' : ''}>
-                    {message.content}
-                  </div>
+                  {message.role === 'assistant' ? (
+                    <AssistantMessage content={message.content} showCopyButton={true} />
+                  ) : (
+                    <div>{message.content}</div>
+                  )}
                 </div>
               </div>
             ))}

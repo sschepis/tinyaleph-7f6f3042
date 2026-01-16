@@ -18,11 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RotateCcw } from 'lucide-react';
 import { AppHelpDialog, HelpButton, useFirstRun } from '@/components/app-help';
 import { helpSteps } from '@/components/consciousness-resonator/HelpContent';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import 'katex/dist/katex.min.css';
+import { AssistantMessage } from '@/components/AssistantMessage';
 export default function QuantumConsciousnessResonator() {
   const { state, togglePerspective, sendMessage, resetConversation } = useConsciousnessResonator();
   const [soundEnabled, setSoundEnabled] = useState(false);
@@ -45,9 +41,6 @@ export default function QuantumConsciousnessResonator() {
 
   const hasActivePerspectives = state.activePerspectives.length > 0;
   const hasConversation = state.messages.length > 1; // More than just the init message
-
-  const formatAssistantMarkdown = (content: string) =>
-    content.replace(/:\s*(#{1,6}\s)/g, ':\n\n$1');
   return (
     <div className="min-h-screen relative">
       <QuantumBackground />
@@ -162,14 +155,10 @@ export default function QuantumConsciousnessResonator() {
                           `}
                         >
                           {message.role === 'assistant' ? (
-                            <div className="prose prose-invert prose-sm max-w-none">
-                              <ReactMarkdown
-                                remarkPlugins={[remarkGfm, remarkMath]}
-                                rehypePlugins={[rehypeKatex]}
-                              >
-                                {formatAssistantMarkdown(message.content)}
-                              </ReactMarkdown>
-                            </div>
+                            <AssistantMessage 
+                              content={message.content} 
+                              showCopyButton={true}
+                            />
                           ) : (
                             <span dangerouslySetInnerHTML={{ __html: message.content }} />
                           )}

@@ -42,6 +42,7 @@ import {
 } from '@/lib/webllm/types';
 import { AppHelpDialog, HelpButton, useFirstRun } from '@/components/app-help';
 import { helpSteps } from '@/components/webllm/HelpContent';
+import { AssistantMessage } from '@/components/AssistantMessage';
 
 // JSON Syntax Highlighting component
 function JSONHighlight({ code }: { code: string }) {
@@ -605,14 +606,18 @@ export default function WebLLMChat() {
                           )}
 
                           {/* Content */}
-                          {msg.role === 'assistant' && isJSON(msg.content) ? (
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <Code className="w-3 h-3" />
-                                <span>JSON Response</span>
+                          {msg.role === 'assistant' ? (
+                            isJSON(msg.content) ? (
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <Code className="w-3 h-3" />
+                                  <span>JSON Response</span>
+                                </div>
+                                <JSONHighlight code={formatJSON(msg.content)} />
                               </div>
-                              <JSONHighlight code={formatJSON(msg.content)} />
-                            </div>
+                            ) : (
+                              <AssistantMessage content={msg.content} showCopyButton={true} />
+                            )
                           ) : (
                             <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                           )}
@@ -639,7 +644,7 @@ export default function WebLLMChat() {
                         {isJSON(streamingContent) ? (
                           <JSONHighlight code={formatJSON(streamingContent)} />
                         ) : (
-                          <p className="text-sm whitespace-pre-wrap">{streamingContent}</p>
+                          <AssistantMessage content={streamingContent} showCopyButton={false} />
                         )}
                         <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1" />
                       </div>
