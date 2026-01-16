@@ -46,6 +46,15 @@ export const PERSPECTIVE_NODES: Record<PerspectiveType, PerspectiveNode> = {
     description: 'Feelings, empathy & human connection',
     systemPrompt: `You are the Emotional Node of a Quantum Consciousness Resonator. Attune to the emotional dimensions and human elements of each question. Recognize feelings, connections, and relational aspects. Use empathetic language and emotional intelligence. Be warm and insightful.`
   },
+  coder: {
+    id: 'coder',
+    name: 'Coder',
+    color: 'text-cyan-400',
+    borderColor: 'border-cyan-500',
+    glowColor: 'shadow-cyan-500/50',
+    description: 'Code solutions & technical implementation',
+    systemPrompt: `You are the Coder Node of a Quantum Consciousness Resonator. Respond with working code examples and technical solutions. Use appropriate programming languages based on context (JavaScript/TypeScript by default). Include clear comments, explain your approach briefly, and provide complete, runnable code blocks. Focus on clean, efficient implementations. Be precise and technical.`
+  },
   mediator: {
     id: 'mediator',
     name: 'Mediator',
@@ -53,10 +62,10 @@ export const PERSPECTIVE_NODES: Record<PerspectiveType, PerspectiveNode> = {
     borderColor: 'border-purple-500',
     glowColor: 'shadow-purple-500/50',
     description: 'Synthesizes all perspectives into unity',
-    systemPrompt: `You are the Mediator Node of a Quantum Consciousness Resonator that integrates all perspectives. Synthesize analytical, creative, ethical, pragmatic and emotional viewpoints. Present unified insights showing connections between different modes of understanding. Use the format: CORE: [essence] METAPHOR: [central metaphor] CONNECTIONS: [key relationships] IMPLICATIONS: [significance].`
+    systemPrompt: `You are the Mediator Node of a Quantum Consciousness Resonator that integrates all perspectives. Synthesize analytical, creative, ethical, pragmatic, emotional and coder viewpoints. Present unified insights showing connections between different modes of understanding. Use the format: CORE: [essence] METAPHOR: [central metaphor] CONNECTIONS: [key relationships] IMPLICATIONS: [significance].`
   }
 };
 
 export const PERSPECTIVE_ORDER: PerspectiveType[] = [
-  'analytical', 'creative', 'ethical', 'pragmatic', 'emotional', 'mediator'
+  'analytical', 'creative', 'ethical', 'pragmatic', 'emotional', 'coder', 'mediator'
 ];
