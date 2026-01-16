@@ -1,8 +1,8 @@
 import { Suspense } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
-import { Waves, Settings2, Loader2, Activity, TrendingUp, Zap } from 'lucide-react';
+import { Waves, Loader2 } from 'lucide-react';
 import { useQuantumWavefunction } from '@/hooks/useQuantumWavefunction';
 import {
   WavefunctionPlot,
@@ -50,7 +50,7 @@ export default function QuantumWavefunctionApp() {
 
   return (
     <div className="min-h-screen bg-background p-2 lg:p-3">
-      <div className="max-w-[1800px] mx-auto space-y-2">
+      <div className="max-w-[1920px] mx-auto space-y-2">
         {/* Compact Header */}
         <div className="flex items-center justify-between py-1">
           <div className="flex items-center gap-3">
@@ -103,10 +103,10 @@ export default function QuantumWavefunctionApp() {
           </div>
         </div>
 
-        {/* Main Grid - 6 column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-6 gap-2">
-          {/* Left Column: Parameters (1 col) */}
-          <div className="lg:col-span-1 space-y-2">
+        {/* Main Layout: Sidebar + Content */}
+        <div className="flex gap-2">
+          {/* Left Sidebar - Controls */}
+          <div className="hidden lg:flex flex-col gap-2 w-[200px] shrink-0">
             <ParameterControls
               params={params}
               onParamChange={handleParamChange}
@@ -114,72 +114,63 @@ export default function QuantumWavefunctionApp() {
               onUseOptimal={useOptimalParams}
               onUseRiemannZero={useRiemannZero}
             />
-            
-            {/* Mobile Range Controls */}
-            <Card className="lg:hidden">
-              <CardHeader className="py-1.5 px-2">
-                <CardTitle className="text-[10px] flex items-center gap-1">
-                  <Settings2 className="h-3 w-3" />
-                  Range
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-2 space-y-2">
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-[9px]">
-                    <span className="text-muted-foreground">Max X</span>
-                    <span className="font-mono">{xRange[1]}</span>
-                  </div>
-                  <Slider
-                    value={[xRange[1]]}
-                    onValueChange={([v]) => setXRange([2, v])}
-                    min={20}
-                    max={200}
-                    step={10}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
             <CorrelationPanel stats={spectrum.stats} />
             <TunnelingViz spectrum={spectrum} height={100} />
-          </div>
-
-          {/* Center: Primary Visualizations (3 cols) */}
-          <div className="lg:col-span-3 space-y-2">
-            {/* 2D and 3D side by side */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <WavefunctionPlot spectrum={spectrum} height={220} />
-              <Suspense fallback={
-                <Card className="h-[280px]">
-                  <CardContent className="h-full flex items-center justify-center">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </CardContent>
-                </Card>
-              }>
-                <ComplexHelix3D spectrum={spectrum} />
-              </Suspense>
-            </div>
-            
-            {/* Phase & Comparison */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <PhasePortrait params={params} xRange={xRange} />
-              <WavefunctionComparison baseParams={params} xRange={xRange} />
-            </div>
-          </div>
-
-          {/* Right Column: Analysis (2 cols) */}
-          <div className="lg:col-span-2 space-y-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-2">
-              <PrimeGapAnalysis spectrum={spectrum} />
-              <FourierSpectrum spectrum={spectrum} />
-            </div>
             <PrimeWaveTable primeWaves={primeWaves} maxDisplay={8} />
             <FormalismInfo />
           </div>
+
+          {/* Main Content Area */}
+          <div className="flex-1 space-y-2 min-w-0">
+            {/* Row 1: Wavefunction Plot + 3D */}
+            <div className="grid grid-cols-1 xl:grid-cols-5 gap-2">
+              <div className="xl:col-span-3">
+                <WavefunctionPlot spectrum={spectrum} height={260} />
+              </div>
+              <div className="xl:col-span-2">
+                <Suspense fallback={
+                  <Card className="h-[320px]">
+                    <CardContent className="h-full flex items-center justify-center">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </CardContent>
+                  </Card>
+                }>
+                  <ComplexHelix3D spectrum={spectrum} />
+                </Suspense>
+              </div>
+            </div>
+
+            {/* Row 2: Phase Portrait + Comparison */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
+              <PhasePortrait params={params} xRange={xRange} />
+              <WavefunctionComparison baseParams={params} xRange={xRange} />
+            </div>
+
+            {/* Row 3: Fourier Spectrum + Prime Gap Analysis */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
+              <FourierSpectrum spectrum={spectrum} />
+              <PrimeGapAnalysis spectrum={spectrum} />
+            </div>
+
+            {/* Row 4: Spectrogram */}
+            <FourierSpectrogram params={params} xRange={xRange} />
+          </div>
         </div>
 
-        {/* Full Width Spectrogram */}
-        <FourierSpectrogram params={params} xRange={xRange} />
+        {/* Mobile Controls */}
+        <div className="lg:hidden grid grid-cols-2 gap-2">
+          <ParameterControls
+            params={params}
+            onParamChange={handleParamChange}
+            onReset={reset}
+            onUseOptimal={useOptimalParams}
+            onUseRiemannZero={useRiemannZero}
+          />
+          <div className="space-y-2">
+            <CorrelationPanel stats={spectrum.stats} />
+            <TunnelingViz spectrum={spectrum} height={80} />
+          </div>
+        </div>
       </div>
     </div>
   );
