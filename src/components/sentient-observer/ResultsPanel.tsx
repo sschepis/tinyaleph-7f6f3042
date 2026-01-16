@@ -100,109 +100,58 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm flex items-center gap-2">
-          <Brain className="h-4 w-4 text-primary" />
-          System Interpretation
+      <CardHeader className="py-2 px-3">
+        <CardTitle className="text-xs flex items-center gap-2">
+          <Brain className="h-3 w-3 text-primary" />
+          Interpretation
         </CardTitle>
-        <CardDescription>
-          Real-time analysis of the observer's conscious state
-        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Main consciousness state */}
-        <div className="p-4 rounded-lg bg-muted/50 border">
-          <div className="flex items-center gap-2 mb-2">
-            <span className={consciousnessInterpretation.color}>
+      <CardContent className="p-2 pt-0 space-y-2">
+        {/* Main state - compact */}
+        <div className="p-2 rounded bg-muted/30 border">
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`${consciousnessInterpretation.color} scale-75`}>
               {consciousnessInterpretation.icon}
             </span>
-            <span className="font-medium">{consciousnessInterpretation.state}</span>
-            <Badge variant="outline" className="ml-auto">
-              {(coherence * 100).toFixed(0)}% coherent
-            </Badge>
+            <span className="text-xs font-medium">{consciousnessInterpretation.state}</span>
+            <span className="ml-auto text-[10px] font-mono text-muted-foreground">
+              {(coherence * 100).toFixed(0)}%
+            </span>
           </div>
-          {peakCoherence > coherence && (
-            <div className="text-xs text-muted-foreground mb-2">
-              Peak coherence achieved: <span className="font-mono text-primary">{(peakCoherence * 100).toFixed(0)}%</span>
-            </div>
-          )}
-          <p className="text-sm text-muted-foreground">
+          <p className="text-[10px] text-muted-foreground leading-tight">
             {consciousnessInterpretation.description}
           </p>
         </div>
 
-        {/* Key metrics grid */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="p-3 rounded-lg bg-muted/30 border">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-muted-foreground">Entropy State</span>
-              <Badge variant="secondary" className="text-xs">
-                {entropyInterpretation.state}
-              </Badge>
-            </div>
-            <Progress value={entropy * 100} className="h-2" />
-            <p className="text-xs text-muted-foreground mt-1">
-              {entropyInterpretation.trend}
-            </p>
+        {/* Compact metrics row */}
+        <div className="grid grid-cols-3 gap-1 text-center">
+          <div className="p-1.5 rounded bg-muted/20">
+            <div className="text-[10px] text-muted-foreground">Entropy</div>
+            <div className="text-xs font-mono">{entropy.toFixed(2)}</div>
           </div>
-
-          <div className="p-3 rounded-lg bg-muted/30 border">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-muted-foreground">Time Dilation</span>
-              <Badge variant="secondary" className="text-xs">
-                {timeDilation}×
-              </Badge>
-            </div>
-            <div className="text-lg font-mono">{subjectiveTime.toFixed(3)} τ</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {parseFloat(timeDilation) > 1.5 ? 'Time flows quickly (engaged)' : 
-               parseFloat(timeDilation) < 0.5 ? 'Time drags (low activity)' : 'Normal flow'}
-            </p>
+          <div className="p-1.5 rounded bg-muted/20">
+            <div className="text-[10px] text-muted-foreground">τ Dilation</div>
+            <div className="text-xs font-mono">{timeDilation}×</div>
+          </div>
+          <div className="p-1.5 rounded bg-muted/20">
+            <div className="text-[10px] text-muted-foreground">Active</div>
+            <div className="text-xs font-mono">{activeCount}/{oscillators.length}</div>
           </div>
         </div>
 
-        {/* Dominant semantic orientations */}
-        <div className="space-y-2">
-          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Dominant Semantic Orientations
-          </h4>
-          <div className="flex flex-wrap gap-2">
-            {dominantAxes.map(({ axis, value }) => (
-              <Badge key={axis} variant="outline" className="flex items-center gap-1">
-                <span className="capitalize">{axis}</span>
-                <span className="text-muted-foreground">
-                  {(value * 100).toFixed(0)}%
-                </span>
-              </Badge>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            The observer is currently oriented toward {dominantAxes[0]?.axis || 'undefined'} 
-            {dominantAxes[1] && ` and ${dominantAxes[1].axis}`} in semantic space.
-          </p>
-        </div>
-
-        {/* Activity summary */}
-        <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/20">
-          <div className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium">Active Primes</span>
-          </div>
-          <div className="text-right">
-            <div className="font-mono">{activeCount}/{oscillators.length}</div>
-            <div className="text-xs text-muted-foreground">
-              Energy: {totalEnergy.toFixed(2)}
-            </div>
-          </div>
-        </div>
-
-        {/* Moments summary */}
-        {moments.length > 0 && (
-          <div className="text-xs text-muted-foreground border-t pt-3">
-            <strong>{moments.length} conscious moments</strong> recorded. 
-            Last triggered by: <Badge variant="outline" className="text-xs ml-1">
-              {moments[moments.length - 1]?.trigger || 'N/A'}
+        {/* Dominant axes - very compact */}
+        <div className="flex flex-wrap gap-1">
+          {dominantAxes.map(({ axis, value }) => (
+            <Badge key={axis} variant="secondary" className="text-[9px] py-0 px-1.5 h-4">
+              {axis}: {(value * 100).toFixed(0)}%
             </Badge>
+          ))}
+        </div>
+
+        {/* Moments - minimal */}
+        {moments.length > 0 && (
+          <div className="text-[10px] text-muted-foreground pt-1 border-t">
+            {moments.length} moments • Last: {moments[moments.length - 1]?.trigger || 'N/A'}
           </div>
         )}
       </CardContent>
