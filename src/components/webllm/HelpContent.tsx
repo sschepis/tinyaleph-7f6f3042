@@ -134,3 +134,5 @@ export const WEBLLM_HELP: HelpStep[] = [
     ),
   },
 ];
+
+export const helpSteps = WEBLLM_HELP;

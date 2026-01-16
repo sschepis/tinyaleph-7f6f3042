@@ -104,8 +104,8 @@ export const AVAILABLE_MODELS: ModelOption[] = [
   },
   // Qwen Series
   {
-    id: 'mlc-ai/Qwen3-32B-q4f16_1-MLC',
-    name: 'Qwen3 32B',
+    id: 'Qwen3-30B-A3B-q4f16_1-MLC',
+    name: 'Qwen3 30B A3B',
     size: '~18GB',
     family: 'Qwen',
     description: 'Alibaba\'s flagship reasoning model with hybrid thinking',

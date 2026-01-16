@@ -129,3 +129,5 @@ export const QUANTUM_WAVEFUNCTION_HELP: HelpStep[] = [
     ),
   },
 ];
+
+export const helpSteps = QUANTUM_WAVEFUNCTION_HELP;

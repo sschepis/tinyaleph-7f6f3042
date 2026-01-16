@@ -19,7 +19,7 @@ import {
   FourierSpectrogram
 } from '@/components/quantum-wavefunction';
 import { AppHelpDialog, HelpButton, useFirstRun } from '@/components/app-help';
-import { QUANTUM_WAVEFUNCTION_HELP } from '@/components/quantum-wavefunction/HelpContent';
+import { helpSteps } from '@/components/quantum-wavefunction/HelpContent';
 
 export default function QuantumWavefunctionApp() {
   const [helpOpen, setHelpOpen] = useState(false);
@@ -188,7 +188,7 @@ export default function QuantumWavefunctionApp() {
       <AppHelpDialog 
         open={helpOpen} 
         onOpenChange={setHelpOpen} 
-        steps={QUANTUM_WAVEFUNCTION_HELP}
+        steps={helpSteps}
         appName="Quantum Wavefunction"
       />
     </div>
