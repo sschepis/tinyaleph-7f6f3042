@@ -14,7 +14,8 @@ import {
   ComplexHelix3D,
   PrimeGapAnalysis,
   PhasePortrait,
-  WavefunctionComparison
+  WavefunctionComparison,
+  FourierSpectrum
 } from '@/components/quantum-wavefunction';
 
 export default function QuantumWavefunctionApp() {
@@ -149,9 +150,10 @@ export default function QuantumWavefunctionApp() {
             <TunnelingViz spectrum={spectrum} height={140} />
           </div>
 
-          {/* Column 3: Prime Gap Analysis */}
+          {/* Column 3: Prime Gap Analysis & Fourier */}
           <div className="space-y-4">
             <PrimeGapAnalysis spectrum={spectrum} />
+            <FourierSpectrum spectrum={spectrum} />
           </div>
 
           {/* Column 4: Tables & Info */}
