@@ -79,9 +79,6 @@ export default function PrimeResonanceApp() {
                 <EntropyTimeline history={history} current={evolution} height={100} />
               </CardContent>
             </Card>
-
-            {/* Resonance Comparison Panel */}
-            <ResonanceComparison currentState={state} />
           </div>
 
           {/* Center: Controls & Probability */}
@@ -145,13 +142,12 @@ export default function PrimeResonanceApp() {
                 <ProbabilityBars state={state} measurements={measurements} height={140} />
               </CardContent>
             </Card>
-
-            {/* Measurement Statistics Panel */}
-            <MeasurementStats state={state} onMeasure={performMeasurement} />
           </div>
 
-          {/* Right: Formalism */}
-          <div>
+          {/* Right: Comparison, Stats & Formalism */}
+          <div className="space-y-4">
+            <ResonanceComparison currentState={state} />
+            <MeasurementStats state={state} onMeasure={performMeasurement} />
             <FormalismPanel />
           </div>
         </div>
