@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
@@ -18,8 +18,19 @@ import {
   FourierSpectrum,
   FourierSpectrogram
 } from '@/components/quantum-wavefunction';
+import { AppHelpDialog, HelpButton, useFirstRun } from '@/components/app-help';
+import { QUANTUM_WAVEFUNCTION_HELP } from '@/components/quantum-wavefunction/HelpContent';
 
 export default function QuantumWavefunctionApp() {
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [isFirstRun, markAsSeen] = useFirstRun('quantum-wavefunction');
+  
+  useEffect(() => {
+    if (isFirstRun) {
+      setHelpOpen(true);
+      markAsSeen();
+    }
+  }, [isFirstRun, markAsSeen]);
   const {
     params,
     spectrum,
@@ -58,6 +69,7 @@ export default function QuantumWavefunctionApp() {
               <Waves className="h-4 w-4 text-primary" />
               Quantum Prime Wavefunction
             </h1>
+            <HelpButton onClick={() => setHelpOpen(true)} />
             <div className="hidden md:flex items-center gap-1.5">
               <Badge variant="outline" className="text-[10px] py-0 h-5">
                 γ = {params.t.toFixed(2)}
@@ -172,6 +184,13 @@ export default function QuantumWavefunctionApp() {
           </div>
         </div>
       </div>
+      
+      <AppHelpDialog 
+        open={helpOpen} 
+        onOpenChange={setHelpOpen} 
+        steps={QUANTUM_WAVEFUNCTION_HELP}
+        appName="Quantum Wavefunction"
+      />
     </div>
   );
 }
