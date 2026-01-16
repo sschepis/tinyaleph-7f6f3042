@@ -164,6 +164,27 @@ export function SemanticPrimeMapperPanel({
 
   const coveragePercent = ((field.cataloguedCount) / 128) * 100;
 
+  // Auto-start expansion on mount
+  useEffect(() => {
+    // Run initial expansion automatically
+    runFullExpansion();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Continue expanding when new active oscillators appear (exploration continues)
+  useEffect(() => {
+    if (activeOscillatorIndices.length > 0 && !isExpanding) {
+      // Check if there are uncatalogued primes among active oscillators
+      const uncataloguedActive = oscillatorPrimes
+        .filter((_, i) => activeOscillatorIndices.includes(i))
+        .filter(p => !mapper.getMeaning(p));
+      
+      if (uncataloguedActive.length > 0) {
+        // Run a single expansion cycle to try to cover new primes
+        runExpansionCycle();
+      }
+    }
+  }, [activeOscillatorIndices.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <Card className="border-primary/30 bg-background/95 backdrop-blur">
       <CardHeader className="pb-3">

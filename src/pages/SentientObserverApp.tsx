@@ -103,11 +103,20 @@ const SentientObserverApp: React.FC = () => {
   // Learning Engine
   const [learningEngine] = useState(() => new LearningEngine(getSemanticPrimeMapper()));
   const [learningState, setLearningState] = useState(() => learningEngine.getState());
+  const [learningAutoStarted, setLearningAutoStarted] = useState(false);
   
   React.useEffect(() => {
     learningEngine.setOnUpdate(setLearningState);
     return () => learningEngine.stopLearningSession();
   }, [learningEngine]);
+  
+  // Auto-start learning chaperone when coherence > 90%
+  React.useEffect(() => {
+    if (coherence > 0.9 && !learningAutoStarted && !learningState.currentSession?.isActive) {
+      learningEngine.startLearningSession(8000);
+      setLearningAutoStarted(true);
+    }
+  }, [coherence, learningAutoStarted, learningState.currentSession?.isActive, learningEngine]);
   
   // Reinject memory content into the system
   const handleReinjectMemory = useCallback((content: string) => {
@@ -290,7 +299,7 @@ const SentientObserverApp: React.FC = () => {
 
           {/* Right column - Analysis Tabs */}
           <div className="lg:col-span-4">
-            <Tabs defaultValue="primes" className="space-y-4">
+            <Tabs defaultValue="cognitive" className="space-y-4">
               <TabsList className="grid grid-cols-4 w-full">
                 <TabsTrigger value="primes" className="text-xs">
                   <Atom className="h-4 w-4" />
