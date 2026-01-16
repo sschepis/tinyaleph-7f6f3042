@@ -104,7 +104,7 @@ export const AVAILABLE_MODELS: ModelOption[] = [
   },
   // Qwen Series
   {
-    id: 'Qwen3-32B-q4f16_1-MLC',
+    id: 'mlc-ai/Qwen3-32B-q4f16_1-MLC',
     name: 'Qwen3 32B',
     size: '~18GB',
     family: 'Qwen',
