@@ -149,29 +149,20 @@ export const DEFAULT_JSON_SCHEMA = `{
   "type": "object",
   "properties": {
     "response": {
-      "type": "string",
-      "description": "The main response text"
+      "type": "string"
     },
     "confidence": {
-      "type": "number",
-      "minimum": 0,
-      "maximum": 1,
-      "description": "Confidence level from 0.0 to 1.0"
+      "type": "number"
     },
     "topics": {
       "type": "array",
-      "items": { "type": "string" },
-      "minItems": 1,
-      "maxItems": 5,
-      "description": "List of relevant topics"
+      "items": { "type": "string" }
     },
     "followUp": {
-      "type": ["string", "null"],
-      "description": "Optional follow-up question"
+      "type": "string"
     }
   },
-  "required": ["response", "confidence", "topics"],
-  "additionalProperties": false
+  "required": ["response", "confidence", "topics"]
 }`;
 
 export const DEFAULT_CONFIG: WebLLMConfig = {
