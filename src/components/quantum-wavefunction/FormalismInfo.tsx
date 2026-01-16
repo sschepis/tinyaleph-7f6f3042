@@ -4,73 +4,36 @@ import { BookOpen } from 'lucide-react';
 
 export function FormalismInfo() {
   return (
-    <Card>
-      <CardHeader className="py-2 px-3">
-        <CardTitle className="text-xs flex items-center gap-1.5">
+    <Card className="bg-card/50 backdrop-blur">
+      <CardHeader className="py-1.5 px-2">
+        <CardTitle className="text-[10px] flex items-center gap-1">
           <BookOpen className="h-3 w-3 text-primary" />
-          Quantum Framework
+          Framework
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-3">
+      <CardContent className="p-2">
         <Tabs defaultValue="wave" className="w-full">
-          <TabsList className="w-full grid grid-cols-4 h-7">
-            <TabsTrigger value="wave" className="text-[9px] h-6">Wave ψ</TabsTrigger>
-            <TabsTrigger value="resonance" className="text-[9px] h-6">Resonance</TabsTrigger>
-            <TabsTrigger value="tunneling" className="text-[9px] h-6">Tunneling</TabsTrigger>
-            <TabsTrigger value="params" className="text-[9px] h-6">Optimal</TabsTrigger>
+          <TabsList className="w-full grid grid-cols-3 h-5">
+            <TabsTrigger value="wave" className="text-[8px] h-4 px-1">Wave</TabsTrigger>
+            <TabsTrigger value="res" className="text-[8px] h-4 px-1">Resonance</TabsTrigger>
+            <TabsTrigger value="tunnel" className="text-[8px] h-4 px-1">Tunnel</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="wave" className="mt-2 space-y-2">
-            <div className="text-[10px] space-y-1.5">
-              <p className="text-muted-foreground">The wave function combines three components:</p>
-              <div className="p-2 bg-secondary/50 rounded font-mono text-[9px]">
-                ψ<sub>basic</sub>(x) = N<sup>-1/2</sup> cos(2πtx) e<sup>-|t|x</sup>
-              </div>
-              <p className="text-muted-foreground">
-                Where <strong>t</strong> is the Riemann zeta zero (default γ₁ = 14.134...).
-              </p>
+          <TabsContent value="wave" className="mt-1.5">
+            <div className="p-1.5 bg-secondary/50 rounded font-mono text-[8px] text-center">
+              ψ(x) = N⁻¹/² cos(2πtx) e⁻ᐟᵗᐟˣ
             </div>
           </TabsContent>
           
-          <TabsContent value="resonance" className="mt-2 space-y-2">
-            <div className="text-[10px] space-y-1.5">
-              <p className="text-muted-foreground">Prime resonance via Gaussian peaks:</p>
-              <div className="p-2 bg-secondary/50 rounded font-mono text-[9px]">
-                R(x) = Σ<sub>p</sub> exp(-(x-p)²/2σ²)
-              </div>
-              <p className="text-muted-foreground">
-                Gap modulation captures prime spacing rhythm:
-              </p>
-              <div className="p-2 bg-secondary/50 rounded font-mono text-[9px]">
-                G(x) = cos(2π(x-p)/g<sub>p</sub>)
-              </div>
+          <TabsContent value="res" className="mt-1.5">
+            <div className="p-1.5 bg-secondary/50 rounded font-mono text-[8px] text-center">
+              R(x) = Σₚ exp(-(x-p)²/2σ²)
             </div>
           </TabsContent>
           
-          <TabsContent value="tunneling" className="mt-2 space-y-2">
-            <div className="text-[10px] space-y-1.5">
-              <p className="text-muted-foreground">Quantum tunneling between prime pairs:</p>
-              <div className="p-2 bg-secondary/50 rounded font-mono text-[9px]">
-                T(x) = exp(-(x-p₁)(p₂-x)/ε) e<sup>iβ(x-p₁)</sup>
-              </div>
-              <p className="text-muted-foreground">
-                This models the quantum probability amplitude of "jumping" between consecutive primes.
-              </p>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="params" className="mt-2 space-y-2">
-            <div className="text-[10px] space-y-1.5">
-              <p className="text-muted-foreground">Optimal parameters (p &lt; 10⁻⁸):</p>
-              <div className="grid grid-cols-2 gap-2 p-2 bg-secondary/50 rounded">
-                <div className="font-mono text-[9px]">V₀ = 0.100</div>
-                <div className="font-mono text-[9px]">ε = 0.200</div>
-                <div className="font-mono text-[9px]">β = 0.100</div>
-                <div className="font-mono text-[9px]">σ = 0.500</div>
-              </div>
-              <div className="p-2 bg-primary/10 rounded text-center">
-                <span className="font-mono text-[9px]">r<sub>wave</sub> = 0.454 | r<sub>res</sub> = 0.542</span>
-              </div>
+          <TabsContent value="tunnel" className="mt-1.5">
+            <div className="p-1.5 bg-secondary/50 rounded font-mono text-[8px] text-center">
+              T(x) = exp(-(x-p₁)(p₂-x)/ε)
             </div>
           </TabsContent>
         </Tabs>

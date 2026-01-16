@@ -20,31 +20,31 @@ export function CorrelationPanel({ stats }: CorrelationPanelProps) {
     : AlertCircle;
 
   return (
-    <Card>
-      <CardHeader className="py-2 px-3">
-        <CardTitle className="text-xs flex items-center justify-between">
-          <span className="flex items-center gap-1.5">
+    <Card className="bg-card/50 backdrop-blur">
+      <CardHeader className="py-1.5 px-2">
+        <CardTitle className="text-[10px] flex items-center justify-between">
+          <span className="flex items-center gap-1">
             <TrendingUp className="h-3 w-3 text-primary" />
-            Correlation Statistics
+            Correlation
           </span>
           <Badge 
             variant={stats.significance === 'very-high' ? 'default' : 'secondary'} 
-            className="text-[9px]"
+            className="text-[8px] py-0 h-4"
           >
             {stats.significance.toUpperCase()}
           </Badge>
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-3 space-y-3">
+      <CardContent className="p-2 space-y-2">
         {/* Wave Correlation */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between text-[10px]">
-            <span className="text-muted-foreground">Wave Correlation r(ψ, P)</span>
+        <div className="space-y-0.5">
+          <div className="flex items-center justify-between text-[9px]">
+            <span className="text-muted-foreground">r(ψ, P)</span>
             <span className="font-mono font-bold text-cyan-400">
               {stats.waveCorrelation.toFixed(3)}
             </span>
           </div>
-          <div className="h-2 bg-secondary rounded-full overflow-hidden">
+          <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
             <div 
               className="h-full bg-gradient-to-r from-cyan-500/50 to-cyan-400 rounded-full transition-all"
               style={{ width: `${Math.abs(stats.waveCorrelation) * 100}%` }}
@@ -53,14 +53,14 @@ export function CorrelationPanel({ stats }: CorrelationPanelProps) {
         </div>
 
         {/* Resonance Correlation */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between text-[10px]">
-            <span className="text-muted-foreground">Resonance Correlation r(R, P)</span>
+        <div className="space-y-0.5">
+          <div className="flex items-center justify-between text-[9px]">
+            <span className="text-muted-foreground">r(R, P)</span>
             <span className="font-mono font-bold text-emerald-400">
               {stats.resonanceCorrelation.toFixed(3)}
             </span>
           </div>
-          <div className="h-2 bg-secondary rounded-full overflow-hidden">
+          <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
             <div 
               className="h-full bg-gradient-to-r from-emerald-500/50 to-emerald-400 rounded-full transition-all"
               style={{ width: `${Math.abs(stats.resonanceCorrelation) * 100}%` }}
@@ -69,27 +69,14 @@ export function CorrelationPanel({ stats }: CorrelationPanelProps) {
         </div>
 
         {/* P-value */}
-        <div className="flex items-center justify-between p-2 bg-secondary/50 rounded-lg">
-          <div className="flex items-center gap-1.5">
-            <SignificanceIcon className={`h-3 w-3 ${significanceColor[stats.significance]}`} />
-            <span className="text-[10px]">P-value</span>
+        <div className="flex items-center justify-between py-1 px-1.5 bg-secondary/50 rounded text-[9px]">
+          <div className="flex items-center gap-1">
+            <SignificanceIcon className={`h-2.5 w-2.5 ${significanceColor[stats.significance]}`} />
+            <span>p-value</span>
           </div>
-          <span className="font-mono text-[10px] font-bold">
-            {stats.pValue < 0.001 ? stats.pValue.toExponential(2) : stats.pValue.toFixed(4)}
+          <span className="font-mono font-bold">
+            {stats.pValue < 0.001 ? stats.pValue.toExponential(1) : stats.pValue.toFixed(3)}
           </span>
-        </div>
-
-        {/* Interpretation */}
-        <div className="text-[9px] text-center text-muted-foreground pt-1 border-t border-border">
-          {stats.significance === 'very-high' ? (
-            <span className="text-cyan-400">Strong quantum-prime correlation detected</span>
-          ) : stats.significance === 'high' ? (
-            <span className="text-green-500">Significant correlation with prime structure</span>
-          ) : stats.significance === 'medium' ? (
-            <span className="text-yellow-500">Moderate correlation observed</span>
-          ) : (
-            <span>Weak correlation - adjust parameters</span>
-          )}
         </div>
       </CardContent>
     </Card>
