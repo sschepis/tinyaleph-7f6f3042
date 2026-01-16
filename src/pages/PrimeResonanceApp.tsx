@@ -144,12 +144,16 @@ export default function PrimeResonanceApp() {
             </Card>
           </div>
 
-          {/* Right: Comparison, Stats & Formalism */}
+          {/* Right: Comparison & Stats */}
           <div className="space-y-4">
             <ResonanceComparison currentState={state} />
             <MeasurementStats state={state} onMeasure={performMeasurement} />
-            <FormalismPanel />
           </div>
+        </div>
+
+        {/* Full-width Formalism Panel */}
+        <div className="mt-4">
+          <FormalismPanel />
         </div>
       </div>
     </div>
