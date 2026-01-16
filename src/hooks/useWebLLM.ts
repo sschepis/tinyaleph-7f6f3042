@@ -119,15 +119,9 @@ export function useWebLLM(initialConfig: Partial<WebLLMConfig> = {}) {
     const inferenceStart = Date.now();
 
     try {
-      // Build system prompt with optional JSON schema
-      let systemPrompt = config.systemPrompt;
-      if (config.jsonMode && config.jsonSchema) {
-        systemPrompt += `\n\nYou MUST respond with a JSON object matching this schema:\n${config.jsonSchema}`;
-      }
-
       // Build messages array with system prompt
       const chatMessages: webllm.ChatCompletionMessageParam[] = [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: config.systemPrompt },
         ...messages.map(m => ({ role: m.role, content: m.content })),
         { role: 'user', content: userMessage },
       ];
@@ -140,9 +134,18 @@ export function useWebLLM(initialConfig: Partial<WebLLMConfig> = {}) {
         stream: false,
       };
 
-      // Add JSON mode if enabled
+      // Add JSON mode with proper schema if enabled
       if (config.jsonMode) {
-        (requestConfig as any).response_format = { type: 'json_object' };
+        try {
+          const schema = config.jsonSchema ? JSON.parse(config.jsonSchema) : undefined;
+          (requestConfig as any).response_format = { 
+            type: 'json_object',
+            schema: schema 
+          };
+        } catch {
+          // If schema parse fails, just use json_object type
+          (requestConfig as any).response_format = { type: 'json_object' };
+        }
       }
 
       const response = await engineRef.current.chat.completions.create(requestConfig);
@@ -221,14 +224,8 @@ export function useWebLLM(initialConfig: Partial<WebLLMConfig> = {}) {
     let tokenCount = 0;
 
     try {
-      // Build system prompt with optional JSON schema
-      let systemPrompt = config.systemPrompt;
-      if (config.jsonMode && config.jsonSchema) {
-        systemPrompt += `\n\nYou MUST respond with a JSON object matching this schema:\n${config.jsonSchema}`;
-      }
-
       const chatMessages: webllm.ChatCompletionMessageParam[] = [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: config.systemPrompt },
         ...messages.map(m => ({ role: m.role, content: m.content })),
         { role: 'user', content: userMessage },
       ];
@@ -240,8 +237,17 @@ export function useWebLLM(initialConfig: Partial<WebLLMConfig> = {}) {
         stream: true,
       };
 
+      // Add JSON mode with proper schema if enabled
       if (config.jsonMode) {
-        (requestConfig as any).response_format = { type: 'json_object' };
+        try {
+          const schema = config.jsonSchema ? JSON.parse(config.jsonSchema) : undefined;
+          (requestConfig as any).response_format = { 
+            type: 'json_object',
+            schema: schema 
+          };
+        } catch {
+          (requestConfig as any).response_format = { type: 'json_object' };
+        }
       }
 
       let fullContent = '';
