@@ -134,12 +134,18 @@ export function useWebLLM(initialConfig: Partial<WebLLMConfig> = {}) {
         stream: false,
       };
 
-      // Add JSON mode with schema string if enabled (WebLLM expects schema as string)
+      // Add JSON mode if enabled
+      // WebLLM expects schema as a non-empty string; empty/null should omit schema entirely
       if (config.jsonMode) {
-        (requestConfig as any).response_format = { 
-          type: 'json_object',
-          schema: config.jsonSchema || undefined 
-        };
+        const schemaString = config.jsonSchema?.trim();
+        if (schemaString) {
+          (requestConfig as any).response_format = { 
+            type: 'json_object',
+            schema: schemaString
+          };
+        } else {
+          (requestConfig as any).response_format = { type: 'json_object' };
+        }
       }
 
       const response = await engineRef.current.chat.completions.create(requestConfig);
@@ -231,12 +237,18 @@ export function useWebLLM(initialConfig: Partial<WebLLMConfig> = {}) {
         stream: true,
       };
 
-      // Add JSON mode with schema string if enabled (WebLLM expects schema as string)
+      // Add JSON mode if enabled
+      // WebLLM expects schema as a non-empty string; empty/null should omit schema entirely
       if (config.jsonMode) {
-        (requestConfig as any).response_format = { 
-          type: 'json_object',
-          schema: config.jsonSchema || undefined 
-        };
+        const schemaString = config.jsonSchema?.trim();
+        if (schemaString) {
+          (requestConfig as any).response_format = { 
+            type: 'json_object',
+            schema: schemaString
+          };
+        } else {
+          (requestConfig as any).response_format = { type: 'json_object' };
+        }
       }
 
       let fullContent = '';
