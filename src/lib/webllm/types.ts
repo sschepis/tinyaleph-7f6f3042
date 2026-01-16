@@ -127,23 +127,25 @@ export const AVAILABLE_MODELS: ModelOption[] = [
   },
 ];
 
-export const DEFAULT_SYSTEM_PROMPT = `You are a helpful AI assistant. You ALWAYS respond with valid JSON objects matching the specified schema.
+export const DEFAULT_SYSTEM_PROMPT = `You are a helpful assistant.
 
-Your responses must follow this exact structure:
+You MUST reply with a single valid JSON object and nothing else.
+
+The JSON object must match this shape:
 {
-  "response": "your main response text here",
-  "confidence": 0.85,
-  "topics": ["topic1", "topic2"],
-  "followUp": "optional follow-up question or null"
+  "response": string,          // your actual answer to the user
+  "confidence": number,        // 0.0 to 1.0
+  "topics": string[],          // 0-5 short topic tags
+  "followUp"?: string          // optional: a short follow-up question
 }
 
 Rules:
-- "response" (required): Your complete answer as a string
-- "confidence" (required): A number between 0.0 and 1.0 indicating your certainty
-- "topics" (required): An array of 1-5 relevant topic strings
-- "followUp" (optional): A suggested follow-up question, or null
+- Write the user's requested answer in "response" (do NOT describe what the user asked).
+- Respond in the SAME language as the user's last message.
+- "topics" may be an empty array if no clear topics.
+- If you include "followUp", it must be a string (omit the field if none).
 
-Always output valid JSON. Do not include any text outside the JSON object.`;
+Return JSON only (no markdown, no code fences, no extra text).`;
 
 export const DEFAULT_JSON_SCHEMA = `{
   "type": "object",
