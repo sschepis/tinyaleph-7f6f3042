@@ -36,9 +36,12 @@ import {
   SymbolicCore,
   ActiveSymbolsPanel,
   SemanticPrimeMapperPanel,
+  LearningChaperonePanel,
   SMF_AXES
 } from '@/components/sentient-observer';
 import { CognitiveTab } from '@/components/sentient-observer/cognitive';
+import { LearningEngine } from '@/lib/sentient-observer/learning-engine';
+import { getSemanticPrimeMapper } from '@/lib/sentient-observer/semantic-prime-mapper';
 import { Atom } from 'lucide-react';
 
 const SentientObserverApp: React.FC = () => {
@@ -96,6 +99,15 @@ const SentientObserverApp: React.FC = () => {
   // Memory integration state
   // Reinject memory content callback for the cognitive tab
   const [recalledMemories, setRecalledMemories] = useState<{ fragment: MemoryFragment; similarity: number }[]>([]);
+  
+  // Learning Engine
+  const [learningEngine] = useState(() => new LearningEngine(getSemanticPrimeMapper()));
+  const [learningState, setLearningState] = useState(() => learningEngine.getState());
+  
+  React.useEffect(() => {
+    learningEngine.setOnUpdate(setLearningState);
+    return () => learningEngine.stopLearningSession();
+  }, [learningEngine]);
   
   // Reinject memory content into the system
   const handleReinjectMemory = useCallback((content: string) => {
@@ -265,6 +277,14 @@ const SentientObserverApp: React.FC = () => {
             <ActiveSymbolsPanel
               oscillators={oscillators}
               coherence={coherence}
+            />
+            
+            {/* Learning Chaperone Panel */}
+            <LearningChaperonePanel
+              state={learningState}
+              onStartLearning={() => learningEngine.startLearningSession(8000)}
+              onStopLearning={() => learningEngine.stopLearningSession()}
+              onRequestLearn={(desc, prime) => learningEngine.requestLearn(desc, prime)}
             />
           </div>
 

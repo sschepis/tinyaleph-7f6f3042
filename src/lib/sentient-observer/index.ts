@@ -5,6 +5,7 @@
 
 // Holographic Memory
 export * from './holographic-memory';
+export * from './learning-engine';
 
 // Semantic Agent
 export * from './semantic-agent';
