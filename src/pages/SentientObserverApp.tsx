@@ -35,9 +35,11 @@ import {
   ResultsPanel,
   SymbolicCore,
   ActiveSymbolsPanel,
+  SemanticPrimeMapperPanel,
   SMF_AXES
 } from '@/components/sentient-observer';
 import { CognitiveTab } from '@/components/sentient-observer/cognitive';
+import { Atom } from 'lucide-react';
 
 const SentientObserverApp: React.FC = () => {
   const {
@@ -252,8 +254,11 @@ const SentientObserverApp: React.FC = () => {
 
           {/* Right column - Analysis Tabs */}
           <div className="lg:col-span-4">
-            <Tabs defaultValue="cognitive" className="space-y-4">
-              <TabsList className="grid grid-cols-4 w-full">
+            <Tabs defaultValue="primes" className="space-y-4">
+              <TabsList className="grid grid-cols-5 w-full">
+                <TabsTrigger value="primes" className="text-xs">
+                  <Atom className="h-4 w-4" />
+                </TabsTrigger>
                 <TabsTrigger value="cognitive" className="text-xs">
                   <Cpu className="h-4 w-4" />
                 </TabsTrigger>
@@ -267,6 +272,16 @@ const SentientObserverApp: React.FC = () => {
                   <Settings className="h-4 w-4" />
                 </TabsTrigger>
               </TabsList>
+
+              {/* Semantic Prime Mapper Tab */}
+              <TabsContent value="primes" className="space-y-4">
+                <SemanticPrimeMapperPanel
+                  oscillatorPrimes={oscillators.map(o => o.prime)}
+                  activeOscillatorIndices={oscillators
+                    .map((o, i) => (o.amplitude > 0.1 ? i : -1))
+                    .filter(i => i >= 0)}
+                />
+              </TabsContent>
 
               {/* Cognitive Tab */}
               <TabsContent value="cognitive" className="space-y-4">

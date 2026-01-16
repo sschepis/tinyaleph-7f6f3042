@@ -1,0 +1,450 @@
+/**
+ * Semantic Prime Mapper
+ * 
+ * Uses triadic prime fusion to discover meanings for uncatalogued primes.
+ * The existing symbol database serves as the "seed crystal" for expansion.
+ * Once initial assignments are made, entropy minimization refines them.
+ */
+
+import { SYMBOL_DATABASE } from '@/lib/symbolic-mind/symbol-database';
+import { minimalConfig } from '@/lib/tinyaleph-config';
+
+// ============= TYPES =============
+
+export interface PrimeMeaning {
+  prime: number;
+  meaning: string;
+  confidence: number; // 0-1, how certain the assignment is
+  derivedFrom: TriadicFusion[];
+  entropy: number; // Local semantic entropy
+  isSeeded: boolean; // True if from original database
+  category?: string;
+  resonantWith: number[]; // Other primes it resonates with
+}
+
+export interface TriadicFusion {
+  p: number;
+  q: number;
+  r: number;
+  result: string;
+  fusionType: 'additive' | 'multiplicative' | 'harmonic';
+  strength: number;
+}
+
+export interface SemanticField {
+  primes: Map<number, PrimeMeaning>;
+  globalEntropy: number;
+  coherence: number;
+  uncataloguedCount: number;
+  cataloguedCount: number;
+}
+
+// ============= PRIME UTILITIES =============
+
+function isPrime(n: number): boolean {
+  if (n < 2) return false;
+  if (n === 2) return true;
+  if (n % 2 === 0) return false;
+  for (let i = 3; i <= Math.sqrt(n); i += 2) {
+    if (n % i === 0) return false;
+  }
+  return true;
+}
+
+function firstNPrimes(n: number): number[] {
+  const primes: number[] = [];
+  let candidate = 2;
+  while (primes.length < n) {
+    if (isPrime(candidate)) primes.push(candidate);
+    candidate++;
+  }
+  return primes;
+}
+
+function gcd(a: number, b: number): number {
+  while (b) {
+    const t = b;
+    b = a % b;
+    a = t;
+  }
+  return a;
+}
+
+// ============= SEED EXTRACTION =============
+
+/**
+ * Extract seed meanings from existing databases
+ */
+function extractSeeds(): Map<number, PrimeMeaning> {
+  const seeds = new Map<number, PrimeMeaning>();
+  
+  // From symbol database
+  for (const [id, symbol] of Object.entries(SYMBOL_DATABASE)) {
+    seeds.set(symbol.prime, {
+      prime: symbol.prime,
+      meaning: symbol.meaning,
+      confidence: 1.0,
+      derivedFrom: [],
+      entropy: 0,
+      isSeeded: true,
+      category: symbol.category,
+      resonantWith: []
+    });
+  }
+  
+  // From vocabulary (tinyaleph config)
+  for (const [word, primes] of Object.entries(minimalConfig.vocabulary)) {
+    for (const p of primes) {
+      if (!seeds.has(p)) {
+        seeds.set(p, {
+          prime: p,
+          meaning: word,
+          confidence: 0.9,
+          derivedFrom: [],
+          entropy: 0.1,
+          isSeeded: true,
+          resonantWith: primes.filter(q => q !== p)
+        });
+      } else {
+        // Enhance existing with resonance info
+        const existing = seeds.get(p)!;
+        existing.resonantWith = [...new Set([...existing.resonantWith, ...primes.filter(q => q !== p)])];
+      }
+    }
+  }
+  
+  return seeds;
+}
+
+// ============= TRIADIC FUSION ENGINE =============
+
+/**
+ * Check if a triadic fusion is valid (sum is prime)
+ */
+function isValidFusion(p: number, q: number, r: number): boolean {
+  if (p === q || q === r || p === r) return false;
+  return isPrime(p + q + r);
+}
+
+/**
+ * Find semantic meaning through triadic resonance
+ */
+function triadicFuse(
+  p: number, 
+  q: number, 
+  r: number, 
+  seeds: Map<number, PrimeMeaning>
+): TriadicFusion | null {
+  if (!isValidFusion(p, q, r)) return null;
+  
+  const pMeaning = seeds.get(p);
+  const qMeaning = seeds.get(q);
+  const rMeaning = seeds.get(r);
+  
+  // At least 2 must be known for inference
+  const known = [pMeaning, qMeaning, rMeaning].filter(Boolean);
+  if (known.length < 2) return null;
+  
+  // Compute fusion strength based on prime relationships
+  const sum = p + q + r;
+  const harmonicMean = 3 / (1/p + 1/q + 1/r);
+  const primeGap = Math.abs(p - q) + Math.abs(q - r) + Math.abs(r - p);
+  const strength = Math.exp(-primeGap / (p + q + r)) * (isPrime(sum) ? 1.5 : 0.5);
+  
+  // Combine meanings
+  const meanings = known.map(k => k!.meaning);
+  const fusedMeaning = combineMeanings(meanings, p, q, r);
+  
+  return {
+    p, q, r,
+    result: fusedMeaning,
+    fusionType: gcd(gcd(p, q), r) > 1 ? 'harmonic' : (isPrime(sum) ? 'additive' : 'multiplicative'),
+    strength
+  };
+}
+
+/**
+ * Combine meanings using semantic rules
+ */
+function combineMeanings(meanings: string[], p: number, q: number, r: number): string {
+  // Extract key concepts from meanings
+  const words = meanings.join(' ').toLowerCase().split(/[,.\s]+/).filter(w => w.length > 3);
+  const uniqueWords = [...new Set(words)];
+  
+  // Use prime ratios to weight combination
+  const total = p + q + r;
+  const weights = [p/total, q/total, r/total];
+  
+  // Simple semantic combination rules
+  const prefixes = ['meta-', 'proto-', 'trans-', 'hyper-', 'neo-'];
+  const suffixes = ['-essence', '-nature', '-force', '-aspect', '-resonance'];
+  
+  // Select based on prime characteristics
+  const prefix = prefixes[p % prefixes.length];
+  const suffix = suffixes[r % suffixes.length];
+  
+  if (uniqueWords.length >= 2) {
+    return `${prefix}${uniqueWords[0]}-${uniqueWords[1]}${suffix}`;
+  } else if (uniqueWords.length === 1) {
+    return `${prefix}${uniqueWords[0]}${suffix}`;
+  }
+  
+  return `resonance-${p}-${q}-${r}`;
+}
+
+// ============= ENTROPY CALCULATIONS =============
+
+/**
+ * Calculate semantic entropy for a prime meaning assignment
+ */
+function calculateLocalEntropy(meaning: PrimeMeaning, field: Map<number, PrimeMeaning>): number {
+  if (meaning.isSeeded) return 0; // Seeds have zero entropy
+  
+  // Entropy based on confidence and derivation depth
+  const confidenceEntropy = -Math.log2(Math.max(0.001, meaning.confidence));
+  
+  // Check resonance with neighbors
+  let resonanceSum = 0;
+  for (const neighborPrime of meaning.resonantWith) {
+    const neighbor = field.get(neighborPrime);
+    if (neighbor) {
+      // Semantic similarity would be computed here
+      // For now, use prime-based heuristic
+      const similarity = 1 / (1 + Math.abs(Math.log(meaning.prime / neighborPrime)));
+      resonanceSum += similarity * neighbor.confidence;
+    }
+  }
+  
+  const resonanceEntropy = meaning.resonantWith.length > 0 
+    ? -Math.log2(Math.max(0.001, resonanceSum / meaning.resonantWith.length))
+    : 1;
+  
+  // Derivation chain length affects entropy
+  const derivationEntropy = Math.log2(1 + meaning.derivedFrom.length) * 0.1;
+  
+  return (confidenceEntropy + resonanceEntropy + derivationEntropy) / 3;
+}
+
+/**
+ * Calculate global semantic field entropy
+ */
+function calculateGlobalEntropy(field: Map<number, PrimeMeaning>): number {
+  let totalEntropy = 0;
+  let count = 0;
+  
+  for (const meaning of field.values()) {
+    totalEntropy += meaning.entropy;
+    count++;
+  }
+  
+  return count > 0 ? totalEntropy / count : 1;
+}
+
+// ============= SEMANTIC PRIME MAPPER CLASS =============
+
+export class SemanticPrimeMapper {
+  private field: Map<number, PrimeMeaning>;
+  private targetPrimes: number[];
+  private globalEntropy: number;
+  private coherence: number;
+  
+  constructor(numPrimes: number = 128) {
+    this.targetPrimes = firstNPrimes(numPrimes);
+    this.field = extractSeeds();
+    this.globalEntropy = 1;
+    this.coherence = 0;
+    
+    this.updateMetrics();
+  }
+  
+  /**
+   * Get uncatalogued primes that need meaning assignment
+   */
+  getUncataloguedPrimes(): number[] {
+    return this.targetPrimes.filter(p => !this.field.has(p));
+  }
+  
+  /**
+   * Get current semantic field state
+   */
+  getField(): SemanticField {
+    return {
+      primes: this.field,
+      globalEntropy: this.globalEntropy,
+      coherence: this.coherence,
+      uncataloguedCount: this.getUncataloguedPrimes().length,
+      cataloguedCount: this.field.size
+    };
+  }
+  
+  /**
+   * Expand the semantic field using triadic fusion
+   */
+  expandByFusion(): { expanded: number; newMeanings: PrimeMeaning[] } {
+    const uncatalogued = this.getUncataloguedPrimes();
+    const newMeanings: PrimeMeaning[] = [];
+    
+    for (const target of uncatalogued) {
+      // Try to fuse target with two known primes
+      const candidates = this.findFusionCandidates(target);
+      
+      if (candidates.length > 0) {
+        // Use best candidate
+        const best = candidates.reduce((a, b) => a.strength > b.strength ? a : b);
+        
+        const meaning: PrimeMeaning = {
+          prime: target,
+          meaning: best.result,
+          confidence: Math.min(0.8, best.strength),
+          derivedFrom: [best],
+          entropy: 0.5,
+          isSeeded: false,
+          resonantWith: [best.p, best.q, best.r].filter(p => p !== target)
+        };
+        
+        // Calculate local entropy
+        meaning.entropy = calculateLocalEntropy(meaning, this.field);
+        
+        this.field.set(target, meaning);
+        newMeanings.push(meaning);
+      }
+    }
+    
+    this.updateMetrics();
+    return { expanded: newMeanings.length, newMeanings };
+  }
+  
+  /**
+   * Find valid fusion candidates for a target prime
+   */
+  private findFusionCandidates(target: number): TriadicFusion[] {
+    const candidates: TriadicFusion[] = [];
+    const knownPrimes = Array.from(this.field.keys()).filter(p => this.field.get(p)!.confidence > 0.5);
+    
+    // Try different fusion approaches
+    for (let i = 0; i < knownPrimes.length; i++) {
+      for (let j = i + 1; j < knownPrimes.length; j++) {
+        const p = knownPrimes[i];
+        const q = knownPrimes[j];
+        
+        // Check if target could be involved in fusion with p and q
+        // Additive: target = sum - p - q (if target is the sum result)
+        // Or target is one of the components
+        
+        const fusion = triadicFuse(target, p, q, this.field);
+        if (fusion && fusion.strength > 0.1) {
+          candidates.push(fusion);
+        }
+      }
+    }
+    
+    return candidates.sort((a, b) => b.strength - a.strength).slice(0, 5);
+  }
+  
+  /**
+   * Entropy minimization pass - reorganize assignments for lower entropy
+   */
+  minimizeEntropy(): { improved: number; entropyDelta: number } {
+    const initialEntropy = this.globalEntropy;
+    let improvements = 0;
+    
+    // For each non-seeded meaning, try to find better derivations
+    for (const [prime, meaning] of this.field) {
+      if (meaning.isSeeded) continue;
+      
+      // Find alternative fusion paths
+      const alternatives = this.findFusionCandidates(prime);
+      
+      for (const alt of alternatives) {
+        // Create test meaning
+        const testMeaning: PrimeMeaning = {
+          ...meaning,
+          derivedFrom: [...meaning.derivedFrom, alt],
+          resonantWith: [...new Set([...meaning.resonantWith, alt.p, alt.q, alt.r].filter(p => p !== prime))]
+        };
+        
+        const newEntropy = calculateLocalEntropy(testMeaning, this.field);
+        
+        // Accept if entropy is lower
+        if (newEntropy < meaning.entropy) {
+          testMeaning.entropy = newEntropy;
+          testMeaning.confidence = Math.min(0.95, meaning.confidence + 0.05 * alt.strength);
+          this.field.set(prime, testMeaning);
+          improvements++;
+        }
+      }
+    }
+    
+    this.updateMetrics();
+    return { 
+      improved: improvements, 
+      entropyDelta: this.globalEntropy - initialEntropy 
+    };
+  }
+  
+  /**
+   * Full expansion cycle: fusion + entropy minimization
+   */
+  expandCycle(): { expanded: number; improved: number; globalEntropy: number } {
+    const { expanded } = this.expandByFusion();
+    const { improved } = this.minimizeEntropy();
+    
+    return { expanded, improved, globalEntropy: this.globalEntropy };
+  }
+  
+  /**
+   * Get meaning for a specific prime
+   */
+  getMeaning(prime: number): PrimeMeaning | undefined {
+    return this.field.get(prime);
+  }
+  
+  /**
+   * Get all meanings sorted by confidence
+   */
+  getAllMeanings(): PrimeMeaning[] {
+    return Array.from(this.field.values()).sort((a, b) => b.confidence - a.confidence);
+  }
+  
+  /**
+   * Export for serialization
+   */
+  export(): Record<number, { meaning: string; confidence: number; isSeeded: boolean }> {
+    const result: Record<number, { meaning: string; confidence: number; isSeeded: boolean }> = {};
+    for (const [prime, meaning] of this.field) {
+      result[prime] = {
+        meaning: meaning.meaning,
+        confidence: meaning.confidence,
+        isSeeded: meaning.isSeeded
+      };
+    }
+    return result;
+  }
+  
+  private updateMetrics(): void {
+    // Update entropy for all meanings
+    for (const [prime, meaning] of this.field) {
+      meaning.entropy = calculateLocalEntropy(meaning, this.field);
+    }
+    
+    this.globalEntropy = calculateGlobalEntropy(this.field);
+    
+    // Coherence = inverse of entropy, scaled
+    this.coherence = Math.exp(-this.globalEntropy);
+  }
+}
+
+// ============= SINGLETON INSTANCE =============
+
+let mapperInstance: SemanticPrimeMapper | null = null;
+
+export function getSemanticPrimeMapper(numPrimes: number = 128): SemanticPrimeMapper {
+  if (!mapperInstance || mapperInstance.getField().primes.size < numPrimes) {
+    mapperInstance = new SemanticPrimeMapper(numPrimes);
+  }
+  return mapperInstance;
+}
+
+export function resetSemanticPrimeMapper(): void {
+  mapperInstance = null;
+}
