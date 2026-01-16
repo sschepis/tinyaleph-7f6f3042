@@ -1,4 +1,4 @@
-export type PerspectiveType = 'analytical' | 'creative' | 'ethical' | 'pragmatic' | 'emotional' | 'coder' | 'mediator';
+export type PerspectiveType = 'analytical' | 'creative' | 'ethical' | 'pragmatic' | 'emotional' | 'coder' | 'scientist' | 'mediator';
 
 export type ArchetypeCategory = 'action' | 'wisdom' | 'emotion' | 'transformation' | 'creation' | 'spirit' | 'shadow';
 
