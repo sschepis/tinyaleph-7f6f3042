@@ -15,7 +15,8 @@ import {
   PrimeGapAnalysis,
   PhasePortrait,
   WavefunctionComparison,
-  FourierSpectrum
+  FourierSpectrum,
+  FourierSpectrogram
 } from '@/components/quantum-wavefunction';
 
 export default function QuantumWavefunctionApp() {
@@ -93,6 +94,9 @@ export default function QuantumWavefunctionApp() {
           <PhasePortrait params={params} xRange={xRange} />
           <WavefunctionComparison baseParams={params} xRange={xRange} />
         </div>
+
+        {/* Fourier Spectrogram - Full Width */}
+        <FourierSpectrogram params={params} xRange={xRange} />
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
           {/* Column 1: Parameters */}

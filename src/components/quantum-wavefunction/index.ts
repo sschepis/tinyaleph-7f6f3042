@@ -9,3 +9,4 @@ export { PrimeGapAnalysis } from './PrimeGapAnalysis';
 export { PhasePortrait } from './PhasePortrait';
 export { WavefunctionComparison } from './WavefunctionComparison';
 export { FourierSpectrum } from './FourierSpectrum';
+export { FourierSpectrogram } from './FourierSpectrogram';
