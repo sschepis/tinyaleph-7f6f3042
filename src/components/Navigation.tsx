@@ -58,6 +58,7 @@ const navGroups = [
       { id: 'consciousness-resonator', label: 'Consciousness Resonator', path: '/consciousness-resonator', desc: 'Multi-perspective AI' },
       { id: 'sephirotic-oscillator', label: 'Sephirotic Oscillator', path: '/sephirotic-oscillator', desc: 'Tree of Life' },
       { id: 'prime-resonance', label: 'Prime Resonance', path: '/prime-resonance', desc: 'Quantum formalism' },
+      { id: 'quantum-wavefunction', label: 'Quantum Wavefunction', path: '/quantum-wavefunction', desc: 'Prime patterns' },
       { id: 'chat', label: 'Aleph Chat', path: '/chat', desc: 'AI assistant' },
       { id: 'enochian', label: 'Enochian', path: '/enochian', desc: 'Language model' },
       { id: 'jam-partner', label: 'Jam Partner', path: '/jam-partner', desc: 'Music AI' },
