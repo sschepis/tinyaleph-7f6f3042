@@ -134,18 +134,12 @@ export function useWebLLM(initialConfig: Partial<WebLLMConfig> = {}) {
         stream: false,
       };
 
-      // Add JSON mode with proper schema if enabled
+      // Add JSON mode with schema string if enabled (WebLLM expects schema as string)
       if (config.jsonMode) {
-        try {
-          const schema = config.jsonSchema ? JSON.parse(config.jsonSchema) : undefined;
-          (requestConfig as any).response_format = { 
-            type: 'json_object',
-            schema: schema 
-          };
-        } catch {
-          // If schema parse fails, just use json_object type
-          (requestConfig as any).response_format = { type: 'json_object' };
-        }
+        (requestConfig as any).response_format = { 
+          type: 'json_object',
+          schema: config.jsonSchema || undefined 
+        };
       }
 
       const response = await engineRef.current.chat.completions.create(requestConfig);
@@ -237,17 +231,12 @@ export function useWebLLM(initialConfig: Partial<WebLLMConfig> = {}) {
         stream: true,
       };
 
-      // Add JSON mode with proper schema if enabled
+      // Add JSON mode with schema string if enabled (WebLLM expects schema as string)
       if (config.jsonMode) {
-        try {
-          const schema = config.jsonSchema ? JSON.parse(config.jsonSchema) : undefined;
-          (requestConfig as any).response_format = { 
-            type: 'json_object',
-            schema: schema 
-          };
-        } catch {
-          (requestConfig as any).response_format = { type: 'json_object' };
-        }
+        (requestConfig as any).response_format = { 
+          type: 'json_object',
+          schema: config.jsonSchema || undefined 
+        };
       }
 
       let fullContent = '';
