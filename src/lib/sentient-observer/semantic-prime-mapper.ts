@@ -20,6 +20,7 @@ export interface PrimeMeaning {
   isSeeded: boolean; // True if from original database
   category?: string;
   resonantWith: number[]; // Other primes it resonates with
+  primeSignature?: number[]; // Prime signature from vocabulary
 }
 
 export interface TriadicFusion {
@@ -29,6 +30,13 @@ export interface TriadicFusion {
   result: string;
   fusionType: 'additive' | 'multiplicative' | 'harmonic';
   strength: number;
+}
+
+export interface SimilarityResult {
+  prime: number;
+  meaning: string;
+  similarity: number;
+  sharedPrimes: number[];
 }
 
 export interface SemanticField {
@@ -404,6 +412,145 @@ export class SemanticPrimeMapper {
    */
   getAllMeanings(): PrimeMeaning[] {
     return Array.from(this.field.values()).sort((a, b) => b.confidence - a.confidence);
+  }
+  
+  /**
+   * Calculate semantic similarity between two primes using their prime signatures
+   * Uses Jaccard similarity on resonant primes + weighted cosine on vocabulary overlaps
+   */
+  calculateSimilarity(prime1: number, prime2: number): number {
+    const m1 = this.field.get(prime1);
+    const m2 = this.field.get(prime2);
+    
+    if (!m1 || !m2) return 0;
+    
+    // Jaccard similarity on resonant primes
+    const set1 = new Set(m1.resonantWith);
+    const set2 = new Set(m2.resonantWith);
+    
+    const intersection = [...set1].filter(p => set2.has(p)).length;
+    const union = new Set([...set1, ...set2]).size;
+    
+    const jaccardSim = union > 0 ? intersection / union : 0;
+    
+    // Prime proximity (logarithmic distance)
+    const primeSim = 1 / (1 + Math.abs(Math.log(prime1 / prime2)));
+    
+    // Fusion chain overlap
+    const fusions1 = new Set(m1.derivedFrom.flatMap(f => [f.p, f.q, f.r]));
+    const fusions2 = new Set(m2.derivedFrom.flatMap(f => [f.p, f.q, f.r]));
+    const fusionIntersection = [...fusions1].filter(p => fusions2.has(p)).length;
+    const fusionUnion = new Set([...fusions1, ...fusions2]).size;
+    const fusionSim = fusionUnion > 0 ? fusionIntersection / fusionUnion : 0;
+    
+    // Weighted combination
+    return (jaccardSim * 0.5 + primeSim * 0.3 + fusionSim * 0.2);
+  }
+  
+  /**
+   * Find most similar primes to a given prime
+   */
+  findSimilar(prime: number, topK: number = 10): SimilarityResult[] {
+    const results: SimilarityResult[] = [];
+    const targetMeaning = this.field.get(prime);
+    
+    if (!targetMeaning) return results;
+    
+    for (const [p, meaning] of this.field) {
+      if (p === prime) continue;
+      
+      const similarity = this.calculateSimilarity(prime, p);
+      
+      // Find shared primes
+      const targetResonant = new Set(targetMeaning.resonantWith);
+      const sharedPrimes = meaning.resonantWith.filter(rp => targetResonant.has(rp));
+      
+      results.push({
+        prime: p,
+        meaning: meaning.meaning,
+        similarity,
+        sharedPrimes
+      });
+    }
+    
+    return results
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, topK);
+  }
+  
+  /**
+   * Get similarity matrix for a set of primes
+   */
+  getSimilarityMatrix(primes: number[]): { primes: number[]; matrix: number[][] } {
+    const matrix: number[][] = [];
+    
+    for (let i = 0; i < primes.length; i++) {
+      matrix[i] = [];
+      for (let j = 0; j < primes.length; j++) {
+        if (i === j) {
+          matrix[i][j] = 1;
+        } else if (j < i) {
+          matrix[i][j] = matrix[j][i]; // Symmetric
+        } else {
+          matrix[i][j] = this.calculateSimilarity(primes[i], primes[j]);
+        }
+      }
+    }
+    
+    return { primes, matrix };
+  }
+  
+  /**
+   * Cluster similar primes together using similarity threshold
+   */
+  clusterBySimilarity(threshold: number = 0.3): Map<number, number[]> {
+    const clusters = new Map<number, number[]>();
+    const assigned = new Set<number>();
+    
+    const allPrimes = Array.from(this.field.keys());
+    
+    for (const prime of allPrimes) {
+      if (assigned.has(prime)) continue;
+      
+      // Start a new cluster
+      const cluster = [prime];
+      assigned.add(prime);
+      
+      // Find all similar primes
+      for (const otherPrime of allPrimes) {
+        if (assigned.has(otherPrime)) continue;
+        
+        const sim = this.calculateSimilarity(prime, otherPrime);
+        if (sim >= threshold) {
+          cluster.push(otherPrime);
+          assigned.add(otherPrime);
+        }
+      }
+      
+      clusters.set(prime, cluster);
+    }
+    
+    return clusters;
+  }
+  
+  /**
+   * Get vocabulary prime signature for a word
+   */
+  getVocabularySignature(word: string): number[] | undefined {
+    const vocab = minimalConfig.vocabulary as Record<string, number[]>;
+    return vocab[word.toLowerCase()];
+  }
+  
+  /**
+   * Find primes that match a vocabulary word's signature
+   */
+  findByVocabulary(word: string): PrimeMeaning[] {
+    const signature = this.getVocabularySignature(word);
+    if (!signature) return [];
+    
+    return signature
+      .map(p => this.field.get(p))
+      .filter((m): m is PrimeMeaning => m !== undefined);
   }
   
   /**

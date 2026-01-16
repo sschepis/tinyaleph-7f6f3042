@@ -6,3 +6,4 @@ export { ResultsPanel } from './ResultsPanel';
 export { SymbolicCore } from './SymbolicCore';
 export { ActiveSymbolsPanel } from './ActiveSymbolsPanel';
 export { SemanticPrimeMapperPanel } from './SemanticPrimeMapperPanel';
+export { TriadicFusionGraph } from './TriadicFusionGraph';
