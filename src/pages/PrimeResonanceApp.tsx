@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
-import { Play, Pause, RotateCcw, Zap, Target } from 'lucide-react';
+import { Play, Pause, RotateCcw, Zap, Target, HelpCircle } from 'lucide-react';
 import { usePrimeResonance } from '@/hooks/usePrimeResonance';
 import {
   HilbertSpaceViz,
@@ -13,7 +13,9 @@ import {
   StateDisplay,
   FormalismPanel,
   MeasurementStats,
-  ResonanceComparison
+  ResonanceComparison,
+  HelpDialog,
+  useFirstRun
 } from '@/components/prime-resonance';
 
 export default function PrimeResonanceApp() {
@@ -24,7 +26,17 @@ export default function PrimeResonanceApp() {
   } = usePrimeResonance();
   
   const [superpositionSize, setSuperpositionSize] = useState(16);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [isFirstRun, markAsSeen] = useFirstRun('help');
   const stateInfo = getStateInfo();
+
+  // Show help on first visit
+  useEffect(() => {
+    if (isFirstRun) {
+      setHelpOpen(true);
+      markAsSeen();
+    }
+  }, [isFirstRun, markAsSeen]);
 
   return (
     <div className="min-h-screen bg-background p-4">
@@ -39,6 +51,9 @@ export default function PrimeResonanceApp() {
             <p className="text-xs text-muted-foreground">Quantum-like computation in Prime Hilbert Space ℋ_P</p>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setHelpOpen(true)}>
+              <HelpCircle className="h-4 w-4" />
+            </Button>
             <Button variant="outline" size="sm" onClick={() => initUniform(superpositionSize)}>
               <RotateCcw className="h-3 w-3 mr-1" /> Reset
             </Button>
@@ -53,6 +68,8 @@ export default function PrimeResonanceApp() {
             )}
           </div>
         </div>
+
+        <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Left: State Visualization */}

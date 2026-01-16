@@ -5,3 +5,4 @@ export { OperatorButtons, StateDisplay } from './OperatorButtons';
 export { FormalismPanel } from './FormalismPanel';
 export { MeasurementStats } from './MeasurementStats';
 export { ResonanceComparison } from './ResonanceComparison';
+export { HelpDialog, useFirstRun } from './HelpDialog';
