@@ -259,7 +259,7 @@ const SentientObserverApp: React.FC = () => {
           </div>
 
           {/* Center column - Chat/Symbolic Core (Main Focus) */}
-          <div className="lg:col-span-5 space-y-4">
+          <div className="lg:col-span-5 flex flex-col gap-4">
             {/* Symbolic Communication Interface - PRIMARY */}
             <SymbolicCore
               oscillators={oscillators}

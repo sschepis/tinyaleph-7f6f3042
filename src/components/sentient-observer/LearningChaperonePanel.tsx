@@ -112,7 +112,7 @@ export const LearningChaperonePanel: React.FC<LearningChaperonePanelProps> = ({
     .reverse();
 
   return (
-    <Card className="flex flex-col h-[520px]">
+    <Card className="flex flex-col flex-1 min-h-[300px] max-h-[600px]">
       <CardHeader className="py-2 px-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <CardTitle className="text-xs flex items-center gap-1.5">
