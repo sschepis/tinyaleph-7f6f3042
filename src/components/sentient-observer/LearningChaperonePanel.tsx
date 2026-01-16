@@ -112,7 +112,7 @@ export const LearningChaperonePanel: React.FC<LearningChaperonePanelProps> = ({
     .reverse();
 
   return (
-    <Card className="flex flex-col h-full">
+    <Card className="flex flex-col max-h-[400px]">
       <CardHeader className="py-2 px-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <CardTitle className="text-xs flex items-center gap-1.5">
@@ -138,7 +138,7 @@ export const LearningChaperonePanel: React.FC<LearningChaperonePanelProps> = ({
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 p-2 pt-0 space-y-2 overflow-hidden">
+      <CardContent className="flex-1 p-2 pt-0 space-y-2 overflow-hidden min-h-0">
         {/* Stats Row */}
         <div className="grid grid-cols-4 gap-1 text-center">
           <div className="p-1 bg-muted/30 rounded">
