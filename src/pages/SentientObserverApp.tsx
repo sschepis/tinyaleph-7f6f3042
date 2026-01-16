@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { toast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -115,6 +116,10 @@ const SentientObserverApp: React.FC = () => {
     if (coherence > 0.9 && !learningAutoStarted && !learningState.currentSession?.isActive) {
       learningEngine.startLearningSession(8000);
       setLearningAutoStarted(true);
+      toast({
+        title: "Learning Chaperone Activated",
+        description: `Coherence reached ${(coherence * 100).toFixed(0)}% — autonomous learning started.`,
+      });
     }
   }, [coherence, learningAutoStarted, learningState.currentSession?.isActive, learningEngine]);
   
