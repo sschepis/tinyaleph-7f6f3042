@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
-import { Waves, Settings2, Loader2 } from 'lucide-react';
+import { Waves, Settings2, Loader2, Activity, TrendingUp, Zap } from 'lucide-react';
 import { useQuantumWavefunction } from '@/hooks/useQuantumWavefunction';
 import {
   WavefunctionPlot,
@@ -49,58 +49,64 @@ export default function QuantumWavefunctionApp() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-7xl mx-auto space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold flex items-center gap-2">
-              <Waves className="h-5 w-5 text-cyan-400" />
+    <div className="min-h-screen bg-background p-2 lg:p-3">
+      <div className="max-w-[1800px] mx-auto space-y-2">
+        {/* Compact Header */}
+        <div className="flex items-center justify-between py-1">
+          <div className="flex items-center gap-3">
+            <h1 className="text-lg font-bold flex items-center gap-2">
+              <Waves className="h-4 w-4 text-primary" />
               Quantum Prime Wavefunction
             </h1>
-            <p className="text-xs text-muted-foreground">
-              Exploring prime patterns through quantum mechanical wave functions
-            </p>
+            <div className="hidden md:flex items-center gap-1.5">
+              <Badge variant="outline" className="text-[10px] py-0 h-5">
+                γ = {params.t.toFixed(2)}
+              </Badge>
+              <Badge 
+                variant={spectrum.stats.significance === 'very-high' ? 'default' : 'secondary'} 
+                className="text-[10px] py-0 h-5"
+              >
+                ρ = {spectrum.stats.waveCorrelation.toFixed(3)}
+              </Badge>
+              <Badge variant="outline" className="text-[10px] py-0 h-5">
+                p = {spectrum.stats.pValue.toExponential(1)}
+              </Badge>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-[10px]">
-              t = {params.t.toFixed(3)}
-            </Badge>
-            <Badge 
-              variant={spectrum.stats.significance === 'very-high' ? 'default' : 'secondary'} 
-              className="text-[10px]"
-            >
-              p = {spectrum.stats.pValue.toExponential(2)}
-            </Badge>
+          
+          {/* Inline Range Controls */}
+          <div className="hidden lg:flex items-center gap-4 text-[10px]">
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">Range:</span>
+              <Slider
+                value={[xRange[1]]}
+                onValueChange={([v]) => setXRange([2, v])}
+                min={20}
+                max={200}
+                step={10}
+                className="w-24"
+              />
+              <span className="font-mono w-8">{xRange[1]}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">Res:</span>
+              <Slider
+                value={[resolution]}
+                onValueChange={([v]) => setResolution(v)}
+                min={100}
+                max={1000}
+                step={100}
+                className="w-20"
+              />
+              <span className="font-mono w-8">{resolution}</span>
+            </div>
           </div>
         </div>
 
-        {/* Top Row: 2D Plot and 3D Visualization */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <WavefunctionPlot spectrum={spectrum} height={280} />
-          <Suspense fallback={
-            <Card>
-              <CardContent className="h-[340px] flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </CardContent>
-            </Card>
-          }>
-            <ComplexHelix3D spectrum={spectrum} />
-          </Suspense>
-        </div>
-
-        {/* Phase Portrait & Comparison Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <PhasePortrait params={params} xRange={xRange} />
-          <WavefunctionComparison baseParams={params} xRange={xRange} />
-        </div>
-
-        {/* Fourier Spectrogram - Full Width */}
-        <FourierSpectrogram params={params} xRange={xRange} />
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          {/* Column 1: Parameters */}
-          <div className="space-y-4">
+        {/* Main Grid - 6 column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-6 gap-2">
+          {/* Left Column: Parameters (1 col) */}
+          <div className="lg:col-span-1 space-y-2">
             <ParameterControls
               params={params}
               onParamChange={handleParamChange}
@@ -109,19 +115,19 @@ export default function QuantumWavefunctionApp() {
               onUseRiemannZero={useRiemannZero}
             />
             
-            {/* Range Controls */}
-            <Card>
-              <CardHeader className="py-2 px-3">
-                <CardTitle className="text-xs flex items-center gap-1.5">
+            {/* Mobile Range Controls */}
+            <Card className="lg:hidden">
+              <CardHeader className="py-1.5 px-2">
+                <CardTitle className="text-[10px] flex items-center gap-1">
                   <Settings2 className="h-3 w-3" />
-                  Analysis Range
+                  Range
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-3 space-y-3">
+              <CardContent className="p-2 space-y-2">
                 <div className="space-y-1">
-                  <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-muted-foreground">Range</span>
-                    <span className="font-mono">[{xRange[0]}, {xRange[1]}]</span>
+                  <div className="flex items-center justify-between text-[9px]">
+                    <span className="text-muted-foreground">Max X</span>
+                    <span className="font-mono">{xRange[1]}</span>
                   </div>
                   <Slider
                     value={[xRange[1]]}
@@ -131,41 +137,49 @@ export default function QuantumWavefunctionApp() {
                     step={10}
                   />
                 </div>
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-muted-foreground">Resolution</span>
-                    <span className="font-mono">{resolution} pts</span>
-                  </div>
-                  <Slider
-                    value={[resolution]}
-                    onValueChange={([v]) => setResolution(v)}
-                    min={100}
-                    max={1000}
-                    step={100}
-                  />
-                </div>
               </CardContent>
             </Card>
-          </div>
 
-          {/* Column 2: Correlation & Tunneling */}
-          <div className="space-y-4">
             <CorrelationPanel stats={spectrum.stats} />
-            <TunnelingViz spectrum={spectrum} height={140} />
+            <TunnelingViz spectrum={spectrum} height={100} />
           </div>
 
-          {/* Column 3: Prime Gap Analysis & Fourier */}
-          <div className="space-y-4">
-            <PrimeGapAnalysis spectrum={spectrum} />
-            <FourierSpectrum spectrum={spectrum} />
+          {/* Center: Primary Visualizations (3 cols) */}
+          <div className="lg:col-span-3 space-y-2">
+            {/* 2D and 3D side by side */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <WavefunctionPlot spectrum={spectrum} height={220} />
+              <Suspense fallback={
+                <Card className="h-[280px]">
+                  <CardContent className="h-full flex items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </CardContent>
+                </Card>
+              }>
+                <ComplexHelix3D spectrum={spectrum} />
+              </Suspense>
+            </div>
+            
+            {/* Phase & Comparison */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <PhasePortrait params={params} xRange={xRange} />
+              <WavefunctionComparison baseParams={params} xRange={xRange} />
+            </div>
           </div>
 
-          {/* Column 4: Tables & Info */}
-          <div className="space-y-4">
-            <PrimeWaveTable primeWaves={primeWaves} maxDisplay={10} />
+          {/* Right Column: Analysis (2 cols) */}
+          <div className="lg:col-span-2 space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-2">
+              <PrimeGapAnalysis spectrum={spectrum} />
+              <FourierSpectrum spectrum={spectrum} />
+            </div>
+            <PrimeWaveTable primeWaves={primeWaves} maxDisplay={8} />
             <FormalismInfo />
           </div>
         </div>
+
+        {/* Full Width Spectrogram */}
+        <FourierSpectrogram params={params} xRange={xRange} />
       </div>
     </div>
   );

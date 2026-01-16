@@ -69,28 +69,28 @@ export function ParameterControls({
   ];
 
   return (
-    <Card>
-      <CardHeader className="py-2 px-3">
-        <CardTitle className="text-xs flex items-center justify-between">
-          Quantum Parameters
-          <div className="flex gap-1">
-            <Button size="sm" variant="outline" className="h-5 text-[9px] px-1.5" onClick={onReset}>
-              <RotateCcw className="h-2.5 w-2.5 mr-0.5" /> Reset
+    <Card className="bg-card/50 backdrop-blur">
+      <CardHeader className="py-1.5 px-2">
+        <CardTitle className="text-[10px] flex items-center justify-between">
+          Parameters
+          <div className="flex gap-0.5">
+            <Button size="sm" variant="ghost" className="h-4 text-[8px] px-1" onClick={onReset}>
+              <RotateCcw className="h-2.5 w-2.5" />
             </Button>
-            <Button size="sm" variant="default" className="h-5 text-[9px] px-1.5" onClick={onUseOptimal}>
-              <Sparkles className="h-2.5 w-2.5 mr-0.5" /> Optimal
+            <Button size="sm" variant="default" className="h-4 text-[8px] px-1.5" onClick={onUseOptimal}>
+              <Sparkles className="h-2.5 w-2.5 mr-0.5" /> Opt
             </Button>
           </div>
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-3 space-y-3">
-        {paramConfig.map(({ key, label, symbol, min, max, step, description }) => (
-          <div key={key} className="space-y-1">
+      <CardContent className="p-2 space-y-2">
+        {paramConfig.map(({ key, symbol, min, max, step }) => (
+          <div key={key} className="space-y-0.5">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-muted-foreground">{label}</span>
-              <Badge variant="outline" className="text-[9px] font-mono h-4">
-                {symbol} = {params[key].toFixed(3)}
-              </Badge>
+              <span className="text-[9px] text-muted-foreground">{symbol}</span>
+              <span className="text-[9px] font-mono text-primary">
+                {params[key].toFixed(2)}
+              </span>
             </div>
             <Slider
               value={[params[key]]}
@@ -104,15 +104,15 @@ export function ParameterControls({
         ))}
         
         {/* Riemann Zero Presets */}
-        <div className="pt-2 border-t border-border">
-          <div className="text-[10px] text-muted-foreground mb-1.5">Riemann Zeros γₙ</div>
-          <div className="flex flex-wrap gap-1">
+        <div className="pt-1.5 border-t border-border">
+          <div className="text-[9px] text-muted-foreground mb-1">Riemann γₙ</div>
+          <div className="flex flex-wrap gap-0.5">
             {RIEMANN_ZEROS.slice(0, 5).map((zero, i) => (
               <Button
                 key={i}
                 size="sm"
                 variant={Math.abs(params.t - zero) < 0.01 ? "default" : "outline"}
-                className="h-5 text-[9px] px-1.5"
+                className="h-4 text-[8px] px-1 flex-1"
                 onClick={() => onUseRiemannZero(i)}
               >
                 γ{i + 1}

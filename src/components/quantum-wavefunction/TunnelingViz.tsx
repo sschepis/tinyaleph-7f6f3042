@@ -43,46 +43,35 @@ export function TunnelingViz({ spectrum, height = 120 }: TunnelingVizProps) {
   const maxTunnel = Math.max(...tunnelingRegions.map(r => r.maxTunneling), 0.01);
 
   return (
-    <Card>
-      <CardHeader className="py-2 px-3">
-        <CardTitle className="text-xs flex items-center gap-1.5">
+    <Card className="bg-card/50 backdrop-blur">
+      <CardHeader className="py-1.5 px-2">
+        <CardTitle className="text-[10px] flex items-center gap-1">
           <ArrowRightLeft className="h-3 w-3 text-violet-400" />
-          Quantum Tunneling T(x)
+          Tunneling T(x)
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-3">
-        <div className="space-y-1" style={{ maxHeight: height }}>
-          {tunnelingRegions.map(({ p1, p2, maxTunneling, avgTunneling }) => (
-            <div key={`${p1}-${p2}`} className="flex items-center gap-2 text-[10px]">
-              <span className="w-12 text-right font-mono text-muted-foreground">
+      <CardContent className="p-2">
+        <div className="space-y-0.5" style={{ maxHeight: height }}>
+          {tunnelingRegions.slice(0, 8).map(({ p1, p2, maxTunneling, avgTunneling }) => (
+            <div key={`${p1}-${p2}`} className="flex items-center gap-1 text-[9px]">
+              <span className="w-10 text-right font-mono text-muted-foreground">
                 {p1}→{p2}
               </span>
-              <div className="flex-1 h-3 bg-secondary rounded relative overflow-hidden">
-                {/* Max tunneling */}
+              <div className="flex-1 h-2 bg-secondary rounded relative overflow-hidden">
                 <div 
                   className="absolute inset-y-0 left-0 bg-violet-500/30 rounded"
                   style={{ width: `${(maxTunneling / maxTunnel) * 100}%` }}
                 />
-                {/* Average tunneling */}
                 <div 
                   className="absolute inset-y-0 left-0 bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded"
                   style={{ width: `${(avgTunneling / maxTunnel) * 100}%` }}
                 />
               </div>
-              <span className="w-10 text-right font-mono text-violet-400">
-                {maxTunneling.toFixed(3)}
+              <span className="w-8 text-right font-mono text-violet-400">
+                {maxTunneling.toFixed(2)}
               </span>
             </div>
           ))}
-        </div>
-        
-        <div className="flex items-center justify-center gap-4 text-[9px] text-muted-foreground mt-2 pt-2 border-t border-border">
-          <span className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded bg-gradient-to-r from-violet-500 to-fuchsia-500" /> Avg
-          </span>
-          <span className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded bg-violet-500/30" /> Max
-          </span>
         </div>
       </CardContent>
     </Card>
