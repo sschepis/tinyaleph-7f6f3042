@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   GraduationCap,
   Play,
@@ -25,10 +25,12 @@ import {
   X,
   Loader2,
   Brain,
-  Send
+  Send,
+  Network
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { LearningEngineState, LearningGoal, LearnedSymbol, LearnedRelationship } from '@/lib/sentient-observer/learning-engine';
+import { LearnedRelationshipsGraph } from './LearnedRelationshipsGraph';
 
 interface LearningChaperonePanelProps {
   state: LearningEngineState;
@@ -84,6 +86,7 @@ export const LearningChaperonePanel: React.FC<LearningChaperonePanelProps> = ({
   onRequestLearn
 }) => {
   const [manualInput, setManualInput] = useState('');
+  const [viewMode, setViewMode] = useState<'list' | 'graph'>('list');
   const [showSymbols, setShowSymbols] = useState(true);
 
   const handleManualRequest = useCallback(() => {
@@ -196,125 +199,150 @@ export const LearningChaperonePanel: React.FC<LearningChaperonePanelProps> = ({
           </Button>
         </div>
 
-        {/* Toggle between symbols and relationships */}
-        <div className="flex items-center justify-between text-[10px]">
-          <span className="text-muted-foreground">Show:</span>
-          <div className="flex gap-2">
-            <Button
-              variant={showSymbols ? "default" : "ghost"}
-              size="sm"
-              className="h-5 text-[9px] px-2"
-              onClick={() => setShowSymbols(true)}
-            >
-              <Lightbulb className="h-2.5 w-2.5 mr-1" />
-              Symbols
-            </Button>
-            <Button
-              variant={!showSymbols ? "default" : "ghost"}
-              size="sm"
-              className="h-5 text-[9px] px-2"
-              onClick={() => setShowSymbols(false)}
-            >
-              <Link2 className="h-2.5 w-2.5 mr-1" />
-              Relations
-            </Button>
-          </div>
-        </div>
-
-        {/* Learned Content */}
-        <ScrollArea className="flex-1 h-[180px]">
-          <AnimatePresence mode="wait">
-            {showSymbols ? (
-              <motion.div
-                key="symbols"
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 10 }}
-                className="space-y-1"
-              >
-                {learnedSymbols.length === 0 ? (
-                  <div className="text-center py-4 text-muted-foreground text-[10px]">
-                    No symbols learned yet. Start learning to discover new meanings!
-                  </div>
-                ) : (
-                  learnedSymbols.map(symbol => (
-                    <motion.div
-                      key={symbol.prime}
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="p-1.5 bg-muted/30 rounded"
-                    >
-                      <div className="flex items-center justify-between mb-0.5">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-[10px] text-amber-500">p{symbol.prime}</span>
-                          <span className="text-[10px] font-medium">{symbol.meaning}</span>
-                        </div>
-                        <span className="text-[8px] text-muted-foreground font-mono">
-                          {(symbol.confidence * 100).toFixed(0)}%
-                        </span>
-                      </div>
-                      {symbol.category && (
-                        <Badge variant="outline" className="text-[8px] h-3 px-1">
-                          {symbol.category}
-                        </Badge>
-                      )}
-                      {symbol.reasoning && (
-                        <div className="text-[9px] text-muted-foreground mt-0.5 line-clamp-1">
-                          {symbol.reasoning}
-                        </div>
-                      )}
-                    </motion.div>
-                  ))
-                )}
-              </motion.div>
-            ) : (
-              <motion.div
-                key="relationships"
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                className="space-y-1"
-              >
-                {recentRelationships.length === 0 ? (
-                  <div className="text-center py-4 text-muted-foreground text-[10px]">
-                    No relationships discovered yet. Learning will find connections between symbols!
-                  </div>
-                ) : (
-                  recentRelationships.map((rel, idx) => (
-                    <motion.div
-                      key={`${rel.primeA}-${rel.primeB}-${idx}`}
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="p-1.5 bg-muted/30 rounded flex items-center gap-2"
-                    >
-                      <span className="font-mono text-[10px] text-blue-400">p{rel.primeA}</span>
-                      <span className="text-primary text-sm font-bold">{relationshipTypeLabel(rel.relationshipType)}</span>
-                      <span className="font-mono text-[10px] text-blue-400">p{rel.primeB}</span>
-                      <div className="flex-1" />
-                      <Progress value={rel.strength * 100} className="h-1 w-12" />
-                    </motion.div>
-                  ))
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </ScrollArea>
-
-        {/* Recent Completed Goals */}
-        {recentCompleted.length > 0 && (
-          <div className="space-y-1">
-            <div className="text-[9px] text-muted-foreground">Recent</div>
-            <div className="space-y-0.5">
-              {recentCompleted.slice(0, 3).map(goal => (
-                <div key={goal.id} className="flex items-center gap-1.5 text-[9px] text-muted-foreground">
-                  <Check className="h-2 w-2 text-green-500" />
-                  <span className={goalTypeColor(goal.type)}>{goalTypeIcon(goal.type)}</span>
-                  <span className="truncate flex-1">{goal.description}</span>
-                </div>
-              ))}
+        {/* View Mode Toggle */}
+        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'list' | 'graph')} className="flex-1 flex flex-col min-h-0">
+          <TabsList className="grid grid-cols-2 w-full h-7 flex-shrink-0">
+            <TabsTrigger value="list" className="text-[10px] h-6">
+              <Lightbulb className="h-3 w-3 mr-1" />
+              List
+            </TabsTrigger>
+            <TabsTrigger value="graph" className="text-[10px] h-6">
+              <Network className="h-3 w-3 mr-1" />
+              Graph
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="list" className="mt-2 space-y-2 flex-1 min-h-0">
+            {/* Toggle between symbols and relationships */}
+            <div className="flex items-center justify-between text-[10px]">
+              <span className="text-muted-foreground">Show:</span>
+              <div className="flex gap-2">
+                <Button
+                  variant={showSymbols ? "default" : "ghost"}
+                  size="sm"
+                  className="h-5 text-[9px] px-2"
+                  onClick={() => setShowSymbols(true)}
+                >
+                  <Lightbulb className="h-2.5 w-2.5 mr-1" />
+                  Symbols
+                </Button>
+                <Button
+                  variant={!showSymbols ? "default" : "ghost"}
+                  size="sm"
+                  className="h-5 text-[9px] px-2"
+                  onClick={() => setShowSymbols(false)}
+                >
+                  <Link2 className="h-2.5 w-2.5 mr-1" />
+                  Relations
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
+
+            {/* Learned Content */}
+            <ScrollArea className="h-[160px]">
+              <AnimatePresence mode="wait">
+                {showSymbols ? (
+                  <motion.div
+                    key="symbols"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 10 }}
+                    className="space-y-1"
+                  >
+                    {learnedSymbols.length === 0 ? (
+                      <div className="text-center py-4 text-muted-foreground text-[10px]">
+                        No symbols learned yet. Start learning to discover new meanings!
+                      </div>
+                    ) : (
+                      learnedSymbols.map(symbol => (
+                        <motion.div
+                          key={symbol.prime}
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="p-1.5 bg-muted/30 rounded"
+                        >
+                          <div className="flex items-center justify-between mb-0.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono text-[10px] text-amber-500">p{symbol.prime}</span>
+                              <span className="text-[10px] font-medium">{symbol.meaning}</span>
+                            </div>
+                            <span className="text-[8px] text-muted-foreground font-mono">
+                              {(symbol.confidence * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                          {symbol.category && (
+                            <Badge variant="outline" className="text-[8px] h-3 px-1">
+                              {symbol.category}
+                            </Badge>
+                          )}
+                          {symbol.reasoning && (
+                            <div className="text-[9px] text-muted-foreground mt-0.5 line-clamp-1">
+                              {symbol.reasoning}
+                            </div>
+                          )}
+                        </motion.div>
+                      ))
+                    )}
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="relationships"
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    className="space-y-1"
+                  >
+                    {recentRelationships.length === 0 ? (
+                      <div className="text-center py-4 text-muted-foreground text-[10px]">
+                        No relationships discovered yet. Learning will find connections between symbols!
+                      </div>
+                    ) : (
+                      recentRelationships.map((rel, idx) => (
+                        <motion.div
+                          key={`${rel.primeA}-${rel.primeB}-${idx}`}
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="p-1.5 bg-muted/30 rounded flex items-center gap-2"
+                        >
+                          <span className="font-mono text-[10px] text-blue-400">p{rel.primeA}</span>
+                          <span className="text-primary text-sm font-bold">{relationshipTypeLabel(rel.relationshipType)}</span>
+                          <span className="font-mono text-[10px] text-blue-400">p{rel.primeB}</span>
+                          <div className="flex-1" />
+                          <Progress value={rel.strength * 100} className="h-1 w-12" />
+                        </motion.div>
+                      ))
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </ScrollArea>
+
+            {/* Recent Completed Goals */}
+            {recentCompleted.length > 0 && (
+              <div className="space-y-1">
+                <div className="text-[9px] text-muted-foreground">Recent</div>
+                <div className="space-y-0.5">
+                  {recentCompleted.slice(0, 3).map(goal => (
+                    <div key={goal.id} className="flex items-center gap-1.5 text-[9px] text-muted-foreground">
+                      <Check className="h-2 w-2 text-green-500" />
+                      <span className={goalTypeColor(goal.type)}>{goalTypeIcon(goal.type)}</span>
+                      <span className="truncate flex-1">{goal.description}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="graph" className="mt-2 flex-1 min-h-0">
+            <LearnedRelationshipsGraph
+              symbols={learnedSymbols}
+              relationships={state.learnedRelationships}
+              width={380}
+              height={320}
+            />
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );
