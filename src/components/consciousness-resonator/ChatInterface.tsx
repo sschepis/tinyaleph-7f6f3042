@@ -5,7 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { ConsciousnessMessage, PerspectiveType } from '@/lib/consciousness-resonator/types';
 import ReactMarkdown from 'react-markdown';
-
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 interface ChatInterfaceProps {
   messages: ConsciousnessMessage[];
   isProcessing: boolean;
@@ -66,8 +69,13 @@ export function ChatInterface({
               `}
             >
               {message.role === 'assistant' ? (
-                <div className="prose prose-invert prose-sm max-w-none">
-                  <ReactMarkdown>{message.content}</ReactMarkdown>
+                <div className="prose prose-invert prose-sm max-w-none [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_pre]:bg-black/50 [&_code]:bg-black/30 [&_code]:px-1 [&_code]:rounded">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm, remarkMath]}
+                    rehypePlugins={[rehypeKatex]}
+                  >
+                    {message.content}
+                  </ReactMarkdown>
                 </div>
               ) : (
                 <span dangerouslySetInnerHTML={{ __html: message.content }} />
