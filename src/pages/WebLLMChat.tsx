@@ -40,6 +40,8 @@ import {
   AVAILABLE_MODELS,
   ModelOption 
 } from '@/lib/webllm/types';
+import { AppHelpDialog, HelpButton, useFirstRun } from '@/components/app-help';
+import { helpSteps } from '@/components/webllm/HelpContent';
 
 // JSON Syntax Highlighting component
 function JSONHighlight({ code }: { code: string }) {
@@ -75,6 +77,22 @@ export default function WebLLMChat() {
     clearMessages,
     updateConfig,
   } = useWebLLM();
+
+  const [isFirstRun, markAsSeen] = useFirstRun('webllm-chat');
+  const [helpOpen, setHelpOpen] = useState(isFirstRun);
+  
+  useEffect(() => {
+    if (isFirstRun) {
+      setHelpOpen(true);
+    }
+  }, [isFirstRun]);
+  
+  const handleHelpClose = (open: boolean) => {
+    setHelpOpen(open);
+    if (!open && isFirstRun) {
+      markAsSeen();
+    }
+  };
 
   const [input, setInput] = useState('');
   const [streamingContent, setStreamingContent] = useState('');
@@ -222,8 +240,16 @@ export default function WebLLMChat() {
                 Not Loaded
               </Badge>
             )}
+            <HelpButton onClick={() => setHelpOpen(true)} />
           </div>
         </div>
+        
+        <AppHelpDialog
+          open={helpOpen}
+          onOpenChange={handleHelpClose}
+          steps={helpSteps}
+          appName="WebLLM Chat"
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Settings Panel */}
