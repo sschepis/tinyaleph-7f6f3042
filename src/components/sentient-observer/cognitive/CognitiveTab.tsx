@@ -123,76 +123,50 @@ export const CognitiveTab: React.FC<CognitiveTabProps> = ({
   }, [onRunAgentStep]);
 
   return (
-    <div className="space-y-4">
-      {/* Overview Stats */}
-      <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
-        <CardContent className="py-4">
-          <div className="grid grid-cols-4 gap-4 text-center">
-            <div>
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <Database className="h-4 w-4 text-blue-500" />
-                <span className="text-2xl font-mono">{memStats.totalMemories}</span>
-              </div>
-              <div className="text-xs text-muted-foreground">Memories</div>
-            </div>
-            <div>
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <GitBranch className="h-4 w-4 text-purple-500" />
-                <span className="text-2xl font-mono">{reasoningStats.totalFacts}</span>
-              </div>
-              <div className="text-xs text-muted-foreground">Facts</div>
-            </div>
-            <div>
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <Sparkles className="h-4 w-4 text-amber-500" />
-                <span className="text-2xl font-mono">{collapseStats.totalCollapses}</span>
-              </div>
-              <div className="text-xs text-muted-foreground">Collapses</div>
-            </div>
-            <div>
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <Target className="h-4 w-4 text-green-500" />
-                <span className="text-2xl font-mono">{agent.actionHistory.length}</span>
-              </div>
-              <div className="text-xs text-muted-foreground">Actions</div>
-            </div>
-          </div>
-          
-          {lastAction && (
-            <div className="mt-3 pt-3 border-t border-border/50">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <AlertCircle className="h-3 w-3" />
-                <span>{lastAction}</span>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+    <div className="space-y-3">
+      {/* Compact Overview Stats */}
+      <div className="grid grid-cols-4 gap-2 text-center p-2 rounded-lg bg-muted/30">
+        <div>
+          <div className="text-lg font-mono text-blue-500">{memStats.totalMemories}</div>
+          <div className="text-[9px] text-muted-foreground">Mem</div>
+        </div>
+        <div>
+          <div className="text-lg font-mono text-purple-500">{reasoningStats.totalFacts}</div>
+          <div className="text-[9px] text-muted-foreground">Facts</div>
+        </div>
+        <div>
+          <div className="text-lg font-mono text-amber-500">{collapseStats.totalCollapses}</div>
+          <div className="text-[9px] text-muted-foreground">Coll</div>
+        </div>
+        <div>
+          <div className="text-lg font-mono text-green-500">{agent.actionHistory.length}</div>
+          <div className="text-[9px] text-muted-foreground">Acts</div>
+        </div>
+      </div>
 
       {/* Cognitive Sub-tabs */}
-      <Tabs defaultValue="memory" className="space-y-4">
-        <TabsList className="grid grid-cols-4 w-full">
-          <TabsTrigger value="memory" className="text-xs sm:text-sm">
-            <Database className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-            Memory
+      <Tabs defaultValue="memory" className="space-y-3">
+        <TabsList className="grid grid-cols-4 w-full h-8">
+          <TabsTrigger value="memory" className="text-[10px] h-7">
+            <Database className="h-3 w-3 mr-1" />
+            Mem
           </TabsTrigger>
-          <TabsTrigger value="agency" className="text-xs sm:text-sm">
-            <Target className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-            Agency
+          <TabsTrigger value="agency" className="text-[10px] h-7">
+            <Target className="h-3 w-3 mr-1" />
+            Agent
           </TabsTrigger>
-          <TabsTrigger value="collapse" className="text-xs sm:text-sm">
-            <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+          <TabsTrigger value="collapse" className="text-[10px] h-7">
+            <Sparkles className="h-3 w-3 mr-1" />
             Collapse
           </TabsTrigger>
-          <TabsTrigger value="reasoning" className="text-xs sm:text-sm">
-            <GitBranch className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-            Reasoning
+          <TabsTrigger value="reasoning" className="text-[10px] h-7">
+            <GitBranch className="h-3 w-3 mr-1" />
+            Logic
           </TabsTrigger>
         </TabsList>
 
         {/* Memory Tab */}
-        <TabsContent value="memory" className="space-y-4">
-          {/* Memory Browser Panel (with search integrated) */}
+        <TabsContent value="memory" className="space-y-3 mt-0">
           <MemoryBrowserPanel
             memory={memory}
             onReinjectMemory={handleReinjectMemory}
@@ -205,200 +179,164 @@ export const CognitiveTab: React.FC<CognitiveTabProps> = ({
           />
         </TabsContent>
 
-        {/* Agency Tab */}
-        <TabsContent value="agency" className="space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Target className="h-4 w-4" />
-                Goal-Directed Agency
-              </CardTitle>
-              <CardDescription>
-                The observer autonomously pursues goals through semantic action selection
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Autonomous Mode Toggle */}
-              <div className="p-3 border rounded-lg bg-gradient-to-r from-primary/5 to-transparent">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Bot className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium">Autonomous Mode</span>
+        {/* Agency Tab - Simplified */}
+        <TabsContent value="agency" className="space-y-3 mt-0">
+          {/* Autonomous toggle - compact */}
+          <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30 border">
+            <div className="flex items-center gap-2">
+              <Bot className="h-3.5 w-3.5 text-primary" />
+              <span className="text-xs font-medium">Auto</span>
+            </div>
+            <Switch
+              checked={isAgentAutonomous}
+              onCheckedChange={onSetAgentAutonomous}
+              disabled={!isSimulationRunning}
+              className="scale-75"
+            />
+          </div>
+          
+          {/* Last action indicator */}
+          {lastAgentAction && (
+            <div className="p-1.5 bg-primary/10 rounded text-[10px] flex items-center gap-1.5">
+              <Zap className="h-2.5 w-2.5 text-primary animate-pulse" />
+              <span className="truncate text-primary">{lastAgentAction}</span>
+            </div>
+          )}
+          
+          {/* Manual step button */}
+          <Button onClick={handleAgentStep} size="sm" className="w-full h-7 text-xs" disabled={isAgentAutonomous}>
+            <Play className="h-3 w-3 mr-1" />
+            Step
+          </Button>
+          
+          {/* Active Goals - Compact */}
+          <div className="space-y-1">
+            <div className="text-[10px] text-muted-foreground font-medium">Goals</div>
+            <ScrollArea className="h-[120px]">
+              <div className="space-y-1">
+                {agent.goals.filter(g => g.status === 'active').map(goal => (
+                  <div key={goal.id} className="p-1.5 border rounded bg-muted/20">
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="text-[10px] truncate flex-1">{goal.description}</span>
+                      <span className="text-[9px] font-mono text-muted-foreground">
+                        {(goal.priority * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                    <Progress value={goal.progress * 100} className="h-0.5 mt-1" />
                   </div>
-                  <Switch
-                    checked={isAgentAutonomous}
-                    onCheckedChange={onSetAgentAutonomous}
-                    disabled={!isSimulationRunning}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {!isSimulationRunning 
-                    ? 'Start simulation to enable autonomous mode'
-                    : isAgentAutonomous 
-                      ? 'Agent runs automatically every 2 seconds'
-                      : 'Agent waits for manual steps'
-                  }
-                </p>
-                {isAgentAutonomous && lastAgentAction && (
-                  <div className="mt-2 p-2 bg-primary/10 rounded text-xs flex items-center gap-2">
-                    <Zap className="h-3 w-3 text-primary animate-pulse" />
-                    <span className="text-primary">{lastAgentAction}</span>
+                ))}
+                {agent.goals.filter(g => g.status === 'active').length === 0 && (
+                  <div className="text-center text-muted-foreground text-[10px] py-3">
+                    No active goals
                   </div>
                 )}
               </div>
-              
-              {/* Action Controls */}
-              <div className="flex gap-2">
-                <Button onClick={handleAgentStep} className="flex-1" disabled={isAgentAutonomous}>
-                  <Play className="h-4 w-4 mr-2" />
-                  Run Agent Step
-                </Button>
-              </div>
-              
-              {/* Active Goals */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Active Goals</label>
-                <ScrollArea className="h-[180px]">
-                  <div className="space-y-2">
-                    {agent.goals.filter(g => g.status === 'active').map(goal => (
-                      <div key={goal.id} className="p-2 border rounded">
-                        <div className="flex justify-between items-start mb-1">
-                          <span className="text-sm">{goal.description}</span>
-                          <Badge variant={goal.status === 'active' ? 'default' : 'secondary'} className="text-xs">
-                            {(goal.priority * 100).toFixed(0)}%
-                          </Badge>
-                        </div>
-                        <Progress value={goal.progress * 100} className="h-1" />
-                      </div>
-                    ))}
+            </ScrollArea>
+          </div>
+          
+          {/* Recent Actions - Compact */}
+          <div className="space-y-1">
+            <div className="text-[10px] text-muted-foreground font-medium">Actions</div>
+            <ScrollArea className="h-[80px]">
+              <div className="space-y-0.5">
+                {agent.actionHistory.slice(-4).reverse().map(record => (
+                  <div key={record.id} className="p-1 bg-muted/20 rounded text-[10px] flex justify-between">
+                    <span className="truncate">{record.actionName}</span>
+                    <span className="font-mono text-muted-foreground ml-1">{(record.confidence * 100).toFixed(0)}%</span>
                   </div>
-                </ScrollArea>
+                ))}
+                {agent.actionHistory.length === 0 && (
+                  <div className="text-center text-muted-foreground text-[10px] py-2">—</div>
+                )}
               </div>
-              
-              {/* Recent Actions */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Recent Actions</label>
-                <ScrollArea className="h-[120px]">
-                  <div className="space-y-1">
-                    {agent.actionHistory.slice(-5).reverse().map(record => (
-                      <div key={record.id} className="p-2 bg-muted/30 rounded text-xs">
-                        <div className="flex justify-between">
-                          <span className="font-medium">{record.actionName}</span>
-                          <span className="text-muted-foreground">
-                            {(record.confidence * 100).toFixed(0)}%
-                          </span>
-                        </div>
-                        <div className="text-muted-foreground truncate">{record.reasoning}</div>
-                      </div>
-                    ))}
-                    {agent.actionHistory.length === 0 && (
-                      <div className="text-center text-muted-foreground py-4">
-                        No actions taken yet
-                      </div>
-                    )}
-                  </div>
-                </ScrollArea>
-              </div>
-            </CardContent>
-          </Card>
+            </ScrollArea>
+          </div>
         </TabsContent>
 
-        {/* Collapse Tab */}
-        <TabsContent value="collapse" className="space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Sparkles className="h-4 w-4" />
-                Semantic State Collapse
-              </CardTitle>
-              <CardDescription>
-                Quantum-like superposition and collapse of meaning states
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Create Superposition */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Create Meaning Superposition</label>
-                <div className="flex gap-2">
-                  <Input
-                    value={collapseInput}
-                    onChange={e => setCollapseInput(e.target.value)}
-                    placeholder="Enter input to create superposition..."
-                    onKeyDown={e => e.key === 'Enter' && handleCreateSuperposition()}
-                  />
-                  <Button onClick={handleCreateSuperposition} size="sm">
-                    <Zap className="h-4 w-4" />
-                  </Button>
-                </div>
+        {/* Collapse Tab - Simplified */}
+        <TabsContent value="collapse" className="space-y-3 mt-0">
+          {/* Create Superposition - Compact */}
+          <div className="flex gap-1.5">
+            <Input
+              value={collapseInput}
+              onChange={e => setCollapseInput(e.target.value)}
+              placeholder="Input for superposition..."
+              onKeyDown={e => e.key === 'Enter' && handleCreateSuperposition()}
+              className="h-7 text-xs"
+            />
+            <Button onClick={handleCreateSuperposition} size="sm" className="h-7 w-7 p-0">
+              <Zap className="h-3 w-3" />
+            </Button>
+          </div>
+          
+          {/* Current Superposition - Compact */}
+          {currentSuperposition && (
+            <div className="p-2 border rounded bg-muted/20 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] truncate flex-1 text-muted-foreground">
+                  {currentSuperposition.input.slice(0, 30)}...
+                </span>
+                <Badge variant={currentSuperposition.collapsed ? 'secondary' : 'default'} className="text-[9px] h-4">
+                  {currentSuperposition.collapsed ? 'Collapsed' : 'Active'}
+                </Badge>
               </div>
               
-              {/* Current Superposition */}
-              {currentSuperposition && (
-                <div className="space-y-2 p-3 border rounded bg-muted/20">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Current Superposition</span>
-                    <Badge variant={currentSuperposition.collapsed ? 'secondary' : 'default'}>
-                      {currentSuperposition.collapsed ? 'Collapsed' : 'Superposed'}
-                    </Badge>
-                  </div>
-                  
-                  <div className="text-xs text-muted-foreground mb-2">
-                    Input: "{currentSuperposition.input.slice(0, 40)}..."
-                  </div>
-                  
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs">Entropy:</span>
-                    <Progress value={currentSuperposition.entropy * 20} className="flex-1 h-2" />
-                    <span className="text-xs font-mono">{currentSuperposition.entropy.toFixed(2)}</span>
-                  </div>
-                  
-                  {/* Meaning States */}
-                  <ScrollArea className="h-[120px]">
-                    <div className="space-y-1">
-                      {currentSuperposition.states.slice(0, 5).map(state => (
-                        <div 
-                          key={state.id} 
-                          className={`p-2 rounded text-xs ${
-                            currentSuperposition.collapsedTo === state.id 
-                              ? 'bg-primary/20 border border-primary/40' 
-                              : 'bg-muted/30'
-                          }`}
-                        >
-                          <div className="flex justify-between">
-                            <span className="truncate flex-1 mr-2">{state.interpretation}</span>
-                            <span className="font-mono">{(state.probability * 100).toFixed(1)}%</span>
-                          </div>
-                        </div>
-                      ))}
+              {/* Entropy bar */}
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] text-muted-foreground w-6">H</span>
+                <Progress value={currentSuperposition.entropy * 20} className="flex-1 h-1" />
+                <span className="text-[9px] font-mono w-6">{currentSuperposition.entropy.toFixed(1)}</span>
+              </div>
+              
+              {/* States */}
+              <ScrollArea className="h-[100px]">
+                <div className="space-y-0.5">
+                  {currentSuperposition.states.slice(0, 5).map(state => (
+                    <div 
+                      key={state.id} 
+                      className={`p-1 rounded text-[10px] flex justify-between ${
+                        currentSuperposition.collapsedTo === state.id 
+                          ? 'bg-primary/20 border border-primary/30' 
+                          : 'bg-muted/30'
+                      }`}
+                    >
+                      <span className="truncate flex-1">{state.interpretation}</span>
+                      <span className="font-mono ml-1">{(state.probability * 100).toFixed(0)}%</span>
                     </div>
-                  </ScrollArea>
-                  
-                  {!currentSuperposition.collapsed && (
-                    <Button onClick={handleCollapse} size="sm" className="w-full mt-2">
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Trigger Collapse
-                    </Button>
-                  )}
+                  ))}
                 </div>
-              )}
+              </ScrollArea>
               
-              {/* Collapse Stats */}
-              <div className="grid grid-cols-3 gap-2 pt-2 border-t">
-                <div className="p-2 bg-muted/30 rounded text-center">
-                  <div className="text-lg font-mono">{collapseStats.totalCollapses}</div>
-                  <div className="text-xs text-muted-foreground">Collapses</div>
-                </div>
-                <div className="p-2 bg-muted/30 rounded text-center">
-                  <div className="text-lg font-mono">{(collapseStats.averageCoherence * 100).toFixed(0)}%</div>
-                  <div className="text-xs text-muted-foreground">Avg Coherence</div>
-                </div>
-                <div className="p-2 bg-muted/30 rounded text-center">
-                  <div className="text-lg font-mono">{(collapseStats.reanalysisRate * 100).toFixed(0)}%</div>
-                  <div className="text-xs text-muted-foreground">Reanalysis</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              {!currentSuperposition.collapsed && (
+                <Button onClick={handleCollapse} size="sm" className="w-full h-6 text-[10px]">
+                  <Sparkles className="h-2.5 w-2.5 mr-1" />
+                  Collapse
+                </Button>
+              )}
+            </div>
+          )}
+          
+          {!currentSuperposition && (
+            <div className="text-center py-4 text-muted-foreground text-[10px]">
+              Enter input above to create superposition
+            </div>
+          )}
+          
+          {/* Collapse Stats - Compact */}
+          <div className="grid grid-cols-3 gap-1 text-center">
+            <div className="p-1.5 bg-muted/20 rounded">
+              <div className="text-sm font-mono">{collapseStats.totalCollapses}</div>
+              <div className="text-[8px] text-muted-foreground">Total</div>
+            </div>
+            <div className="p-1.5 bg-muted/20 rounded">
+              <div className="text-sm font-mono">{(collapseStats.averageCoherence * 100).toFixed(0)}%</div>
+              <div className="text-[8px] text-muted-foreground">Avg C</div>
+            </div>
+            <div className="p-1.5 bg-muted/20 rounded">
+              <div className="text-sm font-mono">{(collapseStats.reanalysisRate * 100).toFixed(0)}%</div>
+              <div className="text-[8px] text-muted-foreground">Rean</div>
+            </div>
+          </div>
         </TabsContent>
 
         {/* Reasoning Tab */}
