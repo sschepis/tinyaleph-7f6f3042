@@ -169,9 +169,9 @@ export const DEFAULT_JSON_SCHEMA = `{
 
 export const DEFAULT_CONFIG: WebLLMConfig = {
   modelId: 'DeepSeek-R1-Distill-Qwen-7B-q4f32_1-MLC',
-  systemPrompt: DEFAULT_SYSTEM_PROMPT,
+  systemPrompt: 'You are a helpful assistant. Respond naturally and conversationally.',
   temperature: 0.7,
   maxTokens: 2048,
-  jsonMode: true,
-  jsonSchema: DEFAULT_JSON_SCHEMA,
+  jsonMode: false,
+  jsonSchema: null,
 };
