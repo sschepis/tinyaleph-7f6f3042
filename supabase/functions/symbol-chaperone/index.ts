@@ -232,6 +232,9 @@ Your task is to generate concrete examples of how these symbols might be used or
         );
     }
 
+    // Use JSON schema in system prompt for more reliable structured output
+    const schemaInstructions = `\n\nIMPORTANT: Respond ONLY with valid JSON matching this schema:\n${JSON.stringify(responseSchema, null, 2)}`;
+    
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -239,21 +242,13 @@ Your task is to generate concrete examples of how these symbols might be used or
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: systemPrompt + schemaInstructions },
           { role: "user", content: userPrompt }
         ],
-        temperature: 0.8,
-        tools: [{
-          type: "function",
-          function: {
-            name: "return_structured_output",
-            description: "Return the structured response",
-            parameters: responseSchema
-          }
-        }],
-        tool_choice: { type: "function", function: { name: "return_structured_output" } }
+        temperature: 0.7,
+        max_tokens: 2000
       }),
     });
 
@@ -274,21 +269,19 @@ Your task is to generate concrete examples of how these symbols might be used or
 
     const data = await response.json();
     
-    // Extract tool call result
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    // Extract result from content (JSON format)
+    const content = data.choices?.[0]?.message?.content || "{}";
     let result = {};
     
-    if (toolCall?.function?.arguments) {
-      try {
-        result = JSON.parse(toolCall.function.arguments);
-      } catch {
-        // Fallback to content parsing
-        const content = data.choices?.[0]?.message?.content || "{}";
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          result = JSON.parse(jsonMatch[0]);
-        }
+    try {
+      // Try to parse JSON directly from content
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        result = JSON.parse(jsonMatch[0]);
       }
+    } catch (parseError) {
+      console.error("JSON parse error:", parseError);
+      result = { error: "Failed to parse response" };
     }
 
     return new Response(
