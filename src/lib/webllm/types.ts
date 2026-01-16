@@ -66,11 +66,11 @@ export const AVAILABLE_MODELS: ModelOption[] = [
   },
   // Llama Series
   {
-    id: 'Llama-3.2-3B-Instruct-q4f16_1-MLC',
-    name: 'Llama 3.2 3B Instruct',
-    size: '~2GB',
+    id: 'Llama-3.1-70B-Instruct-q3f16_1-MLC',
+    name: 'Llama 3.1 70B Instruct',
+    size: '~31GB',
     family: 'Llama',
-    description: 'Meta\'s latest compact model with strong instruction following',
+    description: 'Meta\'s flagship model - requires 32GB+ VRAM/RAM',
   },
   {
     id: 'Llama-3.1-8B-Instruct-q4f16_1-MLC',
@@ -78,6 +78,13 @@ export const AVAILABLE_MODELS: ModelOption[] = [
     size: '~4.5GB',
     family: 'Llama',
     description: 'Powerful general-purpose model',
+  },
+  {
+    id: 'Llama-3.2-3B-Instruct-q4f16_1-MLC',
+    name: 'Llama 3.2 3B Instruct',
+    size: '~2GB',
+    family: 'Llama',
+    description: 'Meta\'s latest compact model with strong instruction following',
   },
   // Mistral Series
   {
@@ -102,13 +109,42 @@ export const AVAILABLE_MODELS: ModelOption[] = [
     family: 'Phi',
     description: 'Compact but capable reasoning model',
   },
-  // Qwen Series
+  // Qwen3 Series (all available variants)
   {
     id: 'Qwen3-8B-q4f16_1-MLC',
     name: 'Qwen3 8B',
     size: '~5GB',
     family: 'Qwen',
-    description: 'Alibaba\'s latest reasoning model with hybrid thinking',
+    description: 'Alibaba\'s largest available Qwen3 with hybrid thinking',
+  },
+  {
+    id: 'Qwen3-4B-q4f16_1-MLC',
+    name: 'Qwen3 4B',
+    size: '~2.5GB',
+    family: 'Qwen',
+    description: 'Balanced Qwen3 model for most tasks',
+  },
+  {
+    id: 'Qwen3-1.7B-q4f16_1-MLC',
+    name: 'Qwen3 1.7B',
+    size: '~1GB',
+    family: 'Qwen',
+    description: 'Fast Qwen3 model for quick responses',
+  },
+  {
+    id: 'Qwen3-0.6B-q4f16_1-MLC',
+    name: 'Qwen3 0.6B',
+    size: '~400MB',
+    family: 'Qwen',
+    description: 'Tiny Qwen3 for rapid inference',
+  },
+  // Qwen 2.5 Series
+  {
+    id: 'Qwen2.5-7B-Instruct-q4f16_1-MLC',
+    name: 'Qwen 2.5 7B Instruct',
+    size: '~4GB',
+    family: 'Qwen',
+    description: 'Strong reasoning and coding capabilities',
   },
   {
     id: 'Qwen2.5-3B-Instruct-q4f16_1-MLC',
@@ -116,13 +152,6 @@ export const AVAILABLE_MODELS: ModelOption[] = [
     size: '~2GB',
     family: 'Qwen',
     description: 'Alibaba\'s efficient multilingual model',
-  },
-  {
-    id: 'Qwen2.5-7B-Instruct-q4f16_1-MLC',
-    name: 'Qwen 2.5 7B Instruct',
-    size: '~4GB',
-    family: 'Qwen',
-    description: 'Strong reasoning and coding capabilities',
   },
   // SmolLM (tiny models)
   {
