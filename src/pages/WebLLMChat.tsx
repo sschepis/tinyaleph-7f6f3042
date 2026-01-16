@@ -62,11 +62,31 @@ export default function WebLLMChat() {
   const [schemaError, setSchemaError] = useState<string | null>(null);
   const [selectedModelId, setSelectedModelId] = useState(config.modelId);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const userScrolledUpRef = useRef(false);
 
-  // Auto-scroll to bottom
+  // Track if user has scrolled up (to prevent hijacking their scroll)
+  const handleChatScroll = () => {
+    if (!chatContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+    // Consider "at bottom" if within 100px of the bottom
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 100;
+    userScrolledUpRef.current = !isAtBottom;
+  };
+
+  // Auto-scroll to bottom only if user hasn't scrolled up
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (!userScrolledUpRef.current) {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages, streamingContent]);
+
+  // Reset scroll lock when generation completes
+  useEffect(() => {
+    if (!state.isGenerating) {
+      userScrolledUpRef.current = false;
+    }
+  }, [state.isGenerating]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -486,7 +506,11 @@ export default function WebLLMChat() {
                 </Button>
               </CardHeader>
 
-              <ScrollArea className="flex-1 p-4">
+              <ScrollArea 
+                className="flex-1 p-4" 
+                ref={chatContainerRef}
+                onScrollCapture={handleChatScroll}
+              >
                 <div className="space-y-4">
                   <AnimatePresence mode="popLayout">
                     {messages.map((msg, idx) => (
