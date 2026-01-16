@@ -26,6 +26,7 @@ interface ActiveSymbol {
   unicode: string;
   isFromMapper: boolean;
   confidence?: number;
+  derivationChain?: { p: number; q: number; r: number; pMeaning?: string; qMeaning?: string; rMeaning?: string }[];
 }
 
 export function ActiveSymbolsPanel({ oscillators }: ActiveSymbolsPanelProps) {
@@ -58,12 +59,30 @@ export function ActiveSymbolsPanel({ oscillators }: ActiveSymbolsPanelProps) {
         let unicode: string;
         let isFromMapper = false;
         let confidence: number | undefined;
+        let derivationChain: ActiveSymbol['derivationChain'];
         
         if (mapperMeaning) {
           name = mapperMeaning.meaning;
           unicode = staticSymbol?.unicode || '◈';
           isFromMapper = !mapperMeaning.isSeeded;
           confidence = mapperMeaning.confidence;
+          
+          // Extract derivation chain with source prime meanings
+          if (mapperMeaning.derivedFrom && mapperMeaning.derivedFrom.length > 0) {
+            derivationChain = mapperMeaning.derivedFrom.map(fusion => {
+              const pMeaning = mapper.getMeaning(fusion.p);
+              const qMeaning = mapper.getMeaning(fusion.q);
+              const rMeaning = mapper.getMeaning(fusion.r);
+              return {
+                p: fusion.p,
+                q: fusion.q,
+                r: fusion.r,
+                pMeaning: pMeaning?.meaning,
+                qMeaning: qMeaning?.meaning,
+                rMeaning: rMeaning?.meaning
+              };
+            });
+          }
         } else if (staticSymbol) {
           name = staticSymbol.name;
           unicode = staticSymbol.unicode;
@@ -79,7 +98,8 @@ export function ActiveSymbolsPanel({ oscillators }: ActiveSymbolsPanelProps) {
           name,
           unicode,
           isFromMapper,
-          confidence
+          confidence,
+          derivationChain
         } as ActiveSymbol;
       })
       .slice(0, 20);
@@ -110,45 +130,62 @@ export function ActiveSymbolsPanel({ oscillators }: ActiveSymbolsPanelProps) {
           <ScrollArea className="h-[200px]">
             <div className="grid grid-cols-2 gap-1">
               <AnimatePresence mode="popLayout">
-                {activeSymbols.slice(0, 12).map(({ prime, amplitude, name, unicode, isFromMapper, confidence }) => (
-                  <motion.div
-                    key={prime}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    layout
-                    className={`flex items-center gap-1.5 p-1.5 rounded ${isFromMapper ? 'bg-primary/10 border border-primary/20' : 'bg-muted/30'}`}
-                    title={`${name} (Prime ${prime})${isFromMapper ? ` • Derived (${((confidence || 0) * 100).toFixed(0)}% confidence)` : ''}`}
-                  >
-                    <span 
-                      className="text-base"
-                      style={{ 
-                        textShadow: `0 0 ${amplitude * 8}px hsl(${(prime * 37) % 360}, 70%, 50%)` 
-                      }}
+                {activeSymbols.slice(0, 12).map(({ prime, amplitude, name, unicode, isFromMapper, confidence, derivationChain }) => {
+                  // Build tooltip with derivation chain
+                  let tooltipText = `${name} (Prime ${prime})`;
+                  if (isFromMapper) {
+                    tooltipText += ` • Derived (${((confidence || 0) * 100).toFixed(0)}% confidence)`;
+                    if (derivationChain && derivationChain.length > 0) {
+                      const chain = derivationChain[0]; // Show first derivation
+                      const parts = [
+                        chain.pMeaning ? `${chain.pMeaning}(${chain.p})` : `p${chain.p}`,
+                        chain.qMeaning ? `${chain.qMeaning}(${chain.q})` : `p${chain.q}`,
+                        chain.rMeaning ? `${chain.rMeaning}(${chain.r})` : `p${chain.r}`
+                      ];
+                      tooltipText += ` • From: ${parts.join(' + ')}`;
+                    }
+                  }
+                  
+                  return (
+                    <motion.div
+                      key={prime}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      layout
+                      className={`flex items-center gap-1.5 p-1.5 rounded ${isFromMapper ? 'bg-primary/10 border border-primary/20' : 'bg-muted/30'}`}
+                      title={tooltipText}
                     >
-                      {unicode}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1">
-                        <span className="text-[10px] font-medium truncate flex-1">
-                          {name}
-                        </span>
-                        {isFromMapper && (
-                          <span className="text-[8px] text-primary/70">✦</span>
-                        )}
+                      <span 
+                        className="text-base"
+                        style={{ 
+                          textShadow: `0 0 ${amplitude * 8}px hsl(${(prime * 37) % 360}, 70%, 50%)` 
+                        }}
+                      >
+                        {unicode}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] font-medium truncate flex-1">
+                            {name}
+                          </span>
+                          {isFromMapper && (
+                            <span className="text-[8px] text-primary/70" title="Derived meaning">✦</span>
+                          )}
+                        </div>
+                        <div className="h-1 bg-muted rounded-full overflow-hidden">
+                          <motion.div
+                            className="h-full rounded-full"
+                            style={{ 
+                              backgroundColor: `hsl(${(prime * 37) % 360}, 60%, 50%)` 
+                            }}
+                            animate={{ width: `${amplitude * 100}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="h-1 bg-muted rounded-full overflow-hidden">
-                        <motion.div
-                          className="h-full rounded-full"
-                          style={{ 
-                            backgroundColor: `hsl(${(prime * 37) % 360}, 60%, 50%)` 
-                          }}
-                          animate={{ width: `${amplitude * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  );
+                })}
               </AnimatePresence>
             </div>
           </ScrollArea>
