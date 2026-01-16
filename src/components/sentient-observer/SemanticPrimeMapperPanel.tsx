@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { 
   Sparkles, 
   Zap, 
@@ -21,7 +22,8 @@ import {
   Brain,
   Link2,
   Network,
-  GitCompare
+  GitCompare,
+  Wand2
 } from 'lucide-react';
 import { 
   SemanticPrimeMapper, 
@@ -112,6 +114,18 @@ export function SemanticPrimeMapperPanel({
     setIsExpanding(false);
   }, [mapper, field.uncataloguedCount]);
 
+  // Refine all unrefined meanings
+  const handleRefineAll = useCallback(async () => {
+    setIsRefining(true);
+    const result = await mapper.refineMeanings();
+    setRefinedCount(r => r + result.refined);
+    refreshField();
+    // Update recent expansions to show refined versions
+    const allMeanings = mapper.getAllMeanings();
+    setRecentExpansions(allMeanings.filter(m => !m.isSeeded).slice(0, 10));
+    setIsRefining(false);
+  }, [mapper, refreshField]);
+
   // Reset mapper
   const handleReset = useCallback(() => {
     resetSemanticPrimeMapper();
@@ -192,7 +206,7 @@ export function SemanticPrimeMapperPanel({
           <Button 
             size="sm" 
             onClick={runExpansionCycle}
-            disabled={isExpanding}
+            disabled={isExpanding || isRefining}
             className="flex-1"
           >
             <Sparkles className="h-4 w-4 mr-1" />
@@ -202,7 +216,7 @@ export function SemanticPrimeMapperPanel({
             size="sm" 
             variant="secondary"
             onClick={runFullExpansion}
-            disabled={isExpanding}
+            disabled={isExpanding || isRefining}
             className="flex-1"
           >
             <Zap className="h-4 w-4 mr-1" />
@@ -211,8 +225,17 @@ export function SemanticPrimeMapperPanel({
           <Button 
             size="sm" 
             variant="outline"
+            onClick={handleRefineAll}
+            disabled={isExpanding || isRefining || mapper.getUnrefinedCount() === 0}
+            title={`Refine ${mapper.getUnrefinedCount()} unrefined meanings`}
+          >
+            <Wand2 className={cn("h-4 w-4", isRefining && "animate-pulse")} />
+          </Button>
+          <Button 
+            size="sm" 
+            variant="outline"
             onClick={handleReset}
-            disabled={isExpanding}
+            disabled={isExpanding || isRefining}
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
@@ -364,6 +387,47 @@ function PrimeMeaningCard({ meaning, isExpanded, onToggle, isActive, compact }: 
       ? 'text-yellow-500' 
       : 'text-orange-500';
 
+  const hasRefinement = meaning.rawMeaning && meaning.rawMeaning !== meaning.meaning;
+  
+  // Meaning display with hover card for refinement comparison
+  const MeaningDisplay = ({ className }: { className?: string }) => (
+    hasRefinement ? (
+      <HoverCard>
+        <HoverCardTrigger asChild>
+          <span className={cn("cursor-help border-b border-dashed border-primary/40", className)}>
+            {meaning.meaning}
+            {meaning.isRefined && <Wand2 className="inline h-3 w-3 ml-1 text-primary/60" />}
+          </span>
+        </HoverCardTrigger>
+        <HoverCardContent className="w-80" side="top">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-xs font-medium">
+              <Wand2 className="h-3 w-3 text-primary" />
+              <span>LLM Refinement</span>
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-start gap-2 text-xs">
+                <span className="text-muted-foreground shrink-0">Raw:</span>
+                <span className="font-mono text-orange-400 break-all">{meaning.rawMeaning}</span>
+              </div>
+              <div className="flex items-start gap-2 text-xs">
+                <span className="text-muted-foreground shrink-0">Refined:</span>
+                <span className="font-mono text-green-400">{meaning.meaning}</span>
+              </div>
+            </div>
+          </div>
+        </HoverCardContent>
+      </HoverCard>
+    ) : (
+      <span className={className}>
+        {meaning.meaning}
+        {!meaning.isRefined && !meaning.isSeeded && (
+          <span className="text-orange-400/60 text-xs ml-1">(unrefined)</span>
+        )}
+      </span>
+    )
+  );
+
   if (compact) {
     return (
       <div 
@@ -376,7 +440,7 @@ function PrimeMeaningCard({ meaning, isExpanded, onToggle, isActive, compact }: 
       >
         <div className="flex items-center gap-2">
           <span className="font-mono text-primary">{meaning.prime}</span>
-          <span className="text-muted-foreground truncate max-w-32">{meaning.meaning}</span>
+          <MeaningDisplay className="text-muted-foreground truncate max-w-32" />
         </div>
         <span className={cn("font-mono", confidenceColor)}>
           {(meaning.confidence * 100).toFixed(0)}%
@@ -404,7 +468,7 @@ function PrimeMeaningCard({ meaning, isExpanded, onToggle, isActive, compact }: 
             <Link2 className="h-4 w-4 text-muted-foreground" />
           )}
           <span className="font-mono text-primary font-bold">{meaning.prime}</span>
-          <span className="text-sm">{meaning.meaning}</span>
+          <MeaningDisplay className="text-sm" />
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className={cn("text-xs", confidenceColor)}>
