@@ -183,6 +183,56 @@ const SentientObserverApp: React.FC = () => {
               </CardContent>
             </Card>
 
+            {/* Prime Oscillator Bank - Always Visible */}
+            <Card>
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="text-xs">Prime Oscillator Bank</CardTitle>
+                <p className="text-[10px] text-muted-foreground">
+                  {oscillators.length} oscillators, {oscillators.filter(o => o.amplitude > 0.1).length} active
+                </p>
+              </CardHeader>
+              <CardContent className="p-2">
+                <ScrollArea className="h-[180px]">
+                  <div className="space-y-1">
+                    {oscillators.slice(0, 10).map((osc, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <span className="w-6 text-right font-mono text-xs">{osc.prime}</span>
+                        <Progress value={osc.amplitude * 100} className="flex-1 h-2" />
+                        <span className="w-12 text-right font-mono text-[10px] text-muted-foreground">
+                          ψ={osc.phase.toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+
+            {/* Exploration Heatmap - Always Visible */}
+            <Card>
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="text-xs flex items-center gap-2">
+                  <Activity className="h-3 w-3" />
+                  Exploration
+                  <Badge variant="outline" className="ml-auto text-[10px]">
+                    {(explorationProgress * 100).toFixed(0)}%
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-2">
+                <ExplorationHeatmap
+                  oscillators={oscillators}
+                  activationCounts={oscillatorActivationCounts}
+                  recentlyExploredIndices={recentlyExploredIndices}
+                  size={160}
+                />
+                <div className="flex justify-between mt-2 text-[10px] text-muted-foreground">
+                  <span>{Math.round(explorationProgress * oscillators.length)}/{oscillators.length} explored</span>
+                  <span>{oscillatorActivationCounts.reduce((a, b) => a + b, 0)} hits</span>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Results Panel */}
             <ResultsPanel
               coherence={coherence}
