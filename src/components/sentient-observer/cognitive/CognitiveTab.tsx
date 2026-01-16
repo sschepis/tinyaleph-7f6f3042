@@ -145,7 +145,7 @@ export const CognitiveTab: React.FC<CognitiveTabProps> = ({
       </div>
 
       {/* Cognitive Sub-tabs */}
-      <Tabs defaultValue="memory" className="space-y-3">
+      <Tabs defaultValue="reasoning" className="space-y-3">
         <TabsList className="grid grid-cols-4 w-full h-8">
           <TabsTrigger value="memory" className="text-[10px] h-7">
             <Database className="h-3 w-3 mr-1" />
