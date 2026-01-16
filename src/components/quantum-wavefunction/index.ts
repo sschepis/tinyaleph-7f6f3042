@@ -4,3 +4,5 @@ export { CorrelationPanel } from './CorrelationPanel';
 export { TunnelingViz } from './TunnelingViz';
 export { PrimeWaveTable } from './PrimeWaveTable';
 export { FormalismInfo } from './FormalismInfo';
+export { ComplexHelix3D } from './ComplexHelix3D';
+export { PrimeGapAnalysis } from './PrimeGapAnalysis';

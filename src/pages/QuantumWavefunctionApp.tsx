@@ -1,8 +1,8 @@
+import { Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
-import { Waves, Settings2 } from 'lucide-react';
+import { Waves, Settings2, Loader2 } from 'lucide-react';
 import { useQuantumWavefunction } from '@/hooks/useQuantumWavefunction';
 import {
   WavefunctionPlot,
@@ -10,7 +10,9 @@ import {
   CorrelationPanel,
   TunnelingViz,
   PrimeWaveTable,
-  FormalismInfo
+  FormalismInfo,
+  ComplexHelix3D,
+  PrimeGapAnalysis
 } from '@/components/quantum-wavefunction';
 
 export default function QuantumWavefunctionApp() {
@@ -69,11 +71,22 @@ export default function QuantumWavefunctionApp() {
           </div>
         </div>
 
-        {/* Main Wave Function Plot - Full Width */}
-        <WavefunctionPlot spectrum={spectrum} height={220} />
+        {/* Top Row: 2D Plot and 3D Visualization */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <WavefunctionPlot spectrum={spectrum} height={280} />
+          <Suspense fallback={
+            <Card>
+              <CardContent className="h-[340px] flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </CardContent>
+            </Card>
+          }>
+            <ComplexHelix3D spectrum={spectrum} />
+          </Suspense>
+        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Left: Parameters */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          {/* Column 1: Parameters */}
           <div className="space-y-4">
             <ParameterControls
               params={params}
@@ -122,15 +135,20 @@ export default function QuantumWavefunctionApp() {
             </Card>
           </div>
 
-          {/* Center: Visualizations */}
+          {/* Column 2: Correlation & Tunneling */}
           <div className="space-y-4">
             <CorrelationPanel stats={spectrum.stats} />
-            <TunnelingViz spectrum={spectrum} />
+            <TunnelingViz spectrum={spectrum} height={140} />
           </div>
 
-          {/* Right: Tables & Info */}
+          {/* Column 3: Prime Gap Analysis */}
           <div className="space-y-4">
-            <PrimeWaveTable primeWaves={primeWaves} />
+            <PrimeGapAnalysis spectrum={spectrum} />
+          </div>
+
+          {/* Column 4: Tables & Info */}
+          <div className="space-y-4">
+            <PrimeWaveTable primeWaves={primeWaves} maxDisplay={10} />
             <FormalismInfo />
           </div>
         </div>
