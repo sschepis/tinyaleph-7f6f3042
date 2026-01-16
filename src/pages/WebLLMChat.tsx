@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Highlight, themes } from 'prism-react-renderer';
 import { 
   Send, 
   Loader2, 
@@ -40,6 +41,28 @@ import {
   AVAILABLE_MODELS,
   ModelOption 
 } from '@/lib/webllm/types';
+
+// JSON Syntax Highlighting component
+function JSONHighlight({ code }: { code: string }) {
+  return (
+    <Highlight theme={themes.nightOwl} code={code} language="json">
+      {({ className, style, tokens, getLineProps, getTokenProps }) => (
+        <pre 
+          className="text-xs font-mono bg-background/50 p-2 rounded overflow-x-auto"
+          style={{ ...style, background: 'transparent' }}
+        >
+          {tokens.map((line, i) => (
+            <div key={i} {...getLineProps({ line })}>
+              {line.map((token, key) => (
+                <span key={key} {...getTokenProps({ token })} />
+              ))}
+            </div>
+          ))}
+        </pre>
+      )}
+    </Highlight>
+  );
+}
 
 export default function WebLLMChat() {
   const {
@@ -128,18 +151,62 @@ export default function WebLLMChat() {
     }
   };
 
-  const formatJSON = (content: string) => {
+  const formatJSON = (content: string): string => {
     try {
+      // First try direct parse
       const parsed = JSON.parse(content);
       return JSON.stringify(parsed, null, 2);
     } catch {
+      // Try to extract JSON from markdown code blocks
+      const codeBlockMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (codeBlockMatch) {
+        try {
+          const parsed = JSON.parse(codeBlockMatch[1].trim());
+          return JSON.stringify(parsed, null, 2);
+        } catch {
+          // Fall through
+        }
+      }
+      
+      // Try to find JSON object/array in the string
+      const jsonMatch = content.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[1]);
+          return JSON.stringify(parsed, null, 2);
+        } catch {
+          // Fall through
+        }
+      }
+      
       return content;
     }
   };
 
-  const isJSON = (str: string) => {
+  const isJSON = (str: string): boolean => {
+    if (!str || str.trim().length === 0) return false;
+    
+    const trimmed = str.trim();
+    
+    // Quick check: must start with { or [
+    if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+      // Check for markdown code blocks with JSON
+      if (trimmed.includes('```json') || trimmed.includes('```\n{')) {
+        const match = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (match) {
+          try {
+            JSON.parse(match[1].trim());
+            return true;
+          } catch {
+            return false;
+          }
+        }
+      }
+      return false;
+    }
+    
     try {
-      JSON.parse(str);
+      JSON.parse(trimmed);
       return true;
     } catch {
       return false;
@@ -548,9 +615,7 @@ export default function WebLLMChat() {
                                 <Code className="w-3 h-3" />
                                 <span>JSON Response</span>
                               </div>
-                              <pre className="text-xs font-mono bg-background/50 p-2 rounded overflow-x-auto">
-                                {formatJSON(msg.content)}
-                              </pre>
+                              <JSONHighlight code={formatJSON(msg.content)} />
                             </div>
                           ) : (
                             <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
@@ -576,7 +641,7 @@ export default function WebLLMChat() {
                     >
                       <div className="max-w-[85%] rounded-lg p-3 bg-muted">
                         {isJSON(streamingContent) ? (
-                          <pre className="text-xs font-mono">{formatJSON(streamingContent)}</pre>
+                          <JSONHighlight code={formatJSON(streamingContent)} />
                         ) : (
                           <p className="text-sm whitespace-pre-wrap">{streamingContent}</p>
                         )}
