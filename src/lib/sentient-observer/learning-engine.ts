@@ -62,6 +62,9 @@ export interface LearningEngineState {
   lastLearningAction: string | null;
 }
 
+// ============= STORAGE KEY =============
+const STORAGE_KEY = 'sentient-observer-learned-knowledge';
+
 // ============= LEARNING ENGINE =============
 
 export class LearningEngine {
@@ -81,6 +84,52 @@ export class LearningEngine {
       isLearning: false,
       lastLearningAction: null
     };
+    
+    // Load persisted knowledge on initialization
+    this.loadFromStorage();
+  }
+
+  /**
+   * Load learned knowledge from localStorage
+   */
+  private loadFromStorage(): void {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const data = JSON.parse(stored);
+        if (data.symbols && Array.isArray(data.symbols)) {
+          for (const symbol of data.symbols) {
+            this.state.learnedSymbols.set(symbol.prime, symbol);
+          }
+        }
+        if (data.relationships && Array.isArray(data.relationships)) {
+          this.state.learnedRelationships = data.relationships;
+        }
+        if (typeof data.totalGoalsCompleted === 'number') {
+          this.state.totalGoalsCompleted = data.totalGoalsCompleted;
+        }
+        console.log(`[LearningEngine] Loaded ${this.state.learnedSymbols.size} symbols, ${this.state.learnedRelationships.length} relationships from storage`);
+      }
+    } catch (e) {
+      console.warn('[LearningEngine] Failed to load from storage:', e);
+    }
+  }
+
+  /**
+   * Save learned knowledge to localStorage
+   */
+  private saveToStorage(): void {
+    try {
+      const data = {
+        symbols: Array.from(this.state.learnedSymbols.values()),
+        relationships: this.state.learnedRelationships,
+        totalGoalsCompleted: this.state.totalGoalsCompleted,
+        savedAt: Date.now()
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {
+      console.warn('[LearningEngine] Failed to save to storage:', e);
+    }
   }
 
   setOnUpdate(callback: (state: LearningEngineState) => void): void {
@@ -366,6 +415,9 @@ export class LearningEngine {
         }
         break;
     }
+    
+    // Persist after learning
+    this.saveToStorage();
   }
 
   /**
@@ -431,6 +483,18 @@ export class LearningEngine {
     if (data.relationships) {
       this.state.learnedRelationships = [...this.state.learnedRelationships, ...data.relationships];
     }
+    this.saveToStorage();
+    this.notifyUpdate();
+  }
+
+  /**
+   * Clear all learned knowledge from storage and memory
+   */
+  clearKnowledge(): void {
+    this.state.learnedSymbols.clear();
+    this.state.learnedRelationships = [];
+    this.state.totalGoalsCompleted = 0;
+    localStorage.removeItem(STORAGE_KEY);
     this.notifyUpdate();
   }
 
