@@ -5,13 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+
 import { Separator } from '@/components/ui/separator';
 import { 
   Send, 
-  Sparkles, 
   Waves,
-  MessageCircle,
   Zap,
   Brain,
   TrendingUp,
@@ -172,8 +170,6 @@ function SymbolEvolution({ messages }: { messages: SymbolicMessage[] }) {
 export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRunning, onConversationFact, onSearchMemory }: SymbolicCoreProps) {
   const [messages, setMessages] = useState<SymbolicMessage[]>([]);
   const [inputText, setInputText] = useState('');
-  const [selectedSymbols, setSelectedSymbols] = useState<SymbolicSymbol[]>([]);
-  const [inputMode, setInputMode] = useState<'text' | 'symbols'>('text');
   const [isProcessing, setIsProcessing] = useState(false);
   const [enableLLM, setEnableLLM] = useState(true);
   const [matchingMemories, setMatchingMemories] = useState<{ content: string; similarity: number }[]>([]);
@@ -203,15 +199,6 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
     return () => clearTimeout(timer);
   }, [inputText, onSearchMemory]);
   
-  const toggleSymbol = useCallback((symbol: SymbolicSymbol) => {
-    setSelectedSymbols(prev => {
-      const exists = prev.find(s => s.id === symbol.id);
-      if (exists) {
-        return prev.filter(s => s.id !== symbol.id);
-      }
-      return [...prev, symbol].slice(0, 5);
-    });
-  }, []);
   
   // Stream LLM response using unified AI client
   const streamLLMResponse = useCallback(async (
@@ -269,18 +256,10 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
   }, [messages, onConversationFact]);
   
   const handleSend = useCallback(() => {
-    let inputSymbols: SymbolicSymbol[];
-    let text: string;
+    if (!inputText.trim()) return;
     
-    if (inputMode === 'text' && inputText.trim()) {
-      text = inputText.trim();
-      inputSymbols = inferSymbolsFromText(text);
-    } else if (inputMode === 'symbols' && selectedSymbols.length > 0) {
-      inputSymbols = selectedSymbols;
-      text = selectedSymbols.map(s => s.name).join(' + ');
-    } else {
-      return;
-    }
+    const text = inputText.trim();
+    const inputSymbols = inferSymbolsFromText(text);
     
     setIsProcessing(true);
     
@@ -308,7 +287,6 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
       
       setMessages(prev => [...prev, newMessage]);
       setInputText('');
-      setSelectedSymbols([]);
       setIsProcessing(false);
       
       if (enableLLM) {
@@ -321,7 +299,7 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
         }
       }
     }, 500);
-  }, [inputMode, inputText, selectedSymbols, oscillators, coherence, onExciteOscillators, enableLLM, streamLLMResponse, onConversationFact]);
+  }, [inputText, oscillators, coherence, onExciteOscillators, enableLLM, streamLLMResponse, onConversationFact]);
   
   return (
     <Card className="flex flex-col" style={{ height: '500px' }}>
@@ -355,8 +333,8 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
           <div className="space-y-3 pr-2">
             {messages.length === 0 && (
               <div className="text-center text-muted-foreground py-4">
-                <Sparkles className="h-6 w-6 mx-auto mb-2 opacity-50" />
-                <p className="text-xs">Send symbols to communicate</p>
+                <Brain className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                <p className="text-xs">Ask the observer something</p>
               </div>
             )}
             
@@ -438,120 +416,57 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
         
         {/* Input */}
         <div className="space-y-2 flex-shrink-0">
-          <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'text' | 'symbols')}>
-            <TabsList className="w-full grid grid-cols-2 h-8">
-              <TabsTrigger value="text" className="text-xs">
-                <MessageCircle className="h-3 w-3 mr-1" />
-                Text
-              </TabsTrigger>
-              <TabsTrigger value="symbols" className="text-xs">
-                <Sparkles className="h-3 w-3 mr-1" />
-                Symbols
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="text" className="mt-2 space-y-2">
-              {/* Matching memories decoration */}
-              <AnimatePresence>
-                {matchingMemories.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20"
-                  >
-                    <div className="flex items-center gap-1 mb-1">
-                      <Brain className="h-3 w-3 text-purple-400" />
-                      <span className="text-[10px] text-purple-300">Related memories:</span>
-                    </div>
-                    <div className="space-y-1">
-                      {matchingMemories.map((mem, idx) => (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: idx * 0.05 }}
-                          className="text-[10px] text-muted-foreground flex items-center gap-1"
-                        >
-                          <span className="text-purple-400">•</span>
-                          <span className="truncate flex-1">{mem.content.slice(0, 50)}...</span>
-                          <Badge variant="outline" className="text-[8px] h-4 px-1">
-                            {(mem.similarity * 100).toFixed(0)}%
-                          </Badge>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              
-              <div className="flex gap-2">
-                <Input
-                  value={inputText}
-                  onChange={e => setInputText(e.target.value)}
-                  placeholder="Ask the observer..."
-                  onKeyDown={e => e.key === 'Enter' && handleSend()}
-                  disabled={isProcessing || !isRunning}
-                  className="h-9 text-sm"
-                />
-                <Button 
-                  onClick={handleSend} 
-                  disabled={!inputText.trim() || isProcessing || !isRunning}
-                  size="sm"
-                >
-                  {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                </Button>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="symbols" className="mt-2 space-y-2">
-              {selectedSymbols.length > 0 && (
-                <div className="flex flex-wrap gap-1 p-2 bg-muted/50 rounded-lg">
-                  {selectedSymbols.map(s => (
-                    <Badge 
-                      key={s.id} 
-                      variant="default"
-                      className="cursor-pointer text-xs"
-                      onClick={() => toggleSymbol(s)}
-                    >
-                      {s.unicode} {s.name} ×
-                    </Badge>
-                  ))}
-                </div>
-              )}
-              
-              <ScrollArea className="h-24">
-                <div className="space-y-2">
-                  {symbolCategories.slice(0, 4).map(({ category, symbols }) => (
-                    <div key={category}>
-                      <div className="text-[10px] text-muted-foreground capitalize mb-1">{category}</div>
-                      <div className="flex flex-wrap gap-0.5">
-                        {symbols.map(s => (
-                          <button
-                            key={s.id}
-                            onClick={() => toggleSymbol(s)}
-                            className={`text-base p-0.5 rounded hover:bg-accent transition-colors ${selectedSymbols.find(sel => sel.id === s.id) ? 'bg-primary/20 ring-1 ring-primary' : ''}`}
-                            title={`${s.name}: ${s.meaning}`}
-                          >
-                            {s.unicode}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-              
-              <Button 
-                onClick={handleSend} 
-                disabled={selectedSymbols.length === 0 || isProcessing || !isRunning}
-                className="w-full h-8 text-sm"
+          {/* Matching memories decoration */}
+          <AnimatePresence>
+            {matchingMemories.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20"
               >
-                {isProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
-                Send {selectedSymbols.length} Symbol{selectedSymbols.length !== 1 ? 's' : ''}
-              </Button>
-            </TabsContent>
-          </Tabs>
+                <div className="flex items-center gap-1 mb-1">
+                  <Brain className="h-3 w-3 text-purple-400" />
+                  <span className="text-[10px] text-purple-300">Related memories:</span>
+                </div>
+                <div className="space-y-1">
+                  {matchingMemories.map((mem, idx) => (
+                    <motion.div
+                      key={idx}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      className="text-[10px] text-muted-foreground flex items-center gap-1"
+                    >
+                      <span className="text-purple-400">•</span>
+                      <span className="truncate flex-1">{mem.content.slice(0, 50)}...</span>
+                      <Badge variant="outline" className="text-[8px] h-4 px-1">
+                        {(mem.similarity * 100).toFixed(0)}%
+                      </Badge>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+          <div className="flex gap-2">
+            <Input
+              value={inputText}
+              onChange={e => setInputText(e.target.value)}
+              placeholder="Ask the observer..."
+              onKeyDown={e => e.key === 'Enter' && handleSend()}
+              disabled={isProcessing || !isRunning}
+              className="h-9 text-sm"
+            />
+            <Button 
+              onClick={handleSend} 
+              disabled={!inputText.trim() || isProcessing || !isRunning}
+              size="sm"
+            >
+              {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </Button>
+          </div>
           
           {!isRunning && (
             <p className="text-[10px] text-center text-amber-500">
