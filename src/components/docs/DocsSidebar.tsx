@@ -45,6 +45,17 @@ export const docsStructure: DocsPage[] = [
     ],
   },
   {
+    path: '/docs/concepts/01-foundations/prime-semantics',
+    title: 'Concept Docs',
+    sections: [
+      { id: 'foundations', title: 'Foundations', icon: BookOpen },
+      { id: 'mathematics', title: 'Mathematics', icon: Calculator },
+      { id: 'physics', title: 'Physics', icon: Atom },
+      { id: 'symbolic-ai', title: 'Symbolic AI', icon: Brain },
+      { id: 'bioinformatics', title: 'Bioinformatics', icon: Dna },
+    ],
+  },
+  {
     path: '/docs/app-ideas',
     title: 'App Ideas',
     sections: [

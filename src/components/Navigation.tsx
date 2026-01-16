@@ -12,6 +12,7 @@ const navGroups = [
     items: [
       { id: 'getting-started', label: 'Getting Started', path: '/docs/getting-started', desc: 'Quick intro' },
       { id: 'user-guide', label: 'User Guide', path: '/docs/user-guide', desc: 'In-depth tutorials' },
+      { id: 'concept-docs', label: 'Concept Docs', path: '/docs/concepts', desc: 'Theory & math' },
       { id: 'reference', label: 'API Reference', path: '/docs/reference', desc: 'Full API docs' },
       { id: 'app-ideas', label: 'App Ideas', path: '/docs/app-ideas', desc: 'Inspiration' },
       { id: 'quickstart', label: 'Quickstart Examples', path: '/quickstart', desc: 'Code samples' },

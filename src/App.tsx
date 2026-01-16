@@ -46,6 +46,7 @@ import GettingStarted from "./pages/docs/GettingStarted";
 import UserGuide from "./pages/docs/UserGuide";
 import AppIdeas from "./pages/docs/AppIdeas";
 import ReferenceGuide from "./pages/docs/ReferenceGuide";
+import ConceptDocs from "./pages/docs/ConceptDocs";
 
 const queryClient = new QueryClient();
 
@@ -63,6 +64,8 @@ const App = () => (
             <Route path="/docs/user-guide" element={<UserGuide />} />
             <Route path="/docs/app-ideas" element={<AppIdeas />} />
             <Route path="/docs/reference" element={<ReferenceGuide />} />
+            <Route path="/docs/concepts" element={<ConceptDocs />} />
+            <Route path="/docs/concepts/:section/:file" element={<ConceptDocs />} />
             <Route path="/core" element={<CoreExamples />} />
             <Route path="/physics" element={<PhysicsExamples />} />
             <Route path="/backends" element={<BackendsExamples />} />
