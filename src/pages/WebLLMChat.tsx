@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -85,31 +84,6 @@ export default function WebLLMChat() {
   const [schemaError, setSchemaError] = useState<string | null>(null);
   const [selectedModelId, setSelectedModelId] = useState(config.modelId);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-  const userScrolledUpRef = useRef(false);
-
-  // Track if user has scrolled up (to prevent hijacking their scroll)
-  const handleChatScroll = () => {
-    if (!chatContainerRef.current) return;
-    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
-    // Consider "at bottom" if within 100px of the bottom
-    const isAtBottom = scrollHeight - scrollTop - clientHeight < 100;
-    userScrolledUpRef.current = !isAtBottom;
-  };
-
-  // Auto-scroll to bottom only if user hasn't scrolled up
-  useEffect(() => {
-    if (!userScrolledUpRef.current) {
-      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages, streamingContent]);
-
-  // Reset scroll lock when generation completes
-  useEffect(() => {
-    if (!state.isGenerating) {
-      userScrolledUpRef.current = false;
-    }
-  }, [state.isGenerating]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -573,11 +547,7 @@ export default function WebLLMChat() {
                 </Button>
               </CardHeader>
 
-              <ScrollArea 
-                className="flex-1 p-4" 
-                ref={chatContainerRef}
-                onScrollCapture={handleChatScroll}
-              >
+              <div className="flex-1 overflow-y-auto p-4">
                 <div className="space-y-4">
                   <AnimatePresence mode="popLayout">
                     {messages.map((msg, idx) => (
@@ -666,7 +636,7 @@ export default function WebLLMChat() {
 
                   <div ref={chatEndRef} />
                 </div>
-              </ScrollArea>
+              </div>
 
               {/* Input */}
               <div className="p-4 border-t">
