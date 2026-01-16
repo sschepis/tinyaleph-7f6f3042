@@ -3,7 +3,6 @@ import {
   TreeVisualization,
   MeditationPanel,
   SystemMetrics,
-  OracleChat,
   SoundControls,
   PathAnalysisPanel,
   WordAnalysisPanel
@@ -17,7 +16,6 @@ export default function SephiroticOscillator() {
     clickSephirah,
     startMeditation,
     stopMeditation,
-    sendMessage,
     reset
   } = useSephiroticOscillator();
 
@@ -59,7 +57,7 @@ export default function SephiroticOscillator() {
           </div>
 
           {/* Center - Tree Visualization */}
-          <div className="xl:col-span-4">
+          <div className="xl:col-span-5">
             <div className="bg-black/40 border border-primary/20 rounded-lg p-2 aspect-[3/4]">
               <TreeVisualization
                 oscillators={state.oscillators}
@@ -72,8 +70,8 @@ export default function SephiroticOscillator() {
           </div>
 
           {/* Right Side - Analysis Panels */}
-          <div className="xl:col-span-3 space-y-3">
-            <div className="h-[280px]">
+          <div className="xl:col-span-5 space-y-3">
+            <div className="h-[300px]">
               <PathAnalysisPanel
                 flows={state.flows}
                 oscillators={state.oscillators}
@@ -82,16 +80,6 @@ export default function SephiroticOscillator() {
             <div className="h-[320px]">
               <WordAnalysisPanel flows={state.flows} />
             </div>
-          </div>
-
-          {/* Far Right - Chat */}
-          <div className="xl:col-span-3 h-[620px]">
-            <OracleChat
-              messages={state.messages}
-              isProcessing={state.isProcessing}
-              onSendMessage={sendMessage}
-              onReset={reset}
-            />
           </div>
         </div>
       </div>
