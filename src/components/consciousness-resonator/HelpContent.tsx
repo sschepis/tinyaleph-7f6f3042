@@ -138,3 +138,5 @@ export const CONSCIOUSNESS_RESONATOR_HELP: HelpStep[] = [
     ),
   },
 ];
+
+export const helpSteps = CONSCIOUSNESS_RESONATOR_HELP;

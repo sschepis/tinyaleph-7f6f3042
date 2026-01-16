@@ -123,3 +123,5 @@ export const DNA_COMPUTER_HELP: HelpStep[] = [
     ),
   },
 ];
+
+export const helpSteps = DNA_COMPUTER_HELP;
