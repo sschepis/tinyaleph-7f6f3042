@@ -11,7 +11,9 @@ import {
   EntropyTimeline,
   OperatorButtons,
   StateDisplay,
-  FormalismPanel
+  FormalismPanel,
+  MeasurementStats,
+  ResonanceComparison
 } from '@/components/prime-resonance';
 
 export default function PrimeResonanceApp() {
@@ -77,6 +79,9 @@ export default function PrimeResonanceApp() {
                 <EntropyTimeline history={history} current={evolution} height={100} />
               </CardContent>
             </Card>
+
+            {/* Resonance Comparison Panel */}
+            <ResonanceComparison currentState={state} />
           </div>
 
           {/* Center: Controls & Probability */}
@@ -140,6 +145,9 @@ export default function PrimeResonanceApp() {
                 <ProbabilityBars state={state} measurements={measurements} height={140} />
               </CardContent>
             </Card>
+
+            {/* Measurement Statistics Panel */}
+            <MeasurementStats state={state} onMeasure={performMeasurement} />
           </div>
 
           {/* Right: Formalism */}
