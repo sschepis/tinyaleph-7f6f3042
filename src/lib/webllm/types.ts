@@ -127,15 +127,23 @@ export const AVAILABLE_MODELS: ModelOption[] = [
   },
 ];
 
-export const DEFAULT_SYSTEM_PROMPT = `You are a helpful AI assistant. When JSON mode is enabled, always respond with valid JSON objects.
+export const DEFAULT_SYSTEM_PROMPT = `You are a helpful AI assistant. You ALWAYS respond with valid JSON objects matching the specified schema.
 
-For structured responses, use this format:
+Your responses must follow this exact structure:
 {
-  "response": "your main response text",
-  "confidence": 0.0-1.0,
-  "topics": ["relevant", "topics"],
-  "followUp": "optional follow-up question"
-}`;
+  "response": "your main response text here",
+  "confidence": 0.85,
+  "topics": ["topic1", "topic2"],
+  "followUp": "optional follow-up question or null"
+}
+
+Rules:
+- "response" (required): Your complete answer as a string
+- "confidence" (required): A number between 0.0 and 1.0 indicating your certainty
+- "topics" (required): An array of 1-5 relevant topic strings
+- "followUp" (optional): A suggested follow-up question, or null
+
+Always output valid JSON. Do not include any text outside the JSON object.`;
 
 export const DEFAULT_JSON_SCHEMA = `{
   "type": "object",
@@ -147,14 +155,23 @@ export const DEFAULT_JSON_SCHEMA = `{
     "confidence": {
       "type": "number",
       "minimum": 0,
-      "maximum": 1
+      "maximum": 1,
+      "description": "Confidence level from 0.0 to 1.0"
     },
     "topics": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": { "type": "string" },
+      "minItems": 1,
+      "maxItems": 5,
+      "description": "List of relevant topics"
+    },
+    "followUp": {
+      "type": ["string", "null"],
+      "description": "Optional follow-up question"
     }
   },
-  "required": ["response"]
+  "required": ["response", "confidence", "topics"],
+  "additionalProperties": false
 }`;
 
 export const DEFAULT_CONFIG: WebLLMConfig = {
@@ -163,5 +180,5 @@ export const DEFAULT_CONFIG: WebLLMConfig = {
   temperature: 0.7,
   maxTokens: 2048,
   jsonMode: true,
-  jsonSchema: null,
+  jsonSchema: DEFAULT_JSON_SCHEMA,
 };
