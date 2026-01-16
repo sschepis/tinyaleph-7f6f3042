@@ -19,15 +19,19 @@ import {
   ChevronUp,
   Atom,
   Brain,
-  Link2
+  Link2,
+  Network,
+  GitCompare
 } from 'lucide-react';
 import { 
   SemanticPrimeMapper, 
   getSemanticPrimeMapper, 
   resetSemanticPrimeMapper,
   PrimeMeaning,
-  SemanticField 
+  SemanticField,
+  SimilarityResult
 } from '@/lib/sentient-observer/semantic-prime-mapper';
+import { TriadicFusionGraph } from './TriadicFusionGraph';
 import { cn } from '@/lib/utils';
 
 interface SemanticPrimeMapperPanelProps {
@@ -45,6 +49,8 @@ export function SemanticPrimeMapperPanel({
   const [expandedPrimes, setExpandedPrimes] = useState<Set<number>>(new Set());
   const [recentExpansions, setRecentExpansions] = useState<PrimeMeaning[]>([]);
   const [cycleCount, setCycleCount] = useState(0);
+  const [selectedPrime, setSelectedPrime] = useState<number | null>(null);
+  const [similarPrimes, setSimilarPrimes] = useState<SimilarityResult[]>([]);
 
   // Refresh field state
   const refreshField = useCallback(() => {
@@ -119,6 +125,13 @@ export function SemanticPrimeMapperPanel({
     });
   };
 
+  // Handle node selection from graph
+  const handleNodeSelect = useCallback((prime: number) => {
+    setSelectedPrime(prime);
+    const similar = mapper.findSimilar(prime, 8);
+    setSimilarPrimes(similar);
+  }, [mapper]);
+
   // Get active oscillator meanings
   const activeMeanings = oscillatorPrimes
     .filter((_, i) => activeOscillatorIndices.includes(i))
@@ -190,12 +203,51 @@ export function SemanticPrimeMapperPanel({
           </Button>
         </div>
 
-        <Tabs defaultValue="active" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 h-8">
+        <Tabs defaultValue="graph" className="w-full">
+          <TabsList className="grid w-full grid-cols-5 h-8">
+            <TabsTrigger value="graph" className="text-xs"><Network className="h-3 w-3" /></TabsTrigger>
+            <TabsTrigger value="similar" className="text-xs"><GitCompare className="h-3 w-3" /></TabsTrigger>
             <TabsTrigger value="active" className="text-xs">Active</TabsTrigger>
             <TabsTrigger value="recent" className="text-xs">Recent</TabsTrigger>
             <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
           </TabsList>
+          
+          {/* Fusion Network Graph */}
+          <TabsContent value="graph" className="mt-2">
+            <TriadicFusionGraph
+              mapper={mapper}
+              width={350}
+              height={250}
+              onNodeSelect={handleNodeSelect}
+              selectedPrime={selectedPrime || undefined}
+            />
+          </TabsContent>
+          
+          {/* Similarity View */}
+          <TabsContent value="similar" className="mt-2">
+            <ScrollArea className="h-64">
+              {selectedPrime ? (
+                <div className="space-y-2">
+                  <div className="text-xs text-muted-foreground mb-2">
+                    Similar to prime <span className="font-mono text-primary">{selectedPrime}</span>
+                  </div>
+                  {similarPrimes.map(sim => (
+                    <div key={sim.prime} className="flex items-center justify-between p-2 rounded bg-muted/30 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-primary">{sim.prime}</span>
+                        <span className="truncate max-w-32">{sim.meaning}</span>
+                      </div>
+                      <Badge variant="outline">{(sim.similarity * 100).toFixed(0)}%</Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center text-muted-foreground text-sm py-8">
+                  Select a node in the graph to see similar primes
+                </div>
+              )}
+            </ScrollArea>
+          </TabsContent>
           
           {/* Active Oscillator Meanings */}
           <TabsContent value="active" className="mt-2">
