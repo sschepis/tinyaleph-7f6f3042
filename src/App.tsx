@@ -40,6 +40,7 @@ import SentientObserverApp from "./pages/SentientObserverApp";
 import QuantumConsciousnessResonator from "./pages/QuantumConsciousnessResonator";
 import SephiroticOscillator from "./pages/SephiroticOscillator";
 import WebLLMChat from "./pages/WebLLMChat";
+import PrimeResonanceApp from "./pages/PrimeResonanceApp";
 import GettingStarted from "./pages/docs/GettingStarted";
 import UserGuide from "./pages/docs/UserGuide";
 import AppIdeas from "./pages/docs/AppIdeas";
@@ -95,6 +96,7 @@ const App = () => (
             <Route path="/consciousness-resonator" element={<QuantumConsciousnessResonator />} />
             <Route path="/sephirotic-oscillator" element={<SephiroticOscillator />} />
             <Route path="/webllm" element={<WebLLMChat />} />
+            <Route path="/prime-resonance" element={<PrimeResonanceApp />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
