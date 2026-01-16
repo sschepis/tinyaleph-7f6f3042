@@ -46,45 +46,53 @@ export function SemanticPrimeMapperPanel({
   const [mapper] = useState(() => getSemanticPrimeMapper(128));
   const [field, setField] = useState<SemanticField>(() => mapper.getField());
   const [isExpanding, setIsExpanding] = useState(false);
+  const [isRefining, setIsRefining] = useState(false);
   const [expandedPrimes, setExpandedPrimes] = useState<Set<number>>(new Set());
   const [recentExpansions, setRecentExpansions] = useState<PrimeMeaning[]>([]);
   const [cycleCount, setCycleCount] = useState(0);
   const [selectedPrime, setSelectedPrime] = useState<number | null>(null);
   const [similarPrimes, setSimilarPrimes] = useState<SimilarityResult[]>([]);
+  const [refinedCount, setRefinedCount] = useState(0);
 
   // Refresh field state
   const refreshField = useCallback(() => {
     setField(mapper.getField());
   }, [mapper]);
 
-  // Single expansion cycle
+  // Single expansion cycle with automatic LLM refinement
   const runExpansionCycle = useCallback(async () => {
     setIsExpanding(true);
     
     // Run expansion in chunks to allow UI updates
     await new Promise(resolve => setTimeout(resolve, 50));
     
-    const result = mapper.expandCycle();
+    // Use async version for automatic refinement
+    const result = await mapper.expandCycleAsync();
     const allMeanings = mapper.getAllMeanings();
     const recent = allMeanings.filter(m => !m.isSeeded).slice(0, 10);
     
     setRecentExpansions(recent);
     setCycleCount(c => c + 1);
+    setRefinedCount(r => r + result.refined);
     refreshField();
     setIsExpanding(false);
   }, [mapper, refreshField]);
 
-  // Auto-expand until stable
+  // Auto-expand until stable with automatic LLM refinement
   const runFullExpansion = useCallback(async () => {
     setIsExpanding(true);
     
     let lastUncatalogued = field.uncataloguedCount;
     let stableCount = 0;
+    let totalRefined = 0;
     
     while (stableCount < 3) {
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      mapper.expandCycle();
+      // Use async version for automatic refinement
+      const result = await mapper.expandCycleAsync();
+      totalRefined += result.refined;
+      
       const newField = mapper.getField();
       
       if (newField.uncataloguedCount >= lastUncatalogued) {
@@ -98,6 +106,7 @@ export function SemanticPrimeMapperPanel({
       setField(newField);
     }
     
+    setRefinedCount(r => r + totalRefined);
     const allMeanings = mapper.getAllMeanings();
     setRecentExpansions(allMeanings.filter(m => !m.isSeeded).slice(0, 10));
     setIsExpanding(false);
@@ -110,6 +119,7 @@ export function SemanticPrimeMapperPanel({
     setField(newMapper.getField());
     setRecentExpansions([]);
     setCycleCount(0);
+    setRefinedCount(0);
   }, []);
 
   // Toggle prime expansion in UI
@@ -148,10 +158,15 @@ export function SemanticPrimeMapperPanel({
             <Atom className="h-5 w-5 text-primary animate-pulse" />
             Semantic Prime Mapper
           </CardTitle>
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs">
               Cycle {cycleCount}
             </Badge>
+            {refinedCount > 0 && (
+              <Badge variant="secondary" className="text-xs text-green-500">
+                ✨ {refinedCount} refined
+              </Badge>
+            )}
             <Badge 
               variant={field.globalEntropy < 0.5 ? 'default' : 'secondary'}
               className="text-xs"

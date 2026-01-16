@@ -4,20 +4,24 @@
  * Uses triadic prime fusion to discover meanings for uncatalogued primes.
  * The existing symbol database serves as the "seed crystal" for expansion.
  * Once initial assignments are made, entropy minimization refines them.
+ * LLM-based refinement automatically converts raw fusions into clear meanings.
  */
 
 import { SYMBOL_DATABASE } from '@/lib/symbolic-mind/symbol-database';
 import { minimalConfig } from '@/lib/tinyaleph-config';
+import { supabase } from '@/integrations/supabase/client';
 
 // ============= TYPES =============
 
 export interface PrimeMeaning {
   prime: number;
   meaning: string;
+  rawMeaning?: string; // Original unrefined meaning
   confidence: number; // 0-1, how certain the assignment is
   derivedFrom: TriadicFusion[];
   entropy: number; // Local semantic entropy
   isSeeded: boolean; // True if from original database
+  isRefined: boolean; // True if LLM-refined
   category?: string;
   resonantWith: number[]; // Other primes it resonates with
   primeSignature?: number[]; // Prime signature from vocabulary
@@ -95,6 +99,7 @@ function extractSeeds(): Map<number, PrimeMeaning> {
       derivedFrom: [],
       entropy: 0,
       isSeeded: true,
+      isRefined: true, // Seeds are already refined
       category: symbol.category,
       resonantWith: []
     });
@@ -111,6 +116,7 @@ function extractSeeds(): Map<number, PrimeMeaning> {
           derivedFrom: [],
           entropy: 0.1,
           isSeeded: true,
+          isRefined: true, // Vocabulary seeds are refined
           resonantWith: primes.filter(q => q !== p)
         });
       } else {
@@ -303,10 +309,12 @@ export class SemanticPrimeMapper {
         const meaning: PrimeMeaning = {
           prime: target,
           meaning: best.result,
+          rawMeaning: best.result, // Store original for refinement
           confidence: Math.min(0.8, best.strength),
           derivedFrom: [best],
           entropy: 0.5,
           isSeeded: false,
+          isRefined: false, // Not yet refined by LLM
           resonantWith: [best.p, best.q, best.r].filter(p => p !== target)
         };
         
@@ -391,11 +399,95 @@ export class SemanticPrimeMapper {
   }
   
   /**
-   * Full expansion cycle: fusion + entropy minimization
+   * Refine unrefined meanings using LLM
+   * Automatically called after expansion
+   */
+  async refineMeanings(): Promise<{ refined: number; errors: string[] }> {
+    const unrefinedMeanings = Array.from(this.field.values())
+      .filter(m => !m.isRefined && !m.isSeeded);
+    
+    if (unrefinedMeanings.length === 0) {
+      return { refined: 0, errors: [] };
+    }
+    
+    // Batch in groups of 10 for API efficiency
+    const batches: PrimeMeaning[][] = [];
+    for (let i = 0; i < unrefinedMeanings.length; i += 10) {
+      batches.push(unrefinedMeanings.slice(i, i + 10));
+    }
+    
+    let totalRefined = 0;
+    const errors: string[] = [];
+    
+    for (const batch of batches) {
+      try {
+        const meaningsToRefine = batch.map(m => ({
+          prime: m.prime,
+          rawMeaning: m.meaning,
+          derivedFrom: m.derivedFrom.map(f => ({
+            meaning: this.field.get(f.p)?.meaning || `prime-${f.p}`,
+            prime: f.p
+          })),
+          resonantPrimes: m.resonantWith.slice(0, 5)
+        }));
+        
+        const result = await supabase.functions.invoke('refine-meanings', {
+          body: { meanings: meaningsToRefine }
+        });
+        
+        if (result.error) {
+          errors.push(`Refinement error: ${result.error.message}`);
+          continue;
+        }
+        
+        const refinements = result.data?.refinements || [];
+        
+        for (const r of refinements) {
+          const meaning = this.field.get(r.prime);
+          if (meaning && r.refined) {
+            meaning.rawMeaning = meaning.meaning;
+            meaning.meaning = r.refined;
+            meaning.isRefined = true;
+            meaning.confidence = Math.min(0.95, meaning.confidence + 0.1);
+            totalRefined++;
+          }
+        }
+      } catch (err) {
+        errors.push(`Batch error: ${err instanceof Error ? err.message : 'Unknown'}`);
+      }
+    }
+    
+    this.updateMetrics();
+    return { refined: totalRefined, errors };
+  }
+  
+  /**
+   * Get count of unrefined meanings
+   */
+  getUnrefinedCount(): number {
+    return Array.from(this.field.values()).filter(m => !m.isRefined && !m.isSeeded).length;
+  }
+  
+  /**
+   * Full expansion cycle: fusion + entropy minimization + automatic LLM refinement
+   */
+  async expandCycleAsync(): Promise<{ expanded: number; improved: number; refined: number; globalEntropy: number }> {
+    const { expanded } = this.expandByFusion();
+    const { improved } = this.minimizeEntropy();
+    const { refined } = await this.refineMeanings();
+    
+    return { expanded, improved, refined, globalEntropy: this.globalEntropy };
+  }
+  
+  /**
+   * Synchronous expansion cycle (for backwards compatibility)
    */
   expandCycle(): { expanded: number; improved: number; globalEntropy: number } {
     const { expanded } = this.expandByFusion();
     const { improved } = this.minimizeEntropy();
+    
+    // Trigger async refinement in background
+    this.refineMeanings().catch(console.error);
     
     return { expanded, improved, globalEntropy: this.globalEntropy };
   }
