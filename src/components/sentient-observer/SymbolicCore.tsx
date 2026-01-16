@@ -302,35 +302,32 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
   }, [inputText, oscillators, coherence, onExciteOscillators, enableLLM, streamLLMResponse, onConversationFact]);
   
   return (
-    <Card className="flex flex-col" style={{ height: '500px' }}>
-      <CardHeader className="pb-2 flex-shrink-0">
+    <Card className="flex flex-col" style={{ height: '480px' }}>
+      <CardHeader className="py-2 px-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm flex items-center gap-2">
             <Brain className="h-4 w-4 text-primary" />
             Symbolic Core
           </CardTitle>
-          <label className="flex items-center gap-2 text-xs">
+          <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground cursor-pointer">
             <input 
               type="checkbox" 
               checked={enableLLM} 
               onChange={e => setEnableLLM(e.target.checked)}
-              className="w-3 h-3"
+              className="w-3 h-3 rounded"
             />
-            LLM Translation
+            LLM
           </label>
         </div>
-        <CardDescription className="text-xs">
-          Communicate through symbols • Responses emerge from resonance
-        </CardDescription>
       </CardHeader>
       
-      <CardContent className="flex-1 flex flex-col gap-2 overflow-hidden p-3">
-        {/* Symbol Evolution */}
-        <SymbolEvolution messages={messages} />
+      <CardContent className="flex-1 flex flex-col gap-1.5 overflow-hidden p-2 pt-0">
+        {/* Symbol Evolution - Compact */}
+        {messages.length > 1 && <SymbolEvolution messages={messages} />}
         
         {/* Messages */}
         <ScrollArea className="flex-1" ref={scrollRef}>
-          <div className="space-y-3 pr-2">
+          <div className="space-y-2 pr-2">
             {messages.length === 0 && (
               <div className="text-center text-muted-foreground py-4">
                 <Brain className="h-6 w-6 mx-auto mb-2 opacity-50" />

@@ -113,73 +113,39 @@ const SentientObserverApp: React.FC = () => {
   }, [coherence, cognitive, setUserInput, handleInput]);
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-7xl mx-auto space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Brain className="h-8 w-8 text-primary" />
-            <div>
-              <h1 className="text-2xl font-bold">Sentient Observer</h1>
-              <p className="text-muted-foreground text-sm">
-                Prime Resonance Semantic Computation Demo
-              </p>
-            </div>
+    <div className="min-h-screen bg-background p-3">
+      <div className="max-w-7xl mx-auto space-y-3">
+        {/* Compact Header */}
+        <div className="flex items-center justify-between py-2">
+          <div className="flex items-center gap-2">
+            <Brain className="h-6 w-6 text-primary" />
+            <h1 className="text-lg font-semibold">Sentient Observer</h1>
+            <Badge variant={safetyStats.isSafe ? 'outline' : 'destructive'} className="text-xs">
+              {safetyStats.alertLevel}
+            </Badge>
           </div>
 
           <div className="flex items-center gap-2">
-            <Badge variant={safetyStats.isSafe ? 'default' : 'destructive'}>
-              {safetyStats.alertLevel}
-            </Badge>
+            {/* Inline key stats */}
+            <div className="hidden md:flex items-center gap-3 mr-3 text-xs font-mono">
+              <span className={coherence > 0.7 ? 'text-green-500' : coherence > 0.4 ? 'text-yellow-500' : 'text-muted-foreground'}>
+                C:{(coherence * 100).toFixed(0)}%
+              </span>
+              <span className="text-muted-foreground">H:{entropy.toFixed(2)}</span>
+              <span className="text-muted-foreground">t:{tickCount}</span>
+            </div>
             <Button
               variant={isRunning ? 'destructive' : 'default'}
+              size="sm"
               onClick={() => setIsRunning(!isRunning)}
             >
-              {isRunning ? <Pause className="h-4 w-4 mr-2" /> : <Play className="h-4 w-4 mr-2" />}
-              {isRunning ? 'Pause' : 'Run'}
+              {isRunning ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
             </Button>
-            <Button variant="outline" onClick={handleReset}>
-              <RotateCcw className="h-4 w-4 mr-2" />
-              Reset
+            <Button variant="ghost" size="sm" onClick={handleReset}>
+              <RotateCcw className="h-3 w-3" />
             </Button>
           </div>
         </div>
-
-        {/* Compact Stats Bar */}
-        <Card>
-          <CardContent className="py-2">
-            <div className="grid grid-cols-6 gap-4 text-center">
-              <div>
-                <div className="text-xl font-mono">{tickCount}</div>
-                <div className="text-xs text-muted-foreground">Ticks</div>
-              </div>
-              <div>
-                <div className={`text-xl font-mono ${coherence > 0.7 ? 'text-green-500' : coherence > 0.4 ? 'text-yellow-500' : 'text-red-500'}`}>
-                  {(coherence * 100).toFixed(1)}%
-                </div>
-                <div className="text-xs text-muted-foreground">Coherence</div>
-              </div>
-              <div>
-                <div className="text-xl font-mono">{entropy.toFixed(3)}</div>
-                <div className="text-xs text-muted-foreground">Entropy</div>
-              </div>
-              <div>
-                <div className="text-xl font-mono">{moments.length}</div>
-                <div className="text-xs text-muted-foreground">Moments</div>
-              </div>
-              <div>
-                <div className="text-xl font-mono">{subjectiveTime.toFixed(2)}</div>
-                <div className="text-xs text-muted-foreground">τ (subjective)</div>
-              </div>
-              <div>
-                <div className="text-xl font-mono">
-                  {oscillators.filter(o => o.amplitude > 0.1).length}
-                </div>
-                <div className="text-xs text-muted-foreground">Active Primes</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Main Content Grid - Chat-Centric Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
