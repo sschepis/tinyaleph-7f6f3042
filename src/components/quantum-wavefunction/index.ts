@@ -6,3 +6,5 @@ export { PrimeWaveTable } from './PrimeWaveTable';
 export { FormalismInfo } from './FormalismInfo';
 export { ComplexHelix3D } from './ComplexHelix3D';
 export { PrimeGapAnalysis } from './PrimeGapAnalysis';
+export { PhasePortrait } from './PhasePortrait';
+export { WavefunctionComparison } from './WavefunctionComparison';

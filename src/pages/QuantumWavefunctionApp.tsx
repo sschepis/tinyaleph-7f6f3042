@@ -12,7 +12,9 @@ import {
   PrimeWaveTable,
   FormalismInfo,
   ComplexHelix3D,
-  PrimeGapAnalysis
+  PrimeGapAnalysis,
+  PhasePortrait,
+  WavefunctionComparison
 } from '@/components/quantum-wavefunction';
 
 export default function QuantumWavefunctionApp() {
@@ -83,6 +85,12 @@ export default function QuantumWavefunctionApp() {
           }>
             <ComplexHelix3D spectrum={spectrum} />
           </Suspense>
+        </div>
+
+        {/* Phase Portrait & Comparison Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <PhasePortrait params={params} xRange={xRange} />
+          <WavefunctionComparison baseParams={params} xRange={xRange} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
