@@ -242,7 +242,7 @@ Your task is to generate concrete examples of how these symbols might be used or
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt + schemaInstructions },
           { role: "user", content: userPrompt }
