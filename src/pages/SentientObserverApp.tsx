@@ -291,15 +291,12 @@ const SentientObserverApp: React.FC = () => {
           {/* Right column - Analysis Tabs */}
           <div className="lg:col-span-4">
             <Tabs defaultValue="primes" className="space-y-4">
-              <TabsList className="grid grid-cols-5 w-full">
+              <TabsList className="grid grid-cols-4 w-full">
                 <TabsTrigger value="primes" className="text-xs">
                   <Atom className="h-4 w-4" />
                 </TabsTrigger>
                 <TabsTrigger value="cognitive" className="text-xs">
                   <Cpu className="h-4 w-4" />
-                </TabsTrigger>
-                <TabsTrigger value="oscillators" className="text-xs">
-                  <Waves className="h-4 w-4" />
                 </TabsTrigger>
                 <TabsTrigger value="temporal" className="text-xs">
                   <Clock className="h-4 w-4" />
@@ -341,54 +338,6 @@ const SentientObserverApp: React.FC = () => {
                   getCollapseStats={cognitive.getCollapseStats}
                   onReset={cognitive.resetCognitive}
                 />
-              </TabsContent>
-
-              {/* Oscillators Tab */}
-              <TabsContent value="oscillators" className="space-y-4">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Prime Oscillator Bank</CardTitle>
-                    <CardDescription className="text-xs">
-                      {oscillators.length} oscillators, {oscillators.filter(o => o.amplitude > 0.1).length} active
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ScrollArea className="h-[250px]">
-                      <div className="space-y-2">
-                        {oscillators.slice(0, 16).map((osc, i) => (
-                          <div key={i} className="flex items-center gap-2">
-                            <span className="w-8 text-right font-mono text-sm">{osc.prime}</span>
-                            <Progress value={osc.amplitude * 100} className="flex-1" />
-                            <span className="w-16 text-right font-mono text-xs">
-                              φ={osc.phase.toFixed(2)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-
-                {/* Exploration Heatmap */}
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Activity className="h-4 w-4" />
-                      Exploration
-                      <Badge variant="outline" className="ml-auto text-xs">
-                        {(explorationProgress * 100).toFixed(0)}%
-                      </Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ExplorationHeatmap
-                      oscillators={oscillators}
-                      activationCounts={oscillatorActivationCounts}
-                      recentlyExploredIndices={recentlyExploredIndices}
-                      size={200}
-                    />
-                  </CardContent>
-                </Card>
               </TabsContent>
 
               {/* Temporal Tab */}
