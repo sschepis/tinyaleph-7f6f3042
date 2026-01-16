@@ -8,3 +8,4 @@ export { ComplexHelix3D } from './ComplexHelix3D';
 export { PrimeGapAnalysis } from './PrimeGapAnalysis';
 export { PhasePortrait } from './PhasePortrait';
 export { WavefunctionComparison } from './WavefunctionComparison';
+export { FourierSpectrum } from './FourierSpectrum';
