@@ -131,3 +131,5 @@ export const SENTIENT_OBSERVER_HELP: HelpStep[] = [
     ),
   },
 ];
+
+export const helpSteps = SENTIENT_OBSERVER_HELP;

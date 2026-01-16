@@ -1,13 +1,31 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Music, Keyboard, Brain, Waves } from 'lucide-react';
 import { useJamPartner } from '@/hooks/useJamPartner';
 import { VirtualPiano, HarmonyHeatmap, AutoTrainMode, JamControls } from '@/components/jam-partner';
 import Layout from '@/components/Layout';
+import { AppHelpDialog, HelpButton, useFirstRun } from '@/components/app-help';
+import { helpSteps } from '@/components/jam-partner/HelpContent';
 
 const JamPartner: React.FC = () => {
   const jam = useJamPartner();
+  
+  const [isFirstRun, markAsSeen] = useFirstRun('jam-partner');
+  const [helpOpen, setHelpOpen] = useState(isFirstRun);
+  
+  useEffect(() => {
+    if (isFirstRun) {
+      setHelpOpen(true);
+    }
+  }, [isFirstRun]);
+  
+  const handleHelpClose = (open: boolean) => {
+    setHelpOpen(open);
+    if (!open && isFirstRun) {
+      markAsSeen();
+    }
+  };
 
   return (
     <Layout>
@@ -22,7 +40,15 @@ const JamPartner: React.FC = () => {
             <p className="text-muted-foreground">AI music companion that learns to play alongside you</p>
           </div>
           <Badge variant="outline" className="ml-auto">{jam.mode}</Badge>
+          <HelpButton onClick={() => setHelpOpen(true)} />
         </div>
+        
+        <AppHelpDialog
+          open={helpOpen}
+          onOpenChange={handleHelpClose}
+          steps={helpSteps}
+          appName="Jam Partner"
+        />
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Main Piano Area */}

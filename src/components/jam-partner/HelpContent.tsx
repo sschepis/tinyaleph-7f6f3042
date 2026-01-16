@@ -134,3 +134,5 @@ export const JAM_PARTNER_HELP: HelpStep[] = [
     ),
   },
 ];
+
+export const helpSteps = JAM_PARTNER_HELP;

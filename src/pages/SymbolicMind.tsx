@@ -4,6 +4,8 @@ import { Send, Sparkles, Brain, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { AppHelpDialog, HelpButton, useFirstRun } from '@/components/app-help';
+import { helpSteps } from '@/components/symbolic-mind/HelpContent';
 import { MindVisualization } from '@/components/symbolic-mind/MindVisualization';
 import { ChatMessage } from '@/components/symbolic-mind/ChatMessage';
 import { SuperpositionWaveform } from '@/components/symbolic-mind/SuperpositionWaveform';
@@ -18,6 +20,22 @@ import type { Message, MindState, SymbolicSymbol } from '@/lib/symbolic-mind/typ
 import { streamSymbolicMind } from '@/lib/ai-client';
 
 export default function SymbolicMind() {
+  const [isFirstRun, markAsSeen] = useFirstRun('symbolic-mind');
+  const [helpOpen, setHelpOpen] = useState(isFirstRun);
+  
+  useEffect(() => {
+    if (isFirstRun) {
+      setHelpOpen(true);
+    }
+  }, [isFirstRun]);
+  
+  const handleHelpClose = (open: boolean) => {
+    setHelpOpen(open);
+    if (!open && isFirstRun) {
+      markAsSeen();
+    }
+  };
+  
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -189,10 +207,18 @@ export default function SymbolicMind() {
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Reset
               </Button>
+              <HelpButton onClick={() => setHelpOpen(true)} />
             </div>
           </div>
         </div>
       </div>
+      
+      <AppHelpDialog
+        open={helpOpen}
+        onOpenChange={handleHelpClose}
+        steps={helpSteps}
+        appName="Symbolic Mind"
+      />
       
       <div className="container mx-auto px-4 py-6">
         <div className="grid lg:grid-cols-[1fr,420px] gap-6 min-h-[600px] lg:h-[calc(100vh-220px)]">

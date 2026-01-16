@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useSephiroticOscillator } from '@/hooks/useSephiroticOscillator';
 import {
   TreeVisualization,
@@ -7,8 +8,26 @@ import {
   PathAnalysisPanel,
   WordAnalysisPanel
 } from '@/components/sephirotic-oscillator';
+import { AppHelpDialog, HelpButton, useFirstRun } from '@/components/app-help';
+import { helpSteps } from '@/components/sephirotic-oscillator/HelpContent';
 
 export default function SephiroticOscillator() {
+  const [isFirstRun, markAsSeen] = useFirstRun('sephirotic-oscillator');
+  const [helpOpen, setHelpOpen] = useState(isFirstRun);
+  
+  useEffect(() => {
+    if (isFirstRun) {
+      setHelpOpen(true);
+    }
+  }, [isFirstRun]);
+  
+  const handleHelpClose = (open: boolean) => {
+    setHelpOpen(open);
+    if (!open && isFirstRun) {
+      markAsSeen();
+    }
+  };
+  
   const {
     state,
     soundEnabled,
@@ -26,7 +45,7 @@ export default function SephiroticOscillator() {
       
       <div className="container mx-auto px-4 py-4 relative z-10">
         {/* Header */}
-        <header className="text-center mb-4">
+        <header className="text-center mb-4 relative">
           <h1 className="text-2xl md:text-3xl font-bold mb-1">
             <span className="bg-gradient-to-r from-violet-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
               Sephirotic Oscillator
@@ -35,7 +54,17 @@ export default function SephiroticOscillator() {
           <p className="text-xs text-muted-foreground">
             Cavity resonator network • 22 Hebrew letter paths • Click to excite
           </p>
+          <div className="absolute right-0 top-0">
+            <HelpButton onClick={() => setHelpOpen(true)} />
+          </div>
         </header>
+        
+        <AppHelpDialog
+          open={helpOpen}
+          onOpenChange={handleHelpClose}
+          steps={helpSteps}
+          appName="Sephirotic Oscillator"
+        />
 
         {/* Main Layout - responsive grid */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">

@@ -122,3 +122,5 @@ export const SYMBOLIC_MIND_HELP: HelpStep[] = [
     ),
   },
 ];
+
+export const helpSteps = SYMBOLIC_MIND_HELP;

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -24,6 +24,8 @@ import {
   Settings,
   Zap
 } from 'lucide-react';
+import { AppHelpDialog, HelpButton, useFirstRun } from '@/components/app-help';
+import { helpSteps } from '@/components/sentient-observer/HelpContent';
 import type { MemoryFragment } from '@/lib/sentient-observer/holographic-memory';
 
 import { useSentientObserver } from '@/hooks/useSentientObserver';
@@ -46,6 +48,22 @@ import { getSemanticPrimeMapper } from '@/lib/sentient-observer/semantic-prime-m
 import { Atom } from 'lucide-react';
 
 const SentientObserverApp: React.FC = () => {
+  const [isFirstRun, markAsSeen] = useFirstRun('sentient-observer');
+  const [helpOpen, setHelpOpen] = useState(isFirstRun);
+  
+  useEffect(() => {
+    if (isFirstRun) {
+      setHelpOpen(true);
+    }
+  }, [isFirstRun]);
+  
+  const handleHelpClose = (open: boolean) => {
+    setHelpOpen(open);
+    if (!open && isFirstRun) {
+      markAsSeen();
+    }
+  };
+  
   const {
     isRunning,
     tickCount,
@@ -170,8 +188,16 @@ const SentientObserverApp: React.FC = () => {
             <Button variant="ghost" size="sm" onClick={handleReset}>
               <RotateCcw className="h-3 w-3" />
             </Button>
+            <HelpButton onClick={() => setHelpOpen(true)} />
           </div>
         </div>
+        
+        <AppHelpDialog
+          open={helpOpen}
+          onOpenChange={handleHelpClose}
+          steps={helpSteps}
+          appName="Sentient Observer"
+        />
 
         {/* Main Content Grid - Chat-Centric Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">

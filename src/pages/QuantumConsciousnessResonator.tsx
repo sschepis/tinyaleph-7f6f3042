@@ -1,5 +1,5 @@
 import { useConsciousnessResonator } from '@/hooks/useConsciousnessResonator';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   PerspectiveNodes,
   FieldIntegration,
@@ -16,10 +16,28 @@ import {
 import { WaveformVisualizer } from '@/components/consciousness-resonator/WaveformVisualizer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RotateCcw } from 'lucide-react';
+import { AppHelpDialog, HelpButton, useFirstRun } from '@/components/app-help';
+import { helpSteps } from '@/components/consciousness-resonator/HelpContent';
 
 export default function QuantumConsciousnessResonator() {
   const { state, togglePerspective, sendMessage, resetConversation } = useConsciousnessResonator();
   const [soundEnabled, setSoundEnabled] = useState(false);
+  
+  const [isFirstRun, markAsSeen] = useFirstRun('consciousness-resonator');
+  const [helpOpen, setHelpOpen] = useState(isFirstRun);
+  
+  useEffect(() => {
+    if (isFirstRun) {
+      setHelpOpen(true);
+    }
+  }, [isFirstRun]);
+  
+  const handleHelpClose = (open: boolean) => {
+    setHelpOpen(open);
+    if (!open && isFirstRun) {
+      markAsSeen();
+    }
+  };
 
   const hasActivePerspectives = state.activePerspectives.length > 0;
   const hasConversation = state.messages.length > 1; // More than just the init message
@@ -30,14 +48,24 @@ export default function QuantumConsciousnessResonator() {
       
       <div className="container mx-auto px-4 py-6 relative z-10">
         {/* Compact Header */}
-        <header className="text-center mb-6">
+        <header className="text-center mb-6 relative">
           <h1 className="text-3xl md:text-4xl font-bold mb-2 glow-text">
             Quantum Consciousness Resonator
           </h1>
           <p className="text-sm text-muted-foreground">
             Multi-layered resonance architecture • Powered by TinyAleph
           </p>
+          <div className="absolute right-0 top-0">
+            <HelpButton onClick={() => setHelpOpen(true)} />
+          </div>
         </header>
+        
+        <AppHelpDialog
+          open={helpOpen}
+          onOpenChange={handleHelpClose}
+          steps={helpSteps}
+          appName="Consciousness Resonator"
+        />
 
         {/* Main Layout: Chat-Centric */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">

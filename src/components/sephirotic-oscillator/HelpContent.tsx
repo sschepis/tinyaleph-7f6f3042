@@ -128,3 +128,5 @@ export const SEPHIROTIC_OSCILLATOR_HELP: HelpStep[] = [
     ),
   },
 ];
+
+export const helpSteps = SEPHIROTIC_OSCILLATOR_HELP;
