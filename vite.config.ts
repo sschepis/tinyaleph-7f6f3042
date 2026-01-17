@@ -26,5 +26,13 @@ export default defineConfig(({ mode }) => ({
       // Exclude example JS files from bundling - they're just code samples for display
       external: (id) => id.includes('/src/examples/') && id.endsWith('.js'),
     },
+    commonjsOptions: {
+      // Handle duplicate exports in @aleph-ai/tinyaleph library
+      strictRequires: true,
+      transformMixedEsModules: true,
+    },
+  },
+  optimizeDeps: {
+    exclude: ['@aleph-ai/tinyaleph'],
   },
 }));
