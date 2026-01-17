@@ -45,6 +45,7 @@ import QuantumWavefunctionApp from "./pages/QuantumWavefunctionApp";
 import QuantumEntanglementLab from "./pages/QuantumEntanglementLab";
 import BB84Simulator from "./pages/BB84Simulator";
 import GroverSearch from "./pages/GroverSearch";
+import QuantumErrorCorrectionLab from "./pages/QuantumErrorCorrectionLab";
 import GettingStarted from "./pages/docs/GettingStarted";
 import UserGuide from "./pages/docs/UserGuide";
 import AppIdeas from "./pages/docs/AppIdeas";
@@ -108,6 +109,7 @@ const App = () => (
             <Route path="/entanglement-lab" element={<QuantumEntanglementLab />} />
             <Route path="/bb84" element={<BB84Simulator />} />
             <Route path="/grover-search" element={<GroverSearch />} />
+            <Route path="/qec-lab" element={<QuantumErrorCorrectionLab />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
