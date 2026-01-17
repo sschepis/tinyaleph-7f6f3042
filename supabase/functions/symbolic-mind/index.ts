@@ -108,11 +108,11 @@ Keep responses brief (1-3 sentences). Be warm, genuine, and direct.`;
 
     const messages = [
       { role: "system", content: systemPrompt },
-      ...conversationHistory.map((msg: any) => ({
+      ...conversationHistory.slice(-4).map((msg: any) => ({
         role: msg.role,
         content: msg.content
       })),
-      { role: "user", content: `User said: "${userMessage}"\n\nTranslate the symbolic insights above into a response.` }
+      { role: "user", content: userMessage }
     ];
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
