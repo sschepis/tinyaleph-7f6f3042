@@ -66,6 +66,7 @@ const navGroups = [
       { id: 'entanglement-lab', label: 'Entanglement Lab', path: '/entanglement-lab', desc: 'Bell states & CHSH' },
       { id: 'bb84', label: 'BB84 QKD', path: '/bb84', desc: 'Quantum cryptography' },
       { id: 'grover-search', label: "Grover's Search", path: '/grover-search', desc: 'Quantum search' },
+      { id: 'qec-lab', label: 'QEC Lab', path: '/qec-lab', desc: 'Error correction' },
     ],
   },
 ];
