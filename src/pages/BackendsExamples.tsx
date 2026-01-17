@@ -5,11 +5,11 @@ import CodeBlock from '../components/CodeBlock';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  SemanticBackend,
   hash,
   deriveKey,
 } from '@aleph-ai/tinyaleph';
 import { minimalConfig } from '@/lib/tinyaleph-config';
+import { createBackend } from '@/lib/tinyaleph-engine';
 
 // ==========================================
 // SEMANTIC BACKEND DEMO
@@ -23,7 +23,7 @@ const SemanticBackendDemo = () => {
     coherence: number;
     stateComponents: number[];
   } | null>(null);
-  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [backend] = useState(() => createBackend(minimalConfig));
 
   const runEncode = useCallback(() => {
     try {
