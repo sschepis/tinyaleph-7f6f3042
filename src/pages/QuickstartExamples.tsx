@@ -11,6 +11,12 @@ import {
 } from '@aleph-ai/tinyaleph';
 import { minimalConfig } from '@/lib/tinyaleph-config';
 
+// Workaround for tinyaleph bundling issue
+const createBackend = (config: any) => {
+  const Ctor = (SemanticBackend as any)?.SemanticBackend ?? SemanticBackend;
+  return new Ctor(config);
+};
+
 // Example metadata with descriptions
 const examples: ExampleConfig[] = [
   {
@@ -96,7 +102,7 @@ const HelloWorldExample = () => {
     entropy: number;
     output: string;
   } | null>(null);
-  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [backend] = useState(() => createBackend(minimalConfig));
 
   const run = useCallback(() => {
     try {
