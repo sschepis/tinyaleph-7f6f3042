@@ -8,10 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  SemanticBackend,
   Hypercomplex,
 } from '@aleph-ai/tinyaleph';
 import { minimalConfig } from '@/lib/tinyaleph-config';
+import { createBackend } from '@/lib/tinyaleph-engine';
 
 // Example metadata with descriptions
 const examplesMeta = [
@@ -298,7 +298,7 @@ console.log(answer.text, answer.confidence);`,
 
 // Example 1: Vocabulary Building
 const VocabularyExample = () => {
-  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [backend] = useState(() => createBackend(minimalConfig));
   const [word, setWord] = useState('wisdom');
   const [wordInfo, setWordInfo] = useState<{
     exists: boolean;
@@ -432,7 +432,7 @@ backend.learn('serendipity', [2, 29, 53]);`}
 
 // Example 2: Sentence Comparison
 const SimilarityExample = () => {
-  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [backend] = useState(() => createBackend(minimalConfig));
   const [text1, setText1] = useState('love and affection');
   const [text2, setText2] = useState('hatred and anger');
   const [similarity, setSimilarity] = useState<number | null>(null);
@@ -570,7 +570,7 @@ console.log('wisdom vs knowledge:', similarity('wisdom', 'knowledge'));`}
 
 // Example 3: Non-Commutativity (Word Order Matters)
 const WordOrderExample = () => {
-  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [backend] = useState(() => createBackend(minimalConfig));
   const [phrase1, setPhrase1] = useState('dog bites man');
   const [phrase2, setPhrase2] = useState('man bites dog');
   const [result, setResult] = useState<{
@@ -703,7 +703,7 @@ console.log('Coherence:', state1.coherence(state2));
 
 // Example 4: Concept Clustering
 const ClusteringExample = () => {
-  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [backend] = useState(() => createBackend(minimalConfig));
   const [words, setWords] = useState('love, affection, truth, honesty, cat, dog');
   const [clusters, setClusters] = useState<{ cluster: string[]; similarity: number }[]>([]);
 
@@ -836,7 +836,7 @@ const ClusteringExample = () => {
 
 // Example 5: Prime Signature Analysis
 const PrimeSignatureExample = () => {
-  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [backend] = useState(() => createBackend(minimalConfig));
   const [phrase, setPhrase] = useState('love and wisdom');
   const [analysis, setAnalysis] = useState<{
     words: string[];
@@ -1220,7 +1220,7 @@ console.log('Product:', product.c);`}
 
 // Example 7: State Composition
 const StateCompositionExample = () => {
-  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [backend] = useState(() => createBackend(minimalConfig));
   const [word1, setWord1] = useState('love');
   const [word2, setWord2] = useState('wisdom');
   const [scaleFactor, setScaleFactor] = useState(0.5);
@@ -1450,7 +1450,7 @@ console.log('Coherence:', love.coherence(wisdom));`}
 
 // Example 8: Dimension Comparison
 const DimensionComparisonExample = () => {
-  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [backend] = useState(() => createBackend(minimalConfig));
   const [word, setWord] = useState('wisdom');
   const [comparison, setComparison] = useState<{
     word: string;
@@ -1646,7 +1646,7 @@ const primes = backend.encode('wisdom');
 type Operation = { type: 'word'; value: string } | { type: 'add' } | { type: 'multiply' } | { type: 'scale'; value: number };
 
 const ExpressionBuilderExample = () => {
-  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [backend] = useState(() => createBackend(minimalConfig));
   const [expression, setExpression] = useState<Operation[]>([
     { type: 'word', value: 'love' },
     { type: 'add' },
@@ -1982,7 +1982,7 @@ console.log('Final norm:', state.norm());`}
 };
 // Map example IDs to components (without CodeBlock - that's handled by wrapper)
 const VocabularyExampleDemo = () => {
-  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [backend] = useState(() => createBackend(minimalConfig));
   const [word, setWord] = useState('wisdom');
   const [wordInfo, setWordInfo] = useState<{ exists: boolean; primes: number[]; state: number[]; entropy: number } | null>(null);
 
@@ -2042,7 +2042,7 @@ const VocabularyExampleDemo = () => {
 
 // Word Algebra Demo
 const WordAlgebraDemo = () => {
-  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [backend] = useState(() => createBackend(minimalConfig));
   const [wordA, setWordA] = useState('king');
   const [wordB, setWordB] = useState('man');
   const [wordC, setWordC] = useState('woman');
@@ -2116,7 +2116,7 @@ const WordAlgebraDemo = () => {
 
 // Text Classification Demo
 const ClassificationDemo = () => {
-  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [backend] = useState(() => createBackend(minimalConfig));
   const [prototypes, setPrototypes] = useState<{label: string; examples: string[]; centroid: number[]}[]>([]);
   const [testText, setTestText] = useState('Neural networks are powerful');
   const [predictions, setPredictions] = useState<{label: string; score: number}[]>([]);
@@ -2194,7 +2194,7 @@ const ClassificationDemo = () => {
 
 // Semantic Search Demo
 const SemanticSearchDemo = () => {
-  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [backend] = useState(() => createBackend(minimalConfig));
   const [query, setQuery] = useState('artificial intelligence');
   const [results, setResults] = useState<{title: string; score: number}[]>([]);
 
@@ -2254,7 +2254,7 @@ const SemanticSearchDemo = () => {
 
 // QA System Demo
 const QASystemDemo = () => {
-  const [backend] = useState(() => new SemanticBackend(minimalConfig));
+  const [backend] = useState(() => createBackend(minimalConfig));
   const [question, setQuestion] = useState('How many planets are in the solar system?');
   const [answer, setAnswer] = useState<{passage: string; topic: string; score: number} | null>(null);
 

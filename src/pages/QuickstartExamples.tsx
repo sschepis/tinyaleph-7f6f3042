@@ -10,12 +10,7 @@ import {
   Hypercomplex,
 } from '@aleph-ai/tinyaleph';
 import { minimalConfig } from '@/lib/tinyaleph-config';
-
-// Workaround for tinyaleph bundling issue
-const createBackend = (config: any) => {
-  const Ctor = (SemanticBackend as any)?.SemanticBackend ?? SemanticBackend;
-  return new Ctor(config);
-};
+import { createBackend } from '@/lib/tinyaleph-engine';
 
 // Example metadata with descriptions
 const examples: ExampleConfig[] = [

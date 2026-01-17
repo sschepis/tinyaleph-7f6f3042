@@ -3,11 +3,18 @@ import { AlephEngine, SemanticBackend } from "@aleph-ai/tinyaleph";
 type AnyConfig = Record<string, unknown> & { engineOptions?: Record<string, unknown> };
 
 /**
- * Workaround for a tinyaleph packaging issue where `createEngine('semantic', ...)`
- * can throw "SemanticBackend2 is not a constructor" in the browser bundle.
+ * Workaround for a tinyaleph packaging issue where SemanticBackend
+ * may be nested inside itself after bundling.
+ */
+export function createBackend(config: AnyConfig) {
+  const Ctor = (SemanticBackend as any)?.SemanticBackend ?? SemanticBackend;
+  return new Ctor(config);
+}
+
+/**
+ * Create a full AlephEngine with semantic backend
  */
 export function createSemanticEngine(config: AnyConfig) {
-  const SemanticBackendCtor = (SemanticBackend as any)?.SemanticBackend ?? SemanticBackend;
-  const backend = new SemanticBackendCtor(config);
+  const backend = createBackend(config);
   return new AlephEngine(backend, (config as any)?.engineOptions || {});
 }
