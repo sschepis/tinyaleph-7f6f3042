@@ -68,6 +68,7 @@ const navGroups = [
       { id: 'grover-search', label: "Grover's Search", path: '/grover-search', desc: 'Quantum search' },
       { id: 'qec-lab', label: 'QEC Lab', path: '/qec-lab', desc: 'Error correction' },
       { id: 'decoherence', label: 'Decoherence', path: '/decoherence', desc: 'T₁/T₂ decay' },
+      { id: 'quaternion-nonlocal', label: 'Quaternion Nonlocal', path: '/quaternion-nonlocal', desc: 'Split prime comms' },
     ],
   },
 ];

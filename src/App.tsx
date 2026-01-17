@@ -47,6 +47,7 @@ import BB84Simulator from "./pages/BB84Simulator";
 import GroverSearch from "./pages/GroverSearch";
 import QuantumErrorCorrectionLab from "./pages/QuantumErrorCorrectionLab";
 import DecoherenceSimulator from "./pages/DecoherenceSimulator";
+import QuaternionNonlocalApp from "./pages/QuaternionNonlocalApp";
 import GettingStarted from "./pages/docs/GettingStarted";
 import UserGuide from "./pages/docs/UserGuide";
 import AppIdeas from "./pages/docs/AppIdeas";
@@ -112,6 +113,7 @@ const App = () => (
             <Route path="/grover-search" element={<GroverSearch />} />
             <Route path="/qec-lab" element={<QuantumErrorCorrectionLab />} />
             <Route path="/decoherence" element={<DecoherenceSimulator />} />
+            <Route path="/quaternion-nonlocal" element={<QuaternionNonlocalApp />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
