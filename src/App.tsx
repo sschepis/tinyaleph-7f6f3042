@@ -42,6 +42,7 @@ import SephiroticOscillator from "./pages/SephiroticOscillator";
 import WebLLMChat from "./pages/WebLLMChat";
 import PrimeResonanceApp from "./pages/PrimeResonanceApp";
 import QuantumWavefunctionApp from "./pages/QuantumWavefunctionApp";
+import QuantumEntanglementLab from "./pages/QuantumEntanglementLab";
 import GettingStarted from "./pages/docs/GettingStarted";
 import UserGuide from "./pages/docs/UserGuide";
 import AppIdeas from "./pages/docs/AppIdeas";
@@ -102,6 +103,7 @@ const App = () => (
             <Route path="/webllm" element={<WebLLMChat />} />
             <Route path="/prime-resonance" element={<PrimeResonanceApp />} />
             <Route path="/quantum-wavefunction" element={<QuantumWavefunctionApp />} />
+            <Route path="/entanglement-lab" element={<QuantumEntanglementLab />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
