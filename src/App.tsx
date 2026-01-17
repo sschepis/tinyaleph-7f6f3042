@@ -43,6 +43,7 @@ import WebLLMChat from "./pages/WebLLMChat";
 import PrimeResonanceApp from "./pages/PrimeResonanceApp";
 import QuantumWavefunctionApp from "./pages/QuantumWavefunctionApp";
 import QuantumEntanglementLab from "./pages/QuantumEntanglementLab";
+import BB84Simulator from "./pages/BB84Simulator";
 import GettingStarted from "./pages/docs/GettingStarted";
 import UserGuide from "./pages/docs/UserGuide";
 import AppIdeas from "./pages/docs/AppIdeas";
@@ -104,6 +105,7 @@ const App = () => (
             <Route path="/prime-resonance" element={<PrimeResonanceApp />} />
             <Route path="/quantum-wavefunction" element={<QuantumWavefunctionApp />} />
             <Route path="/entanglement-lab" element={<QuantumEntanglementLab />} />
+            <Route path="/bb84" element={<BB84Simulator />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
