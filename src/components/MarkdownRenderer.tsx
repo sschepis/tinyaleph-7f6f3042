@@ -14,12 +14,16 @@ interface MarkdownRendererProps {
 
 /**
  * Normalize AI output for consistent markdown rendering
+ * Only adds spacing before headings and first list item (not between list items)
  */
 function normalizeContent(content: string): string {
   return content
-    .replace(/([^\n])(\s*)(#{1,6}\s)/g, '$1\n\n$3')
-    .replace(/([^\n])(\s*)(\n?[-*]\s)/g, '$1\n\n$3')
-    .replace(/([^\n])(\s*)(\n?\d+\.\s)/g, '$1\n\n$3')
+    // Add newlines before headings if missing
+    .replace(/([^\n])(#{1,6}\s)/g, '$1\n\n$2')
+    // Add newlines before first list item in a block (not between items)
+    .replace(/([^\n\-\*\d])\n([-*]\s)/g, '$1\n\n$2')
+    .replace(/([^\n\-\*\d])\n(\d+\.\s)/g, '$1\n\n$2')
+    // Normalize excessive newlines
     .replace(/\n{4,}/g, '\n\n\n')
     .trim();
 }
@@ -119,16 +123,23 @@ export const MarkdownRenderer = ({ content, className = '' }: MarkdownRendererPr
           },
           ul({ children, ...props }: any) {
             return (
-              <ul className="list-disc list-inside mb-2 space-y-1" {...props}>
+              <ul className="list-disc pl-5 mb-2 space-y-0.5" {...props}>
                 {children}
               </ul>
             );
           },
           ol({ children, ...props }: any) {
             return (
-              <ol className="list-decimal list-inside mb-2 space-y-1" {...props}>
+              <ol className="list-decimal pl-5 mb-2 space-y-0.5" {...props}>
                 {children}
               </ol>
+            );
+          },
+          li({ children, ...props }: any) {
+            return (
+              <li className="pl-1" {...props}>
+                {children}
+              </li>
             );
           },
           blockquote({ children, ...props }: any) {
