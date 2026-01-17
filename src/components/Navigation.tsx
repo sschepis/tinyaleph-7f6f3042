@@ -65,6 +65,7 @@ const navGroups = [
       { id: 'jam-partner', label: 'Jam Partner', path: '/jam-partner', desc: 'Music AI' },
       { id: 'entanglement-lab', label: 'Entanglement Lab', path: '/entanglement-lab', desc: 'Bell states & CHSH' },
       { id: 'bb84', label: 'BB84 QKD', path: '/bb84', desc: 'Quantum cryptography' },
+      { id: 'grover-search', label: "Grover's Search", path: '/grover-search', desc: 'Quantum search' },
     ],
   },
 ];

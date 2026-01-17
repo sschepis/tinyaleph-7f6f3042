@@ -5,7 +5,7 @@ export function HelpContent(): HelpStep[] {
   return [
     {
       title: "Welcome to Grover's Search Visualizer",
-      icon: <Search className="w-5 h-5" />,
+      icon: Search,
       content: (
         <div className="space-y-3">
           <p>
@@ -16,7 +16,7 @@ export function HelpContent(): HelpStep[] {
     },
     {
       title: "The Oracle",
-      icon: <Zap className="w-5 h-5" />,
+      icon: Zap,
       content: (
         <div className="space-y-3">
           <p>The oracle marks solution states by flipping their phase: O|x⟩ = −|x⟩ if marked.</p>
@@ -25,7 +25,7 @@ export function HelpContent(): HelpStep[] {
     },
     {
       title: "Amplitude Amplification",
-      icon: <BarChart3 className="w-5 h-5" />,
+      icon: BarChart3,
       content: (
         <div className="space-y-3">
           <p>Each iteration: <strong>Oracle</strong> (flip marked) → <strong>Diffusion</strong> (reflect about mean).</p>
@@ -34,7 +34,7 @@ export function HelpContent(): HelpStep[] {
     },
     {
       title: "Geometric Interpretation",
-      icon: <Compass className="w-5 h-5" />,
+      icon: Compass,
       content: (
         <div className="space-y-3">
           <p>The state vector rotates by 2θ₀ toward the target |w⟩ each iteration.</p>
@@ -43,7 +43,7 @@ export function HelpContent(): HelpStep[] {
     },
     {
       title: "Optimal Iterations",
-      icon: <Clock className="w-5 h-5" />,
+      icon: Clock,
       content: (
         <div className="space-y-3">
           <p>k<sub>opt</sub> ≈ (π/4)√(N/M). More iterations decreases success probability!</p>
@@ -52,7 +52,7 @@ export function HelpContent(): HelpStep[] {
     },
     {
       title: "Using the Simulator",
-      icon: <Play className="w-5 h-5" />,
+      icon: Play,
       content: (
         <div className="space-y-3">
           <p>Set qubits → Mark states → Initialize → Step/Animate → Measure at peak probability.</p>
