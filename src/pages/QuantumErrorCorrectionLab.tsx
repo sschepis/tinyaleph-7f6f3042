@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useQEC } from '@/hooks/useQEC';
 import { CODE_INFO } from '@/lib/qec';
 import {
@@ -28,12 +29,23 @@ export default function QuantumErrorCorrectionLab() {
     runFullCycle,
   } = useQEC('bit_flip_3');
   
-  const [showHelp, setShowHelp] = useFirstRun('qec-lab');
+  const [isFirstRun, markAsSeen] = useFirstRun('qec-lab');
+  const [showHelp, setShowHelp] = useState(false);
   const helpSteps = HelpContent();
   const codeInfo = CODE_INFO[state.codeType];
 
-  const handleCloseHelp = () => {
-    setShowHelp();
+  // Show help on first run
+  useEffect(() => {
+    if (isFirstRun) {
+      setShowHelp(true);
+    }
+  }, [isFirstRun]);
+
+  const handleCloseHelp = (open: boolean) => {
+    setShowHelp(open);
+    if (!open && isFirstRun) {
+      markAsSeen();
+    }
   };
 
   return (
@@ -110,8 +122,7 @@ export default function QuantumErrorCorrectionLab() {
 
       <AppHelpDialog
         open={showHelp}
-        onOpenChange={setShowHelp}
-        onComplete={markSeen}
+        onOpenChange={handleCloseHelp}
         steps={helpSteps}
         appName="QEC Lab"
       />
