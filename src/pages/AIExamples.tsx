@@ -9,19 +9,308 @@ import { Textarea } from '@/components/ui/textarea';
 import SedenionVisualizer from '@/components/SedenionVisualizer';
 import { motion } from 'framer-motion';
 
-// Import code examples
-import embeddingsCode from '@/examples/ai/01-embeddings.js?raw';
-import semanticMemoryCode from '@/examples/ai/02-semantic-memory.js?raw';
-import reasoningCode from '@/examples/ai/03-reasoning.js?raw';
-import knowledgeGraphCode from '@/examples/ai/04-knowledge-graph.js?raw';
-import llmIntegrationCode from '@/examples/ai/05-llm-integration.js?raw';
-import agentCode from '@/examples/ai/06-agent.js?raw';
-import hybridAICode from '@/examples/ai/07-hybrid-ai.js?raw';
-import entropyReasoningCode from '@/examples/ai/08-entropy-reasoning.js?raw';
-import conceptLearningCode from '@/examples/ai/09-concept-learning.js?raw';
-import promptPrimesCode from '@/examples/ai/10-prompt-primes.js?raw';
-import ragCode from '@/examples/ai/11-rag.js?raw';
-import neuroSymbolicCode from '@/examples/ai/12-neuro-symbolic.js?raw';
+// Inline code examples for AI demos
+const embeddingsCode = `import { SemanticBackend } from '@aleph-ai/tinyaleph';
+
+const backend = new SemanticBackend();
+
+// Generate prime-based embeddings
+const words = ['cat', 'dog', 'animal', 'tree', 'forest'];
+const embeddings = words.map(word => ({
+  word,
+  vector: backend.encode(word)
+}));
+
+// Compute similarity matrix
+for (let i = 0; i < words.length; i++) {
+  for (let j = i + 1; j < words.length; j++) {
+    const sim = backend.similarity(embeddings[i].vector, embeddings[j].vector);
+    console.log(\`\${words[i]} ↔ \${words[j]}: \${(sim * 100).toFixed(1)}%\`);
+  }
+}
+
+// Embedding arithmetic: king - man + woman ≈ queen
+const king = backend.encode('king');
+const man = backend.encode('man');
+const woman = backend.encode('woman');
+const result = backend.add(backend.subtract(king, man), woman);
+const queen = backend.encode('queen');
+console.log('Result similarity to queen:', backend.similarity(result, queen));`;
+
+const semanticMemoryCode = `import { SemanticMemory } from '@aleph-ai/tinyaleph';
+
+const memory = new SemanticMemory({ decayRate: 0.1 });
+
+// Store memories with semantic encoding
+memory.store('The user asked about machine learning');
+memory.store('We discussed neural networks');
+memory.store('The user is interested in AI');
+
+// Semantic recall with threshold
+const query = 'artificial intelligence topics';
+const results = memory.recall(query, { topK: 3, threshold: 0.3 });
+
+results.forEach(r => {
+  console.log(\`[\${(r.score * 100).toFixed(1)}%] \${r.content}\`);
+});
+
+// Memory consolidation (strengthen frequently accessed)
+memory.consolidate();
+
+// Apply forgetting curve
+memory.decay();`;
+
+const reasoningCode = `import { ReasoningEngine, Fact } from '@aleph-ai/tinyaleph';
+
+const engine = new ReasoningEngine();
+
+// Add facts to knowledge base
+engine.addFact('all_men_mortal', 'All men are mortal', 1.0);
+engine.addFact('socrates_man', 'Socrates is a man', 1.0);
+
+// Query with semantic matching
+const results = engine.query('Is Socrates mortal?');
+console.log('Relevant facts:', results);
+
+// Run inference to derive new facts
+engine.infer();
+const derived = engine.getDerivedFacts();
+console.log('Derived conclusions:', derived);
+
+// Confidence propagation
+const conclusion = engine.conclude('Socrates mortality');
+console.log('Confidence:', conclusion.confidence);`;
+
+const knowledgeGraphCode = `import { KnowledgeGraph, Entity, Relation } from '@aleph-ai/tinyaleph';
+
+const graph = new KnowledgeGraph();
+
+// Add entities with semantic embeddings
+graph.addEntity({ id: 1, name: 'Alice', type: 'Person' });
+graph.addEntity({ id: 2, name: 'Bob', type: 'Person' });
+graph.addEntity({ id: 3, name: 'TechCorp', type: 'Company' });
+graph.addEntity({ id: 4, name: 'AI', type: 'Topic' });
+
+// Add relations
+graph.addRelation({ from: 1, to: 3, type: 'works_at' });
+graph.addRelation({ from: 2, to: 3, type: 'works_at' });
+graph.addRelation({ from: 1, to: 4, type: 'interested_in' });
+graph.addRelation({ from: 1, to: 2, type: 'knows' });
+
+// Semantic search
+const results = graph.search('engineers in technology');
+console.log('Found:', results);
+
+// Path finding
+const path = graph.findPath(1, 4);
+console.log('Path:', path);`;
+
+const llmIntegrationCode = `import { SemanticContext, FactVerifier } from '@aleph-ai/tinyaleph';
+
+const context = new SemanticContext({ maxTokens: 4096 });
+
+// Build semantic context for LLM
+context.addDocument('doc1', 'Machine learning fundamentals...');
+context.addDocument('doc2', 'Neural network architectures...');
+
+// Get relevant context for a query
+const query = 'How do transformers work?';
+const relevantDocs = context.retrieve(query, { topK: 2 });
+
+// Prepare prompt with semantic context
+const prompt = context.buildPrompt(query, relevantDocs);
+console.log('Enhanced prompt:', prompt);
+
+// Verify LLM output against facts
+const verifier = new FactVerifier(context);
+const llmOutput = 'Transformers use attention mechanisms...';
+const verification = verifier.check(llmOutput);
+console.log('Factual accuracy:', verification.score);`;
+
+const agentCode = `import { SemanticAgent, Goal, Action } from '@aleph-ai/tinyaleph';
+
+const agent = new SemanticAgent({
+  name: 'ResearchAgent',
+  goals: [
+    { description: 'Learn about AI', priority: 1.0 },
+    { description: 'Summarize findings', priority: 0.8 }
+  ]
+});
+
+// Define available actions
+agent.addAction('search', 'Search for information');
+agent.addAction('read', 'Read a document');
+agent.addAction('summarize', 'Create a summary');
+agent.addAction('respond', 'Generate response');
+
+// Agent selects action based on goal alignment
+const context = 'User asked about machine learning';
+const action = agent.selectAction(context);
+console.log('Selected action:', action);
+
+// Update agent state after action
+agent.updateState({ lastAction: action, knowledge: [...] });
+
+// Check goal completion
+const progress = agent.goalProgress();
+console.log('Goal progress:', progress);`;
+
+const hybridAICode = `import { HybridEmbedding } from '@aleph-ai/tinyaleph';
+
+const hybrid = new HybridEmbedding({
+  symbolicWeight: 0.6,
+  neuralWeight: 0.4
+});
+
+// Combine symbolic (prime) and neural embeddings
+const text = 'artificial intelligence systems';
+
+// Get hybrid embedding
+const embedding = hybrid.encode(text);
+console.log('Hybrid dimensions:', embedding.length);
+
+// Similarity with hybrid approach
+const query = 'machine learning algorithms';
+const similarity = hybrid.similarity(text, query);
+console.log('Hybrid similarity:', similarity);
+
+// Dynamic weighting based on query type
+const technicalQuery = 'quantum computing algorithms';
+const creativeQuery = 'artistic expression in AI';
+console.log('Technical (more symbolic):', hybrid.encode(technicalQuery, { symbolic: 0.8 }));
+console.log('Creative (more neural):', hybrid.encode(creativeQuery, { neural: 0.8 }));`;
+
+const entropyReasoningCode = `import { EntropyReasoner, Hypothesis } from '@aleph-ai/tinyaleph';
+
+const reasoner = new EntropyReasoner();
+
+// Initialize hypotheses with prior probabilities
+reasoner.addHypothesis('H1: The patient has condition A', 0.4);
+reasoner.addHypothesis('H2: The patient has condition B', 0.3);
+reasoner.addHypothesis('H3: The patient has condition C', 0.3);
+
+// Calculate initial entropy
+console.log('Initial entropy:', reasoner.entropy());
+
+// Add evidence and update beliefs
+reasoner.addEvidence('Symptom X observed', {
+  'H1': 0.8,  // High likelihood under H1
+  'H2': 0.3,  // Lower under H2
+  'H3': 0.2   // Lowest under H3
+});
+
+console.log('Updated entropy:', reasoner.entropy());
+console.log('Posterior probabilities:', reasoner.getPosteriors());
+
+// Information gain from potential next tests
+const tests = ['Test A', 'Test B', 'Test C'];
+tests.forEach(test => {
+  const gain = reasoner.expectedInfoGain(test);
+  console.log(\`\${test} expected info gain: \${gain.toFixed(3)} bits\`);
+});`;
+
+const conceptLearningCode = `import { ConceptLearner } from '@aleph-ai/tinyaleph';
+
+const learner = new ConceptLearner();
+
+// Learn concept from examples
+learner.addPositiveExample('cat', 'A fluffy house cat');
+learner.addPositiveExample('cat', 'A tabby cat sleeping');
+learner.addPositiveExample('cat', 'A kitten playing');
+
+learner.addNegativeExample('cat', 'A golden retriever');
+learner.addNegativeExample('cat', 'A parrot');
+
+// Get learned concept centroid
+const catConcept = learner.getConcept('cat');
+console.log('Concept centroid:', catConcept.centroid);
+console.log('Concept boundary:', catConcept.threshold);
+
+// Classify new instances
+const tests = ['A persian cat', 'A german shepherd', 'A small kitten'];
+tests.forEach(test => {
+  const result = learner.classify(test, 'cat');
+  console.log(\`"\${test}" is cat: \${result.probability.toFixed(2)}\`);
+});`;
+
+const promptPrimesCode = `import { PromptAnalyzer } from '@aleph-ai/tinyaleph';
+
+const analyzer = new PromptAnalyzer();
+
+// Analyze prompt quality
+const prompt = 'Explain quantum computing to a beginner';
+const analysis = analyzer.analyze(prompt);
+
+console.log('Coherence:', analysis.coherence);
+console.log('Specificity:', analysis.specificity);
+console.log('Complexity:', analysis.complexity);
+
+// Suggest improvements
+const suggestions = analyzer.suggest(prompt);
+console.log('Suggestions:', suggestions);
+
+// Compare prompt variations
+const variations = [
+  'Explain quantum computing',
+  'Explain quantum computing to a 5 year old',
+  'Provide a detailed technical explanation of quantum computing principles'
+];
+
+variations.forEach(v => {
+  const score = analyzer.score(v);
+  console.log(\`"\${v.slice(0, 30)}..." - Score: \${score.toFixed(2)}\`);
+});`;
+
+const ragCode = `import { RAGSystem, DocumentStore } from '@aleph-ai/tinyaleph';
+
+const store = new DocumentStore();
+const rag = new RAGSystem({ store, chunkSize: 512 });
+
+// Add documents
+rag.addDocument('doc1', 'Machine learning is a subset of AI...');
+rag.addDocument('doc2', 'Deep learning uses neural networks...');
+rag.addDocument('doc3', 'Natural language processing enables...');
+
+// Query with retrieval
+const query = 'How does AI understand language?';
+const context = rag.retrieve(query, { topK: 2 });
+
+console.log('Retrieved chunks:', context.chunks);
+console.log('Relevance scores:', context.scores);
+
+// Generate augmented prompt
+const augmentedPrompt = rag.augment(query, context);
+console.log('Augmented prompt:', augmentedPrompt);
+
+// Chunk overlap analysis
+const overlap = rag.analyzeOverlap(context.chunks);
+console.log('Chunk coherence:', overlap.coherence);`;
+
+const neuroSymbolicCode = `import { NeuroSymbolicBridge } from '@aleph-ai/tinyaleph';
+
+const bridge = new NeuroSymbolicBridge({
+  neuralDim: 384,
+  symbolicDim: 16
+});
+
+// Ground concepts with both representations
+bridge.ground('cat', {
+  neural: neuralEmbedding, // From neural model
+  symbolic: 'furry mammal pet'
+});
+
+// Project neural embedding to symbolic space
+const neuralInput = model.encode('a fluffy feline');
+const symbolic = bridge.project(neuralInput);
+console.log('Symbolic representation:', symbolic);
+
+// Find best matching concept
+const match = bridge.findGrounding(neuralInput);
+console.log('Best match:', match.concept, 'Score:', match.score);
+
+// Measure neural-symbolic alignment
+const alignment = bridge.alignment('cat');
+console.log('Representation alignment:', alignment);`;
 
 // Simulated SemanticBackend functions
 function textToSedenion(text: string): number[] {
