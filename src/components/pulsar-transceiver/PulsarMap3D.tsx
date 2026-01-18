@@ -386,21 +386,21 @@ function StarSphere({
   const meshRef = useRef<THREE.Mesh>(null);
   
   // Convert star position to 3D coordinates (scaled for visualization)
-  // Stars are much closer than pulsars, scale differently
+  // Stars are in parsecs, pulsars in kpc - need consistent scaling
   const position = useMemo(() => {
     const galactic = starEquatorialToGalactic(star.ra, star.dec, star.distance);
-    // Scale stars more aggressively since they're nearby (pc not kpc)
-    // 1 unit = 5 parsecs for nearby stars
-    const scale = star.distance < 100 ? 0.4 : 2;
-    return [galactic.x * 1000 * scale, galactic.z * 10000 * scale, galactic.y * 1000 * scale] as [number, number, number];
+    // Convert parsecs to kpc (1 kpc = 1000 pc) then scale like pulsars
+    // Use same scaling as pulsars: x*2, z*10, y*2
+    const distKpc = star.distance / 1000; // Already converted in starEquatorialToGalactic
+    return [galactic.x * 2, galactic.z * 10, galactic.y * 2] as [number, number, number];
   }, [star]);
   
-  // Size based on luminosity (log scale)
+  // Size based on magnitude (brighter = larger)
   const size = useMemo(() => {
-    const baseSize = 0.02;
-    const lumFactor = Math.log10(star.luminosity + 1) * 0.015;
-    return Math.max(0.015, Math.min(0.08, baseSize + lumFactor));
-  }, [star.luminosity]);
+    // Brighter stars (lower magnitude) should be larger
+    const magFactor = Math.max(0, (6 - star.magnitude) / 6);
+    return 0.02 + magFactor * 0.06;
+  }, [star.magnitude]);
   
   // Subtle twinkle animation
   useFrame((state) => {
@@ -665,8 +665,8 @@ function Scene({
         enableRotate={true}
         minDistance={0.5}
         maxDistance={50}
-        autoRotate={!selectedStar}
-        autoRotateSpeed={0.3}
+        autoRotate={false}
+        autoRotateSpeed={0}
       />
     </>
   );
