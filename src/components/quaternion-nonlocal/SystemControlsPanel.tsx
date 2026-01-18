@@ -18,6 +18,9 @@ interface SystemControlsPanelProps {
   presets: Preset[];
   onPresetSelect: (index: number) => void;
   onReset: () => void;
+  onOpenPrimeExplorer: () => void;
+  onOpenTopologyView: () => void;
+  onOpenAdvancedControls: () => void;
 }
 
 export function SystemControlsPanel({
@@ -28,7 +31,10 @@ export function SystemControlsPanel({
   onTwistChange,
   presets,
   onPresetSelect,
-  onReset
+  onReset,
+  onOpenPrimeExplorer,
+  onOpenTopologyView,
+  onOpenAdvancedControls
 }: SystemControlsPanelProps) {
   return (
     <div className="bg-gray-800/50 rounded-xl p-6 shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_25px_rgba(99,102,241,0.5)] transition-shadow border border-gray-700/50">
@@ -109,16 +115,28 @@ export function SystemControlsPanel({
       {/* Action buttons */}
       <div className="pt-4 border-t border-gray-700 flex justify-between">
         <div className="flex space-x-2">
-          <button className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs flex items-center">
+          <button 
+            onClick={onOpenPrimeExplorer}
+            disabled={!isPoweredOn}
+            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             <Dna className="w-3 h-3 mr-1" />
             Prime Explorer
           </button>
-          <button className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs flex items-center">
+          <button 
+            onClick={onOpenTopologyView}
+            disabled={!isPoweredOn}
+            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             <Network className="w-3 h-3 mr-1" />
             Topology View
           </button>
         </div>
-        <button className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded text-xs flex items-center">
+        <button 
+          onClick={onOpenAdvancedControls}
+          disabled={!isPoweredOn}
+          className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded text-xs flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+        >
           <Settings className="w-3 h-3 mr-1" />
           Advanced Controls
         </button>

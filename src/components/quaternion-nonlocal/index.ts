@@ -14,5 +14,8 @@ export { TransmitterPanel } from './TransmitterPanel';
 export { ReceiverPanel } from './ReceiverPanel';
 export { TopologicalNetworkPanel } from './TopologicalNetworkPanel';
 export { SystemControlsPanel } from './SystemControlsPanel';
+export { PrimeExplorerDialog } from './PrimeExplorerDialog';
+export { TopologyViewDialog } from './TopologyViewDialog';
+export { AdvancedControlsDialog } from './AdvancedControlsDialog';
 
 export { helpSteps } from './HelpContent';
