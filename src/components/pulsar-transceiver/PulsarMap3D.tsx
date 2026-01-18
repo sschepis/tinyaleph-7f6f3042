@@ -1,6 +1,8 @@
 /**
  * 3D Pulsar Map Visualization using Three.js
- * Shows pulsar positions and nearby stars in galactic coordinates with phase animations
+ * Shows pulsar positions and nearby stars in GALACTOCENTRIC coordinates with phase animations
+ * Origin (0,0,0) = Galactic Center (Sgr A*)
+ * Sun positioned at ~8.2 kpc from center in the Orion Spur
  */
 
 import React, { useRef, useMemo, useState, useCallback, useEffect } from 'react';
@@ -13,6 +15,12 @@ import { ALL_STARS, Star } from '@/lib/pulsar-transceiver/star-catalog';
 import { loadHipparcosStars } from '@/lib/pulsar-transceiver/hyg-star-loader';
 import { starToVizPositionTuple } from '@/lib/pulsar-transceiver/star-viz';
 import { StarFieldPoints } from '@/components/pulsar-transceiver/StarFieldPoints';
+import { SpiralArms } from '@/components/pulsar-transceiver/SpiralArms';
+import { 
+  heliocentricToGalactocentric, 
+  SUN_GALACTOCENTRIC_POSITION,
+  distanceFromSun
+} from '@/lib/pulsar-transceiver/galactic-coordinates';
 
 interface PulsarMap3DProps {
   pulsars: Pulsar[];
@@ -26,24 +34,37 @@ interface PulsarMap3DProps {
   onStarSelect?: (star: Star | null) => void;
 }
 
-// Convert visualization coordinates back to galactic for tooltip
-function vizToGalactic(vizX: number, vizY: number, vizZ: number) {
-  const x = vizX / 2;
-  const y = vizZ / 2;
+// Visualization scale constant
+const VIZ_SCALE = 2;
+
+// Convert visualization coordinates back to galactocentric for tooltip
+function vizToGalactocentric(vizX: number, vizY: number, vizZ: number) {
+  // Reverse the viz scaling: vizX = galacto.x * 2, vizY = galacto.z * 10, vizZ = galacto.y * 2
+  const x = vizX / VIZ_SCALE;
+  const y = vizZ / VIZ_SCALE;
   const z = vizY / 10;
+  
   const r = Math.sqrt(x * x + y * y);
   const galacticL = Math.atan2(y, x) * (180 / Math.PI);
   const galacticB = Math.atan2(z, r) * (180 / Math.PI);
   const distFromCenter = Math.sqrt(x * x + y * y + z * z);
-  const sunX = 0, sunY = 8.5, sunZ = 0.025;
-  const distFromSun = Math.sqrt(Math.pow(x - sunX, 2) + Math.pow(y - sunY, 2) + Math.pow(z - sunZ, 2));
+  
+  // Calculate distance from Sun (which is at SUN_GALACTOCENTRIC_POSITION)
+  const sunX = SUN_GALACTOCENTRIC_POSITION.x;
+  const sunY = SUN_GALACTOCENTRIC_POSITION.y;
+  const sunZ = SUN_GALACTOCENTRIC_POSITION.z;
+  const distFromSunVal = Math.sqrt(
+    Math.pow(x - sunX, 2) + 
+    Math.pow(y - sunY, 2) + 
+    Math.pow(z - sunZ, 2)
+  );
   
   return {
     galacticL: galacticL < 0 ? galacticL + 360 : galacticL,
     galacticB,
     x, y, z,
     distFromCenter,
-    distFromSun
+    distFromSun: distFromSunVal
   };
 }
 
@@ -148,22 +169,22 @@ function StarInfoPanel({ star, position, onClose }: {
   );
 }
 
-// Coordinate Tooltip Component
+// Coordinate Tooltip Component (uses galactocentric)
 function CoordinateTooltip({ position }: { position: THREE.Vector3 }) {
-  const data = vizToGalactic(position.x, position.y, position.z);
+  const data = vizToGalactocentric(position.x, position.y, position.z);
   
   return (
     <Html position={[position.x, position.y + 0.4, position.z]} center>
-      <div className="bg-slate-900/95 border border-cyan-500/50 rounded-lg p-2 backdrop-blur-sm min-w-[160px] pointer-events-none text-xs">
-        <div className="font-bold text-cyan-400 mb-1 text-[10px]">GALACTIC COORDS</div>
+      <div className="bg-slate-900/95 border border-cyan-500/50 rounded-lg p-2 backdrop-blur-sm min-w-[180px] pointer-events-none text-xs">
+        <div className="font-bold text-cyan-400 mb-1 text-[10px]">GALACTOCENTRIC COORDS</div>
         <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
           <span className="text-gray-400">l:</span>
           <span className="text-cyan-300 font-mono">{data.galacticL.toFixed(1)}°</span>
           <span className="text-gray-400">b:</span>
           <span className="text-cyan-300 font-mono">{data.galacticB.toFixed(1)}°</span>
-          <span className="text-gray-400">r:</span>
-          <span className="text-purple-300 font-mono">{data.distFromCenter.toFixed(2)} kpc</span>
-          <span className="text-gray-400">d☉:</span>
+          <span className="text-gray-400">r<sub>GC</sub>:</span>
+          <span className="text-amber-300 font-mono">{data.distFromCenter.toFixed(2)} kpc</span>
+          <span className="text-gray-400">r<sub>☉</sub>:</span>
           <span className="text-green-300 font-mono">{data.distFromSun.toFixed(2)} kpc</span>
         </div>
         <div className="mt-1 pt-1 border-t border-slate-700 text-[9px] text-gray-500">
@@ -196,11 +217,14 @@ function PulsarSphere({
   const glowRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
   
-  // Convert pulsar position to 3D coordinates (scaled for visualization)
+  // Convert pulsar position to GALACTOCENTRIC 3D coordinates (scaled for visualization)
   const position = useMemo(() => {
-    const galactic = equatorialToGalactic(pulsar.ra, pulsar.dec, pulsar.distance);
-    // Scale to reasonable visualization size (1 unit = 0.5 kpc)
-    return [galactic.x * 2, galactic.z * 10, galactic.y * 2] as [number, number, number];
+    // Get heliocentric galactic coordinates
+    const helio = equatorialToGalactic(pulsar.ra, pulsar.dec, pulsar.distance);
+    // Convert to galactocentric
+    const galacto = heliocentricToGalactocentric(helio);
+    // Scale to visualization space (1 unit = 0.5 kpc in viz)
+    return [galacto.x * VIZ_SCALE, galacto.z * 10, galacto.y * VIZ_SCALE] as [number, number, number];
   }, [pulsar]);
   
   // Animate based on pulsar rotation
@@ -293,9 +317,11 @@ function LocationMarker({
 }) {
   const meshRef = useRef<THREE.Mesh>(null);
   
+  // Convert observer location to GALACTOCENTRIC coordinates
   const position = useMemo(() => {
-    const g = location.galactic;
-    return [g.x * 2, g.z * 10, g.y * 2] as [number, number, number];
+    const helio = location.galactic;
+    const galacto = heliocentricToGalactocentric(helio);
+    return [galacto.x * VIZ_SCALE, galacto.z * 10, galacto.y * VIZ_SCALE] as [number, number, number];
   }, [location]);
   
   useFrame((state) => {
@@ -304,16 +330,17 @@ function LocationMarker({
     }
   });
   
-  // Connection lines to active pulsars
+  // Connection lines to active pulsars (in galactocentric coordinates)
   const connectionPoints = useMemo(() => {
     if (!showConnections) return [];
     return activePulsars.map(pulsar => {
-      const galactic = equatorialToGalactic(pulsar.ra, pulsar.dec, pulsar.distance);
+      const helio = equatorialToGalactic(pulsar.ra, pulsar.dec, pulsar.distance);
+      const galacto = heliocentricToGalactocentric(helio);
       return {
         pulsar: pulsar.name,
         points: [
           new THREE.Vector3(position[0], position[1], position[2]),
-          new THREE.Vector3(galactic.x * 2, galactic.z * 10, galactic.y * 2)
+          new THREE.Vector3(galacto.x * VIZ_SCALE, galacto.z * 10, galacto.y * VIZ_SCALE)
         ]
       };
     });
@@ -468,9 +495,16 @@ function StarSphere({
   );
 }
 
-// Sun marker at origin
+// Sun marker at its correct galactocentric position (~8.2 kpc from center)
 function SunMarker() {
   const meshRef = useRef<THREE.Mesh>(null);
+  
+  // Sun's position in visualization coordinates
+  const sunPos: [number, number, number] = [
+    SUN_GALACTOCENTRIC_POSITION.x * VIZ_SCALE,  // ~16.4 units from origin
+    SUN_GALACTOCENTRIC_POSITION.z * 10,          // slightly above plane
+    SUN_GALACTOCENTRIC_POSITION.y * VIZ_SCALE    // y=0 in galactic coords
+  ];
   
   useFrame((state) => {
     if (meshRef.current) {
@@ -480,56 +514,61 @@ function SunMarker() {
   });
   
   return (
-    <group position={[0, 0.02, 0.017]}>
+    <group position={sunPos}>
       <mesh ref={meshRef}>
-        <sphereGeometry args={[0.03, 16, 16]} />
+        <sphereGeometry args={[0.08, 16, 16]} />
         <meshBasicMaterial color="#fff700" />
       </mesh>
       <mesh scale={2}>
-        <sphereGeometry args={[0.03, 16, 16]} />
+        <sphereGeometry args={[0.08, 16, 16]} />
         <meshBasicMaterial color="#fff700" transparent opacity={0.3} />
       </mesh>
       <Text
-        position={[0, 0.08, 0]}
-        fontSize={0.06}
+        position={[0, 0.2, 0]}
+        fontSize={0.1}
         color="#fff700"
         anchorX="center"
       >
-        ☉ Sol
+        ☉ Sol ({SUN_GALACTOCENTRIC_POSITION.x.toFixed(1)} kpc from GC)
       </Text>
     </group>
   );
 }
 
-// Galactic plane grid
+// Galactic plane grid (galactocentric - origin at center)
 function GalacticPlane() {
   return (
     <group>
-      {/* Grid */}
+      {/* Grid - larger to accommodate galactocentric view */}
       <gridHelper 
-        args={[20, 20, '#1e3a5f', '#0f172a']} 
+        args={[40, 40, '#1e3a5f', '#0f172a']} 
         rotation={[0, 0, 0]}
       />
       
-      {/* Galactic center marker */}
-      <mesh position={[0, 0, 0]}>
-        <torusGeometry args={[0.3, 0.02, 8, 32]} />
-        <meshBasicMaterial color="#fbbf24" />
-      </mesh>
+      {/* Distance ring markers */}
+      {[4, 8, 12, 16].map(radius => (
+        <mesh key={radius} rotation={[Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
+          <ringGeometry args={[radius * VIZ_SCALE - 0.02, radius * VIZ_SCALE + 0.02, 64]} />
+          <meshBasicMaterial color="#334155" transparent opacity={0.3} side={THREE.DoubleSide} />
+        </mesh>
+      ))}
       
-      {/* Galactic center label */}
-      <Text
-        position={[0, 0.1, 0]}
-        fontSize={0.12}
-        color="#fbbf24"
-        anchorX="center"
-      >
-        Galactic Center
-      </Text>
+      {/* Distance labels */}
+      {[4, 8, 12].map(radius => (
+        <Text
+          key={`label-${radius}`}
+          position={[radius * VIZ_SCALE, 0.1, 0]}
+          fontSize={0.12}
+          color="#64748b"
+          anchorX="center"
+        >
+          {radius} kpc
+        </Text>
+      ))}
       
       {/* Axis labels */}
-      <Text position={[5, 0.1, 0]} fontSize={0.15} color="#4b5563">X (kpc)</Text>
-      <Text position={[0, 0.1, 5]} fontSize={0.15} color="#4b5563">Y (kpc)</Text>
+      <Text position={[10, 0.15, 0]} fontSize={0.18} color="#4b5563">X (kpc)</Text>
+      <Text position={[0, 0.15, 10]} fontSize={0.18} color="#4b5563">Y (kpc)</Text>
     </group>
   );
 }
@@ -600,10 +639,13 @@ function Scene({
       
       {/* No fake stars - only real astronomical objects */}
       
-      {/* Galactic plane */}
+      {/* Spiral arms (rendered first, below other elements) */}
+      <SpiralArms scale={VIZ_SCALE} showLabels={true} visible={true} />
+      
+      {/* Galactic plane grid */}
       <GalacticPlane />
       
-      {/* Sun marker */}
+      {/* Sun marker at correct galactocentric position */}
       <SunMarker />
       
       {/* Real stars (dense Hipparcos field rendered as GPU points) */}

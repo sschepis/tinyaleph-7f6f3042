@@ -1,4 +1,8 @@
 import { Star, starEquatorialToGalactic } from "@/lib/pulsar-transceiver/star-catalog";
+import { 
+  heliocentricToGalactocentric, 
+  SUN_GALACTOCENTRIC_POSITION 
+} from "@/lib/pulsar-transceiver/galactic-coordinates";
 
 /**
  * Stars are physically very close compared to pulsars (pc vs kpc).
@@ -7,10 +11,33 @@ import { Star, starEquatorialToGalactic } from "@/lib/pulsar-transceiver/star-ca
  */
 export const STAR_LAYER_SCALE = 80;
 
+/**
+ * Visualization scale factor (1 unit = 0.5 kpc in viz space)
+ */
+export const VIZ_SCALE = 2;
+
+/**
+ * Convert a star to galactocentric visualization coordinates
+ * Stars are converted from heliocentric to galactocentric and scaled
+ */
 export function starToVizPositionTuple(star: Star): [number, number, number] {
-  const g = starEquatorialToGalactic(star.ra, star.dec, star.distance);
+  // Get heliocentric galactic coordinates (in kpc)
+  const helio = starEquatorialToGalactic(star.ra, star.dec, star.distance);
+  
+  // Convert to galactocentric
+  const galacto = heliocentricToGalactocentric(helio);
+  
   const s = STAR_LAYER_SCALE;
 
-  // Match pulsar axis convention: [x, z*10, y]
-  return [g.x * 2 * s, g.z * 10 * s, g.y * 2 * s];
+  // Match pulsar axis convention: [x * scale, z * 10, y * scale]
+  // Note: stars are close so we use STAR_LAYER_SCALE for expansion
+  return [galacto.x * VIZ_SCALE * s, galacto.z * 10 * s, galacto.y * VIZ_SCALE * s];
+}
+
+/**
+ * Get the Sun's position in visualization coordinates
+ */
+export function getSunVizPosition(): [number, number, number] {
+  const s = SUN_GALACTOCENTRIC_POSITION;
+  return [s.x * VIZ_SCALE, s.z * 10, s.y * VIZ_SCALE];
 }
