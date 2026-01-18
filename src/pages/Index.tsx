@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import Hero from '../components/Hero';
-import { Layers, Waves, Database, Cpu, ArrowRight, Play, Server, Atom, MessageSquare, Languages, BookOpen, Sparkles, Bot, Zap, Shuffle, Dna, Brain, Eye, Music, Radio, Satellite } from 'lucide-react';
+import { Layers, Waves, Database, Cpu, ArrowRight, Play, Server, Atom, MessageSquare, Languages, BookOpen, Sparkles, Bot, Zap, Shuffle, Dna, Brain, Eye, Music, Radio, Satellite, Activity, Link2, Search, Shield, Thermometer } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -533,6 +533,216 @@ const Index = () => {
                   <div className="px-6 py-3 bg-sky-500/5 border-t border-sky-500/10 flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">Cosmic Comms</span>
                     <ArrowRight className="w-4 h-4 text-sky-400 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </Card>
+              </Link>
+            </motion.div>
+
+            {/* Prime Resonance */}
+            <motion.div variants={scaleIn}>
+              <Link to="/prime-resonance" className="group block h-full">
+                <Card className="h-full overflow-hidden border-2 border-transparent hover:border-yellow-500/50 transition-all duration-300 bg-gradient-to-br from-yellow-500/5 to-orange-500/5">
+                  <div className="p-6">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Activity className="w-6 h-6 text-yellow-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2 group-hover:text-yellow-400 transition-colors">
+                      Prime Resonance
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Quantum-like prime resonance formalism. Hilbert space visualization and operator dynamics.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Born Rule', 'Operators', 'Entropy'].map(tag => (
+                        <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="px-6 py-3 bg-yellow-500/5 border-t border-yellow-500/10 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Quantum Formalism</span>
+                    <ArrowRight className="w-4 h-4 text-yellow-400 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </Card>
+              </Link>
+            </motion.div>
+
+            {/* Quantum Wavefunction */}
+            <motion.div variants={scaleIn}>
+              <Link to="/quantum-wavefunction" className="group block h-full">
+                <Card className="h-full overflow-hidden border-2 border-transparent hover:border-lime-500/50 transition-all duration-300 bg-gradient-to-br from-lime-500/5 to-green-500/5">
+                  <div className="p-6">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-lime-500/20 to-green-500/20 border border-lime-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Waves className="w-6 h-6 text-lime-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2 group-hover:text-lime-400 transition-colors">
+                      Prime Wavefunction
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Visualize prime-modulated wavefunctions with 3D complex helix and Fourier analysis.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['3D Helix', 'Riemann', 'Fourier'].map(tag => (
+                        <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-lime-500/10 text-lime-400 border border-lime-500/20">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="px-6 py-3 bg-lime-500/5 border-t border-lime-500/10 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Wave Explorer</span>
+                    <ArrowRight className="w-4 h-4 text-lime-400 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </Card>
+              </Link>
+            </motion.div>
+
+            {/* Entanglement Lab */}
+            <motion.div variants={scaleIn}>
+              <Link to="/entanglement-lab" className="group block h-full">
+                <Card className="h-full overflow-hidden border-2 border-transparent hover:border-pink-500/50 transition-all duration-300 bg-gradient-to-br from-pink-500/5 to-rose-500/5">
+                  <div className="p-6">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500/20 to-rose-500/20 border border-pink-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Link2 className="w-6 h-6 text-pink-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2 group-hover:text-pink-400 transition-colors">
+                      Entanglement Lab
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Bell state preparation and CHSH inequality testing. Demonstrate quantum non-locality.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Bell States', 'CHSH', 'Correlation'].map(tag => (
+                        <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-pink-500/10 text-pink-400 border border-pink-500/20">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="px-6 py-3 bg-pink-500/5 border-t border-pink-500/10 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Bell Testing</span>
+                    <ArrowRight className="w-4 h-4 text-pink-400 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </Card>
+              </Link>
+            </motion.div>
+
+            {/* BB84 Simulator */}
+            <motion.div variants={scaleIn}>
+              <Link to="/bb84" className="group block h-full">
+                <Card className="h-full overflow-hidden border-2 border-transparent hover:border-emerald-500/50 transition-all duration-300 bg-gradient-to-br from-emerald-500/5 to-teal-500/5">
+                  <div className="p-6">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Shield className="w-6 h-6 text-emerald-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2 group-hover:text-emerald-400 transition-colors">
+                      BB84 Protocol
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Quantum key distribution with eavesdropper detection. Watch photon polarization in action.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['QKD', 'Eve Detection', 'Photons'].map(tag => (
+                        <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="px-6 py-3 bg-emerald-500/5 border-t border-emerald-500/10 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Cryptography</span>
+                    <ArrowRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </Card>
+              </Link>
+            </motion.div>
+
+            {/* Grover's Search */}
+            <motion.div variants={scaleIn}>
+              <Link to="/grover-search" className="group block h-full">
+                <Card className="h-full overflow-hidden border-2 border-transparent hover:border-orange-500/50 transition-all duration-300 bg-gradient-to-br from-orange-500/5 to-red-500/5">
+                  <div className="p-6">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500/20 to-red-500/20 border border-orange-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Search className="w-6 h-6 text-orange-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2 group-hover:text-orange-400 transition-colors">
+                      Grover's Search
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Quantum search algorithm with amplitude amplification. Visualize the geometric rotation.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Oracle', 'Diffusion', 'Speedup'].map(tag => (
+                        <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="px-6 py-3 bg-orange-500/5 border-t border-orange-500/10 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Algorithm</span>
+                    <ArrowRight className="w-4 h-4 text-orange-400 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </Card>
+              </Link>
+            </motion.div>
+
+            {/* QEC Lab */}
+            <motion.div variants={scaleIn}>
+              <Link to="/qec-lab" className="group block h-full">
+                <Card className="h-full overflow-hidden border-2 border-transparent hover:border-blue-500/50 transition-all duration-300 bg-gradient-to-br from-blue-500/5 to-indigo-500/5">
+                  <div className="p-6">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Shield className="w-6 h-6 text-blue-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2 group-hover:text-blue-400 transition-colors">
+                      Error Correction
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Simulate quantum error correction with bit-flip, phase-flip, Shor, and Steane codes.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Syndrome', 'Recovery', 'Codes'].map(tag => (
+                        <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="px-6 py-3 bg-blue-500/5 border-t border-blue-500/10 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">QEC Codes</span>
+                    <ArrowRight className="w-4 h-4 text-blue-400 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </Card>
+              </Link>
+            </motion.div>
+
+            {/* Decoherence Simulator */}
+            <motion.div variants={scaleIn}>
+              <Link to="/decoherence" className="group block h-full">
+                <Card className="h-full overflow-hidden border-2 border-transparent hover:border-slate-500/50 transition-all duration-300 bg-gradient-to-br from-slate-500/5 to-zinc-500/5">
+                  <div className="p-6">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-500/20 to-zinc-500/20 border border-slate-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Thermometer className="w-6 h-6 text-slate-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2 group-hover:text-slate-400 transition-colors">
+                      Decoherence
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Visualize T1 relaxation and T2 dephasing. Real-time Bloch sphere state trajectories.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['T1/T2', 'Bloch', 'Decay'].map(tag => (
+                        <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-slate-500/10 text-slate-400 border border-slate-500/20">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="px-6 py-3 bg-slate-500/5 border-t border-slate-500/10 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Noise Physics</span>
+                    <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </Card>
               </Link>
