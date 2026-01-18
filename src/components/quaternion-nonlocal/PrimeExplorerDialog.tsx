@@ -72,9 +72,9 @@ export function PrimeExplorerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl bg-gray-900 border-indigo-500/30 text-gray-100">
+      <DialogContent className="max-w-4xl bg-background border-border text-foreground">
         <DialogHeader>
-          <DialogTitle className="text-2xl text-indigo-300 flex items-center gap-2">
+          <DialogTitle className="text-2xl text-primary flex items-center gap-2">
             <Dna className="w-6 h-6" />
             Prime Explorer
           </DialogTitle>
@@ -82,17 +82,17 @@ export function PrimeExplorerDialog({
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Prime Spiral Visualization */}
-          <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50">
-            <h3 className="text-sm font-semibold text-indigo-400 mb-3 flex items-center gap-2">
+          <div className="bg-card/50 rounded-xl p-4 border border-border">
+            <h3 className="text-sm font-semibold text-primary mb-3 flex items-center gap-2">
               <Atom className="w-4 h-4" />
               Split Prime Spiral
             </h3>
-            <div className="relative h-72 bg-gray-900/50 rounded-lg overflow-hidden">
+            <div className="relative h-72 bg-background/50 rounded-lg overflow-hidden">
               <svg className="w-full h-full" viewBox="0 0 400 300">
                 {/* Grid */}
                 <defs>
                   <pattern id="explorerGrid" width="20" height="20" patternUnits="userSpaceOnUse">
-                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1e293b" strokeWidth="0.5" />
+                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="hsl(var(--border))" strokeWidth="0.5" />
                   </pattern>
                 </defs>
                 <rect width="400" height="300" fill="url(#explorerGrid)" />
@@ -101,7 +101,7 @@ export function PrimeExplorerDialog({
                 <path
                   d={`M ${spiralNodes[0]?.x || 200} ${spiralNodes[0]?.y || 150} ${spiralNodes.map(n => `L ${n.x} ${n.y}`).join(' ')}`}
                   fill="none"
-                  stroke="#4f46e5"
+                  stroke="hsl(var(--primary))"
                   strokeWidth="1"
                   opacity="0.3"
                 />
@@ -116,7 +116,7 @@ export function PrimeExplorerDialog({
                       fill={
                         node.prime === selectedPrimeAlice ? '#22c55e' :
                         node.prime === selectedPrimeBob ? '#3b82f6' :
-                        node.isSplit ? '#a855f7' : '#6b7280'
+                        node.isSplit ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'
                       }
                       className="cursor-pointer"
                       whileHover={{ scale: 1.3 }}
@@ -140,22 +140,22 @@ export function PrimeExplorerDialog({
                   </g>
                 ))}
               </svg>
-              <div className="absolute bottom-2 left-2 text-xs text-gray-500">
+              <div className="absolute bottom-2 left-2 text-xs text-muted-foreground">
                 Click: Alice | Right-click: Bob
               </div>
             </div>
           </div>
 
           {/* Prime Properties Table */}
-          <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50">
-            <h3 className="text-sm font-semibold text-indigo-400 mb-3 flex items-center gap-2">
+          <div className="bg-card/50 rounded-xl p-4 border border-border">
+            <h3 className="text-sm font-semibold text-primary mb-3 flex items-center gap-2">
               <Grid3X3 className="w-4 h-4" />
               Split Prime Properties
             </h3>
             <div className="max-h-72 overflow-y-auto">
               <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-gray-800">
-                  <tr className="text-gray-400">
+                <thead className="sticky top-0 bg-card">
+                  <tr className="text-muted-foreground">
                     <th className="text-left py-2 px-2">p</th>
                     <th className="text-left py-2 px-2">p mod 12</th>
                     <th className="text-left py-2 px-2">Gaussian</th>
@@ -166,15 +166,15 @@ export function PrimeExplorerDialog({
                   {primeData.map(data => (
                     <tr 
                       key={data.prime}
-                      className={`border-t border-gray-700/30 hover:bg-gray-700/30 cursor-pointer transition-colors ${
-                        data.prime === selectedPrimeAlice ? 'bg-green-900/30' :
-                        data.prime === selectedPrimeBob ? 'bg-blue-900/30' : ''
+                      className={`border-t border-border/30 hover:bg-muted/30 cursor-pointer transition-colors ${
+                        data.prime === selectedPrimeAlice ? 'bg-green-500/10' :
+                        data.prime === selectedPrimeBob ? 'bg-blue-500/10' : ''
                       }`}
                       onClick={() => onSelectPrime(data.prime, 'alice')}
                     >
-                      <td className="py-2 px-2 font-mono text-indigo-300">{data.prime}</td>
+                      <td className="py-2 px-2 font-mono text-primary">{data.prime}</td>
                       <td className="py-2 px-2 font-mono">
-                        <span className={data.isSplit ? 'text-purple-400' : 'text-gray-500'}>
+                        <span className={data.isSplit ? 'text-primary' : 'text-muted-foreground'}>
                           ≡ {data.mod12}
                         </span>
                       </td>
@@ -184,7 +184,7 @@ export function PrimeExplorerDialog({
                             ({data.gaussian.a} + {data.gaussian.b}i)
                           </span>
                         ) : (
-                          <span className="text-gray-500">—</span>
+                          <span className="text-muted-foreground">—</span>
                         )}
                       </td>
                       <td className="py-2 px-2">
@@ -205,7 +205,7 @@ export function PrimeExplorerDialog({
 
         {/* Current Selection Info */}
         <div className="mt-4 grid grid-cols-2 gap-4">
-          <div className="bg-green-900/20 rounded-lg p-4 border border-green-500/30">
+          <div className="bg-green-500/10 rounded-lg p-4 border border-green-500/30">
             <div className="flex items-center gap-2 mb-2">
               <Zap className="w-4 h-4 text-green-400" />
               <span className="text-green-400 font-semibold">Alice's Prime</span>
@@ -217,7 +217,7 @@ export function PrimeExplorerDialog({
               </div>
             )}
           </div>
-          <div className="bg-blue-900/20 rounded-lg p-4 border border-blue-500/30">
+          <div className="bg-blue-500/10 rounded-lg p-4 border border-blue-500/30">
             <div className="flex items-center gap-2 mb-2">
               <Zap className="w-4 h-4 text-blue-400" />
               <span className="text-blue-400 font-semibold">Bob's Prime</span>
