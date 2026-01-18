@@ -35,6 +35,12 @@ A comprehensive guide to the mathematical, physical, and computational foundatio
 - [Sephirotic Oscillator](./06-applications/sephirotic-oscillator.md) - Kabbalistic resonance
 - [Prime Resonance](./06-applications/prime-resonance.md) - Quantum-like prime dynamics
 - [Quantum Wavefunction](./06-applications/quantum-wavefunction.md) - Riemann zero exploration
+- [Quaternion Nonlocal](./06-applications/quaternion-nonlocal.md) - Non-local semantic communication
+
+### 7. Cosmic
+- [Symbolic Resonance Paper](./07-cosmic/symbolic-resonance-paper.md) - Full SRC academic paper
+- [Pulsar Synchronization](./07-cosmic/pulsar-synchronization.md) - Reference Pulsar Model
+- [SETI Implications](./07-cosmic/seti-implications.md) - SETI via SRC detection
 
 ## Quick Start
 
