@@ -3,9 +3,9 @@
  * Shows pulsar positions and nearby stars in galactic coordinates with phase animations
  */
 
-import React, { useRef, useMemo, useState, useCallback } from 'react';
-import { Canvas, useFrame, ThreeEvent } from '@react-three/fiber';
-import { OrbitControls, Stars, Text, Line, Html } from '@react-three/drei';
+import React, { useRef, useMemo, useState, useCallback, useEffect } from 'react';
+import { Canvas, useFrame, useThree, ThreeEvent } from '@react-three/fiber';
+import { OrbitControls, Text, Line, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { Pulsar, ObserverLocation } from '@/lib/pulsar-transceiver/types';
 import { equatorialToGalactic } from '@/lib/pulsar-transceiver/pulsar-catalog';
@@ -19,6 +19,8 @@ interface PulsarMap3DProps {
   locations: ObserverLocation[];
   phases: Map<string, number>;
   onPulsarClick?: (pulsar: Pulsar) => void;
+  selectedStar?: Star | null;
+  onStarSelect?: (star: Star | null) => void;
 }
 
 // Convert visualization coordinates back to galactic for tooltip
@@ -40,6 +42,107 @@ function vizToGalactic(vizX: number, vizY: number, vizZ: number) {
     distFromCenter,
     distFromSun
   };
+}
+
+// Camera controller for zoom-to-star feature
+function CameraController({ 
+  targetPosition, 
+  isAnimating,
+  onAnimationComplete 
+}: { 
+  targetPosition: THREE.Vector3 | null;
+  isAnimating: boolean;
+  onAnimationComplete: () => void;
+}) {
+  const { camera } = useThree();
+  const targetRef = useRef<THREE.Vector3 | null>(null);
+  const startPosRef = useRef<THREE.Vector3>(new THREE.Vector3());
+  const progressRef = useRef(0);
+  
+  useEffect(() => {
+    if (targetPosition && isAnimating) {
+      startPosRef.current.copy(camera.position);
+      targetRef.current = targetPosition.clone();
+      // Calculate offset to view the target from a nice angle
+      const offset = new THREE.Vector3(0.5, 0.3, 0.5).normalize().multiplyScalar(2);
+      targetRef.current.add(offset);
+      progressRef.current = 0;
+    }
+  }, [targetPosition, isAnimating, camera]);
+  
+  useFrame((_, delta) => {
+    if (isAnimating && targetRef.current) {
+      progressRef.current += delta * 1.5;
+      const t = Math.min(1, progressRef.current);
+      const eased = 1 - Math.pow(1 - t, 3); // ease out cubic
+      
+      camera.position.lerpVectors(startPosRef.current, targetRef.current, eased);
+      
+      if (t >= 1) {
+        onAnimationComplete();
+      }
+    }
+  });
+  
+  return null;
+}
+
+// Star Info Panel (HTML overlay)
+function StarInfoPanel({ star, position, onClose }: { 
+  star: Star; 
+  position: THREE.Vector3;
+  onClose: () => void;
+}) {
+  return (
+    <Html position={[position.x, position.y + 0.3, position.z]} center>
+      <div className="bg-slate-900/95 border border-primary/50 rounded-lg p-3 backdrop-blur-sm min-w-[200px] pointer-events-auto text-xs shadow-xl">
+        <div className="flex justify-between items-start mb-2">
+          <div>
+            <div className="font-bold text-primary text-sm">{star.commonName || star.name}</div>
+            {star.commonName && <div className="text-muted-foreground text-[10px]">{star.name}</div>}
+          </div>
+          <button 
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground transition-colors p-1"
+          >
+            ✕
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+          <span className="text-muted-foreground">Spectral:</span>
+          <span className="font-mono" style={{ color: star.color }}>{star.spectralType}</span>
+          
+          <span className="text-muted-foreground">Distance:</span>
+          <span className="text-cyan-300 font-mono">{star.distance.toFixed(2)} pc</span>
+          
+          <span className="text-muted-foreground">Magnitude:</span>
+          <span className="text-yellow-300 font-mono">{star.magnitude.toFixed(2)}</span>
+          
+          <span className="text-muted-foreground">Luminosity:</span>
+          <span className="text-orange-300 font-mono">{star.luminosity >= 1000 ? `${(star.luminosity / 1000).toFixed(1)}k` : star.luminosity.toFixed(2)} L☉</span>
+          
+          {star.constellation && (
+            <>
+              <span className="text-muted-foreground">Constellation:</span>
+              <span className="text-purple-300">{star.constellation}</span>
+            </>
+          )}
+          
+          {star.hip && (
+            <>
+              <span className="text-muted-foreground">HIP:</span>
+              <span className="text-gray-400 font-mono">{star.hip}</span>
+            </>
+          )}
+        </div>
+        
+        <div className="mt-2 pt-2 border-t border-slate-700 text-[10px] text-muted-foreground">
+          ~{(star.distance * 3.26156).toFixed(1)} light years from Sol
+        </div>
+      </div>
+    </Html>
+  );
 }
 
 // Coordinate Tooltip Component
@@ -268,11 +371,15 @@ function LocationMarker({
 
 // Real Star visualization
 function StarSphere({ 
-  star, 
+  star,
+  isSelected,
+  onClick,
   onHover,
   onUnhover
 }: { 
   star: Star;
+  isSelected?: boolean;
+  onClick?: (star: Star, position: THREE.Vector3) => void;
   onHover?: (position: THREE.Vector3, name: string) => void;
   onUnhover?: () => void;
 }) {
@@ -299,7 +406,8 @@ function StarSphere({
   useFrame((state) => {
     if (meshRef.current) {
       const twinkle = 0.9 + 0.1 * Math.sin(state.clock.elapsedTime * 2 + star.ra * 10);
-      meshRef.current.scale.setScalar(size * twinkle);
+      const selectedScale = isSelected ? 1.5 : 1;
+      meshRef.current.scale.setScalar(size * twinkle * selectedScale);
     }
   });
   
@@ -308,39 +416,53 @@ function StarSphere({
     onHover?.(new THREE.Vector3(...position), star.commonName || star.name);
   }, [onHover, position, star]);
   
+  const handleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation();
+    onClick?.(star, new THREE.Vector3(...position));
+  }, [onClick, star, position]);
+  
   return (
     <group position={position}>
       <mesh 
         ref={meshRef}
         onPointerEnter={handlePointerEnter}
         onPointerLeave={onUnhover}
+        onClick={handleClick}
       >
         <sphereGeometry args={[size, 8, 8]} />
         <meshBasicMaterial 
           color={star.color} 
           transparent 
-          opacity={0.9}
+          opacity={isSelected ? 1 : 0.9}
         />
       </mesh>
       
-      {/* Glow for bright stars */}
-      {star.magnitude < 2 && (
-        <mesh scale={2}>
+      {/* Glow for bright stars or selected */}
+      {(star.magnitude < 2 || isSelected) && (
+        <mesh scale={isSelected ? 3 : 2}>
           <sphereGeometry args={[size, 8, 8]} />
           <meshBasicMaterial 
             color={star.color} 
             transparent 
-            opacity={0.3}
+            opacity={isSelected ? 0.5 : 0.3}
           />
         </mesh>
       )}
       
-      {/* Label for notable stars */}
-      {(star.magnitude < 1.5 || star.distance < 5) && (
+      {/* Selection ring */}
+      {isSelected && (
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[size * 2.5, size * 3, 32]} />
+          <meshBasicMaterial color="#22d3ee" transparent opacity={0.7} side={THREE.DoubleSide} />
+        </mesh>
+      )}
+      
+      {/* Label for notable stars or selected */}
+      {(star.magnitude < 1.5 || star.distance < 5 || isSelected) && (
         <Text
           position={[0, size + 0.05, 0]}
-          fontSize={0.05}
-          color={star.color}
+          fontSize={isSelected ? 0.07 : 0.05}
+          color={isSelected ? '#22d3ee' : star.color}
           anchorX="center"
           anchorY="bottom"
         >
@@ -425,21 +547,55 @@ function Scene({
   referencePhase,
   locations,
   phases,
-  onPulsarClick
+  onPulsarClick,
+  selectedStar,
+  onStarSelect
 }: PulsarMap3DProps) {
   const locationColors = ['#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#3b82f6'];
   const [hoveredPosition, setHoveredPosition] = useState<THREE.Vector3 | null>(null);
+  const [selectedStarPosition, setSelectedStarPosition] = useState<THREE.Vector3 | null>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
   
   const handleHover = useCallback((position: THREE.Vector3) => {
-    setHoveredPosition(position);
-  }, []);
+    if (!selectedStar) {
+      setHoveredPosition(position);
+    }
+  }, [selectedStar]);
   
   const handleUnhover = useCallback(() => {
     setHoveredPosition(null);
   }, []);
   
+  const handleStarClick = useCallback((star: Star, position: THREE.Vector3) => {
+    if (selectedStar?.name === star.name) {
+      // Deselect if clicking same star
+      onStarSelect?.(null);
+      setSelectedStarPosition(null);
+    } else {
+      onStarSelect?.(star);
+      setSelectedStarPosition(position);
+      setIsAnimating(true);
+    }
+  }, [selectedStar, onStarSelect]);
+  
+  const handleClosePanel = useCallback(() => {
+    onStarSelect?.(null);
+    setSelectedStarPosition(null);
+  }, [onStarSelect]);
+  
+  const handleAnimationComplete = useCallback(() => {
+    setIsAnimating(false);
+  }, []);
+  
   return (
     <>
+      {/* Camera controller for zoom animation */}
+      <CameraController 
+        targetPosition={selectedStarPosition}
+        isAnimating={isAnimating}
+        onAnimationComplete={handleAnimationComplete}
+      />
+      
       {/* Lighting */}
       <ambientLight intensity={0.3} />
       <pointLight position={[10, 10, 10]} intensity={1} />
@@ -458,13 +614,24 @@ function Scene({
         <StarSphere
           key={star.name}
           star={star}
+          isSelected={selectedStar?.name === star.name}
+          onClick={handleStarClick}
           onHover={(pos, name) => handleHover(pos)}
           onUnhover={handleUnhover}
         />
       ))}
       
-      {/* Coordinate Tooltip */}
-      {hoveredPosition && <CoordinateTooltip position={hoveredPosition} />}
+      {/* Star info panel when selected */}
+      {selectedStar && selectedStarPosition && (
+        <StarInfoPanel 
+          star={selectedStar} 
+          position={selectedStarPosition}
+          onClose={handleClosePanel}
+        />
+      )}
+      
+      {/* Coordinate Tooltip for non-selected hover */}
+      {hoveredPosition && !selectedStar && <CoordinateTooltip position={hoveredPosition} />}
       
       {/* Pulsars */}
       {pulsars.map(pulsar => (
@@ -498,7 +665,7 @@ function Scene({
         enableRotate={true}
         minDistance={0.5}
         maxDistance={50}
-        autoRotate
+        autoRotate={!selectedStar}
         autoRotateSpeed={0.3}
       />
     </>
@@ -506,13 +673,31 @@ function Scene({
 }
 
 export function PulsarMap3D(props: PulsarMap3DProps) {
+  const [selectedStar, setSelectedStar] = useState<Star | null>(null);
+  
   return (
-    <div className="w-full h-full min-h-[400px] bg-slate-950 rounded-lg overflow-hidden">
+    <div className="w-full h-full min-h-[400px] bg-slate-950 rounded-lg overflow-hidden relative">
+      {/* Star count indicator */}
+      <div className="absolute top-2 left-2 z-10 bg-slate-900/80 backdrop-blur-sm rounded px-2 py-1 text-xs text-muted-foreground">
+        <span className="text-primary font-mono">{ALL_STARS.length}</span> stars • <span className="text-cyan-400 font-mono">{props.pulsars.length}</span> pulsars
+      </div>
+      
+      {/* Selected star name */}
+      {selectedStar && (
+        <div className="absolute top-2 right-2 z-10 bg-primary/20 backdrop-blur-sm rounded px-3 py-1 text-xs text-primary border border-primary/30">
+          Focused: {selectedStar.commonName || selectedStar.name}
+        </div>
+      )}
+      
       <Canvas
         camera={{ position: [5, 5, 10], fov: 60 }}
         gl={{ antialias: true }}
       >
-        <Scene {...props} />
+        <Scene 
+          {...props} 
+          selectedStar={selectedStar}
+          onStarSelect={setSelectedStar}
+        />
       </Canvas>
     </div>
   );
