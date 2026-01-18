@@ -102,9 +102,9 @@ export function TopologyViewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl bg-gray-900 border-indigo-500/30 text-gray-100">
+      <DialogContent className="max-w-5xl bg-background border-border text-foreground">
         <DialogHeader>
-          <DialogTitle className="text-2xl text-indigo-300 flex items-center gap-2">
+          <DialogTitle className="text-2xl text-primary flex items-center gap-2">
             <Network className="w-6 h-6" />
             Topology Viewer
           </DialogTitle>
@@ -122,8 +122,8 @@ export function TopologyViewDialog({
               onClick={() => setViewMode(mode)}
               className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
                 viewMode === mode
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-card text-muted-foreground hover:bg-muted'
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -133,24 +133,24 @@ export function TopologyViewDialog({
           
           <button
             onClick={() => setRotation(r => r + Math.PI / 6)}
-            className="ml-auto px-3 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400"
+            className="ml-auto px-3 py-2 bg-card hover:bg-muted rounded-lg text-muted-foreground"
           >
             <RotateCcw className="w-4 h-4" />
           </button>
         </div>
 
         {/* Main Visualization */}
-        <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50">
-          <div className="relative h-80 bg-gray-900/50 rounded-lg overflow-hidden">
+        <div className="bg-card/50 rounded-xl p-4 border border-border">
+          <div className="relative h-80 bg-background/50 rounded-lg overflow-hidden">
             <svg className="w-full h-full" viewBox="0 0 400 300">
               {/* Grid */}
               <defs>
                 <pattern id="topoGrid" width="20" height="20" patternUnits="userSpaceOnUse">
-                  <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1e293b" strokeWidth="0.5" />
+                  <path d="M 20 0 L 0 0 0 20" fill="none" stroke="hsl(var(--border))" strokeWidth="0.5" />
                 </pattern>
                 <linearGradient id="fiberGrad" x1="0%" y1="0%" x2="100%" y2="0%">
                   <stop offset="0%" stopColor="#22c55e" />
-                  <stop offset="50%" stopColor="#a855f7" />
+                  <stop offset="50%" stopColor="hsl(var(--primary))" />
                   <stop offset="100%" stopColor="#3b82f6" />
                 </linearGradient>
               </defs>
@@ -161,7 +161,7 @@ export function TopologyViewDialog({
                   {/* Network edges */}
                   {networkNodes.length >= 2 && (
                     <>
-                      <line x1="100" y1="150" x2="300" y2="150" stroke="#4f46e5" strokeWidth="2" opacity="0.5" />
+                      <line x1="100" y1="150" x2="300" y2="150" stroke="hsl(var(--primary))" strokeWidth="2" opacity="0.5" />
                       {networkNodes.filter(n => n.type === 'quaternion').map(node => (
                         <g key={node.id}>
                           <line x1="100" y1="150" x2={node.x} y2={node.y} stroke="#22c55e" strokeWidth="1" opacity="0.3" />
@@ -181,7 +181,7 @@ export function TopologyViewDialog({
                         fill={
                           node.type === 'primary' 
                             ? (node.id === 'alice' ? '#22c55e' : '#3b82f6')
-                            : node.type === 'quaternion' ? '#a855f7' : '#6b7280'
+                            : node.type === 'quaternion' ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'
                         }
                         animate={{ scale: [1, 1.05, 1] }}
                         transition={{ duration: 2, repeat: Infinity }}
@@ -206,7 +206,7 @@ export function TopologyViewDialog({
               {viewMode === 'fiber' && (
                 <>
                   {/* Fiber bundle base circle */}
-                  <ellipse cx="200" cy="150" rx="80" ry="48" fill="none" stroke="#4f46e5" strokeWidth="1" opacity="0.3" />
+                  <ellipse cx="200" cy="150" rx="80" ry="48" fill="none" stroke="hsl(var(--primary))" strokeWidth="1" opacity="0.3" />
                   
                   {/* Fiber strands */}
                   {fiberData.map((fiber, i) => (
@@ -244,8 +244,8 @@ export function TopologyViewDialog({
               {viewMode === 'phase' && (
                 <>
                   {/* Phase space axes */}
-                  <line x1="50" y1="150" x2="350" y2="150" stroke="#4f46e5" strokeWidth="1" opacity="0.3" />
-                  <line x1="200" y1="50" x2="200" y2="250" stroke="#4f46e5" strokeWidth="1" opacity="0.3" />
+                  <line x1="50" y1="150" x2="350" y2="150" stroke="hsl(var(--primary))" strokeWidth="1" opacity="0.3" />
+                  <line x1="200" y1="50" x2="200" y2="250" stroke="hsl(var(--primary))" strokeWidth="1" opacity="0.3" />
                   
                   {/* Phase trajectory */}
                   <motion.path
@@ -265,15 +265,15 @@ export function TopologyViewDialog({
                       cx={200 + Math.cos(time) * 60}
                       cy={150 + Math.sin(time) * 40}
                       r="6"
-                      fill="#a855f7"
+                      fill="hsl(var(--primary))"
                       animate={{ scale: [1, 1.3, 1] }}
                       transition={{ duration: 0.5, repeat: Infinity }}
                     />
                   )}
                   
                   {/* Labels */}
-                  <text x="340" y="145" fill="#6b7280" fontSize="10">φ₁</text>
-                  <text x="205" y="60" fill="#6b7280" fontSize="10">φ₂</text>
+                  <text x="340" y="145" fill="hsl(var(--muted-foreground))" fontSize="10">φ₁</text>
+                  <text x="205" y="60" fill="hsl(var(--muted-foreground))" fontSize="10">φ₂</text>
                 </>
               )}
             </svg>
@@ -282,21 +282,21 @@ export function TopologyViewDialog({
 
         {/* Info Panel */}
         <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
-          <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/30">
-            <div className="text-gray-400 mb-1">Entanglement</div>
+          <div className="bg-card/50 rounded-lg p-3 border border-border">
+            <div className="text-muted-foreground mb-1">Entanglement</div>
             <div className={`text-lg font-mono ${entangledPair?.isSynchronized ? 'text-green-400' : 'text-yellow-400'}`}>
               {entangledPair?.isSynchronized ? 'SYNCHRONIZED' : 'DECOHERED'}
             </div>
           </div>
-          <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/30">
-            <div className="text-gray-400 mb-1">Twist Coupling</div>
-            <div className="text-lg font-mono text-indigo-300">
+          <div className="bg-card/50 rounded-lg p-3 border border-border">
+            <div className="text-muted-foreground mb-1">Twist Coupling</div>
+            <div className="text-lg font-mono text-primary">
               γ = {entangledPair?.twistCoupling.toFixed(3) || '0.000'}
             </div>
           </div>
-          <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/30">
-            <div className="text-gray-400 mb-1">Transmissions</div>
-            <div className="text-lg font-mono text-purple-300">
+          <div className="bg-card/50 rounded-lg p-3 border border-border">
+            <div className="text-muted-foreground mb-1">Transmissions</div>
+            <div className="text-lg font-mono text-primary">
               {transmissionHistory.length} events
             </div>
           </div>
