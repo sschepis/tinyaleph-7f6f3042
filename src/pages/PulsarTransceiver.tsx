@@ -8,10 +8,11 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { PulsarMap3D, MultiPartyPanel } from '@/components/pulsar-transceiver';
 import { 
   Power, Radio, Satellite, Search, Send, Lock, Unlock,
   Activity, Waves, Globe, AlertTriangle, CheckCircle,
-  Clock, Cpu, Wifi, MapPin
+  Clock, Cpu, Wifi, MapPin, Users, Box
 } from 'lucide-react';
 
 const PulsarTransceiver = () => {
@@ -20,7 +21,9 @@ const PulsarTransceiver = () => {
     localLocation, remoteLocation, semanticMap, phaseLock,
     transmissionHistory, setiMode, setSetiMode, setiCandidates,
     spectrum, simParams, setSimParams, localFingerprint,
-    allPulsars, start, pause, reset, togglePulsar, transmit, runSETIScan
+    allPulsars, start, pause, reset, togglePulsar, transmit, runSETIScan,
+    // Multi-party
+    parties, addParty, removeParty, multiPartyTransmit, allLocations, allPhases
   } = usePulsarTransceiver();
 
   const [selectedPrime, setSelectedPrime] = useState(13);
@@ -53,9 +56,10 @@ const PulsarTransceiver = () => {
 
         {/* Main Content */}
         <Tabs defaultValue="transceiver" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3 bg-slate-800/50">
+          <TabsList className="grid w-full grid-cols-4 bg-slate-800/50">
             <TabsTrigger value="transceiver"><Radio className="w-4 h-4 mr-2" />Transceiver</TabsTrigger>
-            <TabsTrigger value="pulsars"><Satellite className="w-4 h-4 mr-2" />Pulsar Network</TabsTrigger>
+            <TabsTrigger value="map3d"><Box className="w-4 h-4 mr-2" />3D Map</TabsTrigger>
+            <TabsTrigger value="multiparty"><Users className="w-4 h-4 mr-2" />Multi-Party</TabsTrigger>
             <TabsTrigger value="seti"><Search className="w-4 h-4 mr-2" />SETI Scanner</TabsTrigger>
           </TabsList>
 
@@ -198,47 +202,38 @@ const PulsarTransceiver = () => {
             </Card>
           </TabsContent>
 
-          {/* Pulsars Tab */}
-          <TabsContent value="pulsars" className="space-y-4">
+          {/* 3D Map Tab */}
+          <TabsContent value="map3d" className="space-y-4">
             <Card className="bg-slate-800/50 border-slate-700 p-4">
-              <h3 className="text-lg font-semibold text-cyan-400 mb-4">Pulsar Network</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {allPulsars.map(pulsar => {
-                  const isActive = activePulsars.some(p => p.name === pulsar.name);
-                  const phase = localFingerprint?.phases.get(pulsar.name) || 0;
-                  return (
-                    <div 
-                      key={pulsar.name}
-                      className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                        isActive ? 'bg-cyan-900/30 border-cyan-600' : 'bg-slate-700/30 border-slate-600'
-                      }`}
-                      onClick={() => togglePulsar(pulsar.name)}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-mono text-sm">{pulsar.name}</span>
-                        <Badge variant={isActive ? "default" : "secondary"} className={isActive ? "bg-green-600" : ""}>
-                          {isActive ? 'Active' : 'Idle'}
-                        </Badge>
-                      </div>
-                      <div className="text-xs text-gray-400 space-y-1">
-                        <div className="flex justify-between">
-                          <span>Freq:</span>
-                          <span className="font-mono text-cyan-300">{pulsar.frequency.toFixed(2)} Hz</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Phase:</span>
-                          <span className="font-mono text-cyan-300">{formatPhase(phase)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Dist:</span>
-                          <span className="font-mono text-cyan-300">{pulsar.distance} pc</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+              <h3 className="text-lg font-semibold text-cyan-400 mb-4">Galactic Pulsar Network</h3>
+              <div className="h-[500px]">
+                <PulsarMap3D
+                  pulsars={allPulsars}
+                  activePulsars={activePulsars}
+                  referencePulsar={referencePulsar}
+                  referencePhase={referencePhase}
+                  locations={allLocations}
+                  phases={allPhases}
+                  onPulsarClick={(p) => togglePulsar(p.name)}
+                />
               </div>
+              <p className="text-xs text-gray-500 mt-2 text-center">
+                Click pulsars to toggle. Drag to rotate. Scroll to zoom.
+              </p>
             </Card>
+          </TabsContent>
+
+          {/* Multi-Party Tab */}
+          <TabsContent value="multiparty" className="space-y-4">
+            <MultiPartyPanel
+              parties={parties}
+              onAddParty={addParty}
+              onRemoveParty={removeParty}
+              onTransmit={multiPartyTransmit}
+              semanticMap={semanticMap}
+              time={time}
+              isRunning={isRunning}
+            />
           </TabsContent>
 
           {/* SETI Tab */}
