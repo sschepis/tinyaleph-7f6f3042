@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Send, 
   Plus, 
@@ -21,15 +22,18 @@ import {
   ShieldCheck,
   ShieldAlert,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Layers,
+  Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SemanticMapping } from '@/lib/pulsar-transceiver/types';
+import { ECCMode, applyECC } from '@/lib/pulsar-transceiver/error-correction';
 
 interface MessageComposerProps {
   semanticMap: SemanticMapping[];
   phaseLocked: boolean;
-  onTransmitSequence: (primes: number[]) => void;
+  onTransmitSequence: (primes: number[], eccMode?: ECCMode, originalLength?: number) => void;
   referencePhase: number;
 }
 
@@ -170,11 +174,21 @@ export default function MessageComposer({
   const [manualPrime, setManualPrime] = useState('');
   const [isTransmitting, setIsTransmitting] = useState(false);
   const [includeErrorDetection, setIncludeErrorDetection] = useState(true);
+  const [eccMode, setEccMode] = useState<ECCMode>('none');
   
-  // Binary encoding computed values
+  // Binary encoding computed values with ECC
   const binaryData = useMemo(() => {
     if (encodingMode !== 'binary' || !binaryInput.trim()) {
-      return { bits: [], parity: 0, checksum: 0, crc: 0, primes: [], dataBitCount: 0 };
+      return { 
+        bits: [], 
+        eccBits: [],
+        parity: 0, 
+        checksum: 0, 
+        crc: 0, 
+        primes: [], 
+        dataBitCount: 0,
+        eccInfo: { overhead: 0, description: 'No data' }
+      };
     }
     
     const bits = asciiToBits(binaryInput);
@@ -183,9 +197,14 @@ export default function MessageComposer({
     const checksum = calculateChecksum(bits);
     const crc = calculateCRC8(bits);
     
-    let finalBits = [...bits];
+    // Apply ECC encoding
+    const eccResult = applyECC(bits, eccMode);
+    let finalBits = [...eccResult.encodedBits];
+    
+    // Add simple error detection on top if enabled
     if (includeErrorDetection) {
-      finalBits.push(parity);
+      const eccParity = calculateParity(finalBits);
+      finalBits.push(eccParity);
       for (let b = 7; b >= 0; b--) {
         finalBits.push((checksum >> b) & 1);
       }
@@ -196,8 +215,17 @@ export default function MessageComposer({
     
     const primes = bitsToPrimes(finalBits);
     
-    return { bits: finalBits, parity, checksum, crc, primes, dataBitCount };
-  }, [binaryInput, encodingMode, includeErrorDetection]);
+    return { 
+      bits: finalBits, 
+      eccBits: eccResult.encodedBits,
+      parity, 
+      checksum, 
+      crc, 
+      primes, 
+      dataBitCount,
+      eccInfo: eccResult
+    };
+  }, [binaryInput, encodingMode, includeErrorDetection, eccMode]);
   
   const handleAnalyze = useCallback(() => {
     if (!textInput.trim()) return;
@@ -256,7 +284,7 @@ export default function MessageComposer({
     
     setIsTransmitting(true);
     await new Promise(resolve => setTimeout(resolve, 500));
-    onTransmitSequence(primesToSend);
+    onTransmitSequence(primesToSend, encodingMode === 'binary' ? eccMode : undefined, binaryData.dataBitCount);
     
     setIsTransmitting(false);
     if (encodingMode === 'semantic') {
@@ -477,10 +505,51 @@ export default function MessageComposer({
               </div>
             </div>
             
+            {/* ECC Mode Selector */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground flex items-center gap-2">
+                <Layers className="h-3 w-3" />
+                Error Correction Code
+              </Label>
+              <Select value={eccMode} onValueChange={(v) => setEccMode(v as ECCMode)}>
+                <SelectTrigger className="bg-background/50 border-border/50 h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">
+                    <div className="flex items-center gap-2">
+                      <span>None</span>
+                      <span className="text-muted-foreground">- No correction</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="hamming84">
+                    <div className="flex items-center gap-2">
+                      <span>Hamming(8,4)</span>
+                      <span className="text-muted-foreground">- Corrects 1-bit errors</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="reed-solomon">
+                    <div className="flex items-center gap-2">
+                      <span>Reed-Solomon</span>
+                      <span className="text-muted-foreground">- Corrects burst errors</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              {eccMode !== 'none' && binaryData.eccInfo && (
+                <div className="p-2 rounded bg-primary/10 border border-primary/20">
+                  <div className="flex items-center gap-2 text-xs">
+                    <Zap className="h-3 w-3 text-primary" />
+                    <span className="text-primary">{binaryData.eccInfo.description}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+            
             <div className="flex items-center justify-between p-2 rounded-lg bg-black/20 border border-border/30">
               <div className="flex items-center gap-2">
                 <Shield className="h-4 w-4 text-primary" />
-                <span className="text-xs">Error Detection</span>
+                <span className="text-xs">Additional Error Detection</span>
               </div>
               <Button
                 size="sm"
