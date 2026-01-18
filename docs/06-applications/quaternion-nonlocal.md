@@ -72,6 +72,125 @@ As a framework, it suggests novel approaches to:
 - Finding "natural" pairings between concepts based on algebraic compatibility
 - Modeling how consensus might emerge in distributed systems
 
+## How To Use: A Beginner's Tutorial
+
+This step-by-step guide will walk you through your first session with the Quaternion Transceiver.
+
+### Step 1: Understanding the Interface
+
+When you first open the app, you'll see several panels:
+
+| Panel | Purpose |
+|-------|---------|
+| **Prime Generator** | Select primes for Alice and Bob |
+| **Resonance Control** | Adjust coupling strength and view phase sync |
+| **Transmitter** | Send signals from Alice or Bob |
+| **Receiver** | View incoming signals and lock status |
+| **Topological Network** | Visualize the entangled connection |
+
+### Step 2: Select Your Primes
+
+1. Look at the **Prime Generator Panel** on the left
+2. Alice and Bob each need a **split prime** (a prime ≡ 1 mod 12)
+3. The default primes (13 and 37) are good starting points
+4. To explore other primes, click **Prime Explorer** in the system controls
+
+> **Tip**: The Prime Explorer shows a spiral of all available split primes. Click any prime to assign it to Alice; right-click to assign to Bob.
+
+### Step 3: Establish Entanglement
+
+1. Locate the **Resonance Control Panel**
+2. Find the **Twist Coupling (γ)** slider
+3. Start with γ = 0.1 (low coupling) and observe the Δφ oscilloscope
+4. Notice how Alice and Bob's phases drift independently
+
+Now try this:
+1. Slowly increase γ toward 0.5 or higher
+2. Watch the phase difference (Δφ) begin to stabilize
+3. When Δφ approaches zero, the **Phase Lock** indicator will illuminate
+
+> **What's happening**: At low coupling, the phases evolve independently. As you increase γ, the Kuramoto synchronization kicks in—the phases are drawn toward alignment like coupled pendulums.
+
+### Step 4: Send a Transmission
+
+Once you have phase lock (or close to it):
+
+1. Go to the **Transmitter Panel**
+2. Click **Transmit from Alice** (or Bob)
+3. Watch the **Topological Network** panel—a new node appears representing your transmission
+4. Check the **Receiver Panel** for the incoming signal
+
+> **Key insight**: The "transmission" isn't sending data through space—it's recording the phase state at the moment of transmission. When phases are synchronized, both parties share the same phase information without direct communication.
+
+### Step 5: Analyze Your Results
+
+After a few transmissions:
+
+1. Check the **Entropy Analysis Panel**
+   - Lower entropy = stronger correlation
+   - Watch the trend line for patterns
+
+2. Open the **Topology View** (in system controls) to see:
+   - **Network Graph**: Your transmission history as a graph
+   - **Fiber Bundle**: The 3D quaternionic structure
+   - **Phase Space**: The trajectory of (φ_Alice, φ_Bob) over time
+
+3. Review the **Projection Panel** to see eigenvalues from symbolic collapse
+
+### Step 6: Experiment with Advanced Settings
+
+Click **Advanced Controls** in the system panel to access:
+
+| Parameter | What It Does |
+|-----------|--------------|
+| **Phase Threshold (ε)** | How close phases must be to count as "synchronized" |
+| **Decoherence Rate** | How quickly entanglement degrades |
+| **Phase Noise** | Random perturbations to phase evolution |
+| **Measurement Basis** | Which projection operator to apply |
+
+Try this experiment:
+1. Set γ = 0.8 (strong coupling)
+2. Set decoherence = 0.1 (slow decay)
+3. Achieve phase lock
+4. Now increase decoherence to 0.5
+5. Watch how the system struggles to maintain synchronization
+
+### Step 7: Save Your Configuration
+
+If you find an interesting configuration:
+
+1. Open **Advanced Controls**
+2. Click **Save Preset**
+3. Give it a name
+4. Your preset will appear in the preset dropdown for future sessions
+
+### Quick Reference: What Success Looks Like
+
+| Indicator | Healthy State |
+|-----------|---------------|
+| Δφ (phase difference) | Near zero, stable |
+| Phase Lock | Illuminated / green |
+| Entropy | Low (< 0.3) |
+| Correlation | High (> 0.7) |
+| Signal Quality | Strong bars |
+
+### Troubleshooting
+
+**Phases won't synchronize?**
+- Increase twist coupling (γ)
+- Reduce phase noise in Advanced Controls
+- Try different prime pairs (some couple more strongly)
+
+**Lock keeps breaking?**
+- Reduce decoherence rate
+- Increase coupling strength
+- Lower the phase threshold (ε) for easier locking
+
+**Nothing seems to happen?**
+- Make sure the simulation is running (check uptime counter in footer)
+- Try clicking "Reset" in the system controls
+- Verify both primes are selected (not both set to same value)
+
 ## Overview
 
 **Route**: `/quaternion-nonlocal`
