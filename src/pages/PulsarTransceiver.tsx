@@ -16,7 +16,8 @@ import {
   BroadcastPanel,
   TransmissionReplay,
   NetworkTopology,
-  MessageComposer
+  MessageComposer,
+  MessageDecoder
 } from '@/components/pulsar-transceiver';
 import { Pulsar } from '@/lib/pulsar-transceiver/types';
 import { 
@@ -186,13 +187,20 @@ const PulsarTransceiver = () => {
               </Button>
             </Card>
 
-            {/* Multi-Prime Message Composer */}
-            <MessageComposer
-              semanticMap={semanticMap}
-              phaseLocked={phaseLock.isLocked}
-              onTransmitSequence={transmitSequence}
-              referencePhase={referencePhase}
-            />
+            {/* Message Composer & Decoder */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <MessageComposer
+                semanticMap={semanticMap}
+                phaseLocked={phaseLock.isLocked}
+                onTransmitSequence={transmitSequence}
+                referencePhase={referencePhase}
+              />
+              
+              <MessageDecoder
+                semanticMap={semanticMap}
+                transmissions={transmissionHistory}
+              />
+            </div>
 
             {/* Transmission History */}
             <Card className="bg-slate-800/50 border-slate-700 p-4">
