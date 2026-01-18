@@ -6,3 +6,4 @@ export { BroadcastPanel } from './BroadcastPanel';
 export { TransmissionReplay } from './TransmissionReplay';
 export { NetworkTopology } from './NetworkTopology';
 export { default as MessageComposer } from './MessageComposer';
+export { default as MessageDecoder } from './MessageDecoder';
