@@ -5,6 +5,11 @@
 
 // Types
 export * from './types';
+export * from './pulsar-catalog';
+export * from './star-catalog';
+export * from './fingerprint-engine';
+export * from './seti-analyzer';
+export * from './error-correction';
 
 // Pulsar catalog and split primes
 export {

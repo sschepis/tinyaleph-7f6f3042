@@ -1,6 +1,6 @@
 /**
  * 3D Pulsar Map Visualization using Three.js
- * Shows pulsar positions in galactic coordinates with phase animations
+ * Shows pulsar positions and nearby stars in galactic coordinates with phase animations
  */
 
 import React, { useRef, useMemo, useState, useCallback } from 'react';
@@ -9,6 +9,7 @@ import { OrbitControls, Stars, Text, Line, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { Pulsar, ObserverLocation } from '@/lib/pulsar-transceiver/types';
 import { equatorialToGalactic } from '@/lib/pulsar-transceiver/pulsar-catalog';
+import { ALL_STARS, Star, starEquatorialToGalactic } from '@/lib/pulsar-transceiver/star-catalog';
 
 interface PulsarMap3DProps {
   pulsars: Pulsar[];
@@ -265,6 +266,124 @@ function LocationMarker({
   );
 }
 
+// Real Star visualization
+function StarSphere({ 
+  star, 
+  onHover,
+  onUnhover
+}: { 
+  star: Star;
+  onHover?: (position: THREE.Vector3, name: string) => void;
+  onUnhover?: () => void;
+}) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  
+  // Convert star position to 3D coordinates (scaled for visualization)
+  // Stars are much closer than pulsars, scale differently
+  const position = useMemo(() => {
+    const galactic = starEquatorialToGalactic(star.ra, star.dec, star.distance);
+    // Scale stars more aggressively since they're nearby (pc not kpc)
+    // 1 unit = 5 parsecs for nearby stars
+    const scale = star.distance < 100 ? 0.4 : 2;
+    return [galactic.x * 1000 * scale, galactic.z * 10000 * scale, galactic.y * 1000 * scale] as [number, number, number];
+  }, [star]);
+  
+  // Size based on luminosity (log scale)
+  const size = useMemo(() => {
+    const baseSize = 0.02;
+    const lumFactor = Math.log10(star.luminosity + 1) * 0.015;
+    return Math.max(0.015, Math.min(0.08, baseSize + lumFactor));
+  }, [star.luminosity]);
+  
+  // Subtle twinkle animation
+  useFrame((state) => {
+    if (meshRef.current) {
+      const twinkle = 0.9 + 0.1 * Math.sin(state.clock.elapsedTime * 2 + star.ra * 10);
+      meshRef.current.scale.setScalar(size * twinkle);
+    }
+  });
+  
+  const handlePointerEnter = useCallback((e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    onHover?.(new THREE.Vector3(...position), star.commonName || star.name);
+  }, [onHover, position, star]);
+  
+  return (
+    <group position={position}>
+      <mesh 
+        ref={meshRef}
+        onPointerEnter={handlePointerEnter}
+        onPointerLeave={onUnhover}
+      >
+        <sphereGeometry args={[size, 8, 8]} />
+        <meshBasicMaterial 
+          color={star.color} 
+          transparent 
+          opacity={0.9}
+        />
+      </mesh>
+      
+      {/* Glow for bright stars */}
+      {star.magnitude < 2 && (
+        <mesh scale={2}>
+          <sphereGeometry args={[size, 8, 8]} />
+          <meshBasicMaterial 
+            color={star.color} 
+            transparent 
+            opacity={0.3}
+          />
+        </mesh>
+      )}
+      
+      {/* Label for notable stars */}
+      {(star.magnitude < 1.5 || star.distance < 5) && (
+        <Text
+          position={[0, size + 0.05, 0]}
+          fontSize={0.05}
+          color={star.color}
+          anchorX="center"
+          anchorY="bottom"
+        >
+          {star.commonName || star.name}
+        </Text>
+      )}
+    </group>
+  );
+}
+
+// Sun marker at origin
+function SunMarker() {
+  const meshRef = useRef<THREE.Mesh>(null);
+  
+  useFrame((state) => {
+    if (meshRef.current) {
+      const pulse = 1 + 0.1 * Math.sin(state.clock.elapsedTime * 3);
+      meshRef.current.scale.setScalar(pulse);
+    }
+  });
+  
+  return (
+    <group position={[0, 0.02, 0.017]}>
+      <mesh ref={meshRef}>
+        <sphereGeometry args={[0.03, 16, 16]} />
+        <meshBasicMaterial color="#fff700" />
+      </mesh>
+      <mesh scale={2}>
+        <sphereGeometry args={[0.03, 16, 16]} />
+        <meshBasicMaterial color="#fff700" transparent opacity={0.3} />
+      </mesh>
+      <Text
+        position={[0, 0.08, 0]}
+        fontSize={0.06}
+        color="#fff700"
+        anchorX="center"
+      >
+        ☉ Sol
+      </Text>
+    </group>
+  );
+}
+
 // Galactic plane grid
 function GalacticPlane() {
   return (
@@ -340,6 +459,19 @@ function Scene({
       {/* Galactic plane */}
       <GalacticPlane />
       
+      {/* Sun marker */}
+      <SunMarker />
+      
+      {/* Real stars from catalog */}
+      {ALL_STARS.map(star => (
+        <StarSphere
+          key={star.name}
+          star={star}
+          onHover={(pos, name) => handleHover(pos)}
+          onUnhover={handleUnhover}
+        />
+      ))}
+      
       {/* Coordinate Tooltip */}
       {hoveredPosition && <CoordinateTooltip position={hoveredPosition} />}
       
@@ -373,8 +505,8 @@ function Scene({
         enablePan={true}
         enableZoom={true}
         enableRotate={true}
-        minDistance={2}
-        maxDistance={30}
+        minDistance={0.5}
+        maxDistance={50}
         autoRotate
         autoRotateSpeed={0.3}
       />
