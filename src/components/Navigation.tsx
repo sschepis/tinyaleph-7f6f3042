@@ -1,7 +1,56 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Github, ExternalLink, Boxes, ChevronDown, BookOpen, Beaker, Cpu, Sparkles } from 'lucide-react';
+import { Menu, X, Github, ExternalLink, Boxes, ChevronDown, ChevronRight, BookOpen, Beaker, Cpu, Sparkles, Atom, Radio, Brain, Dna, Music, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// App subcategories for the Apps menu
+const appSubcategories = [
+  {
+    label: 'Quantum Simulation',
+    icon: Atom,
+    items: [
+      { id: 'prime-resonance', label: 'Prime Resonance', path: '/prime-resonance', desc: 'Quantum formalism' },
+      { id: 'quantum-wavefunction', label: 'Quantum Wavefunction', path: '/quantum-wavefunction', desc: 'Prime patterns' },
+      { id: 'circuit-runner', label: 'Quantum Circuits', path: '/circuit-runner', desc: 'Build & simulate' },
+      { id: 'entanglement-lab', label: 'Entanglement Lab', path: '/entanglement-lab', desc: 'Bell states & CHSH' },
+      { id: 'grover-search', label: "Grover's Search", path: '/grover-search', desc: 'Quantum search' },
+      { id: 'decoherence', label: 'Decoherence', path: '/decoherence', desc: 'T₁/T₂ decay' },
+      { id: 'qec-lab', label: 'QEC Lab', path: '/qec-lab', desc: 'Error correction' },
+    ],
+  },
+  {
+    label: 'Communication',
+    icon: Radio,
+    items: [
+      { id: 'pulsar-transceiver', label: 'Pulsar Transceiver', path: '/pulsar-transceiver', desc: 'Cosmic SRC' },
+      { id: 'quaternion-nonlocal', label: 'Quaternion Nonlocal', path: '/quaternion-nonlocal', desc: 'Split prime comms' },
+      { id: 'bb84', label: 'BB84 QKD', path: '/bb84', desc: 'Quantum cryptography' },
+    ],
+  },
+  {
+    label: 'Consciousness & AI',
+    icon: Brain,
+    items: [
+      { id: 'sentient-observer', label: 'Sentient Observer', path: '/sentient-observer', desc: 'Consciousness sim' },
+      { id: 'consciousness-resonator', label: 'Consciousness Resonator', path: '/consciousness-resonator', desc: 'Multi-perspective AI' },
+      { id: 'symbolic-mind', label: 'Symbolic Mind', path: '/symbolic-mind', desc: 'Resonance oracle' },
+      { id: 'sephirotic-oscillator', label: 'Sephirotic Oscillator', path: '/sephirotic-oscillator', desc: 'Tree of Life' },
+      { id: 'chat', label: 'Aleph Chat', path: '/chat', desc: 'AI assistant' },
+    ],
+  },
+  {
+    label: 'Bio & Music',
+    icon: Dna,
+    items: [
+      { id: 'dna-computer', label: 'DNA Computer', path: '/dna-computer', desc: 'Bioinformatics' },
+      { id: 'jam-partner', label: 'Jam Partner', path: '/jam-partner', desc: 'Music AI' },
+      { id: 'enochian', label: 'Enochian', path: '/enochian', desc: 'Language model' },
+    ],
+  },
+];
+
+// Flatten app items for active state checking
+const allAppItems = appSubcategories.flatMap(cat => cat.items);
 
 // Reorganized navigation with clear categories
 const navGroups = [
@@ -47,34 +96,10 @@ const navGroups = [
       { id: 'discrete', label: 'Discrete', path: '/discrete', desc: 'Integer dynamics' },
     ],
   },
-  {
-    label: 'Apps',
-    icon: Sparkles,
-    description: 'Interactive applications',
-    items: [
-      { id: 'prime-resonance', label: 'Prime Resonance', path: '/prime-resonance', desc: 'Quantum formalism' },
-      { id: 'quantum-wavefunction', label: 'Quantum Wavefunction', path: '/quantum-wavefunction', desc: 'Prime patterns' },
-      { id: 'sentient-observer', label: 'Sentient Observer', path: '/sentient-observer', desc: 'Consciousness sim' },
-      { id: 'circuit-runner', label: 'Quantum Circuits', path: '/circuit-runner', desc: 'Build & simulate' },
-      { id: 'dna-computer', label: 'DNA Computer', path: '/dna-computer', desc: 'Bioinformatics' },
-      { id: 'symbolic-mind', label: 'Symbolic Mind', path: '/symbolic-mind', desc: 'Resonance oracle' },
-      { id: 'consciousness-resonator', label: 'Consciousness Resonator', path: '/consciousness-resonator', desc: 'Multi-perspective AI' },
-      { id: 'sephirotic-oscillator', label: 'Sephirotic Oscillator', path: '/sephirotic-oscillator', desc: 'Tree of Life' },
-      { id: 'chat', label: 'Aleph Chat', path: '/chat', desc: 'AI assistant' },
-      { id: 'enochian', label: 'Enochian', path: '/enochian', desc: 'Language model' },
-      { id: 'jam-partner', label: 'Jam Partner', path: '/jam-partner', desc: 'Music AI' },
-      { id: 'entanglement-lab', label: 'Entanglement Lab', path: '/entanglement-lab', desc: 'Bell states & CHSH' },
-      { id: 'bb84', label: 'BB84 QKD', path: '/bb84', desc: 'Quantum cryptography' },
-      { id: 'grover-search', label: "Grover's Search", path: '/grover-search', desc: 'Quantum search' },
-      { id: 'qec-lab', label: 'QEC Lab', path: '/qec-lab', desc: 'Error correction' },
-      { id: 'decoherence', label: 'Decoherence', path: '/decoherence', desc: 'T₁/T₂ decay' },
-      { id: 'quaternion-nonlocal', label: 'Quaternion Nonlocal', path: '/quaternion-nonlocal', desc: 'Split prime comms' },
-    ],
-  },
 ];
 
 // Flat list for mobile
-const allNavItems = navGroups.flatMap(group => group.items);
+const allNavItems = [...navGroups.flatMap(group => group.items), ...allAppItems];
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -208,6 +233,74 @@ const Navigation = () => {
                 </div>
               );
             })}
+            
+            {/* Apps Menu with Subcategories */}
+            <div 
+              className="relative"
+              onMouseEnter={() => handleMouseEnter('Apps')}
+              onMouseLeave={handleMouseLeave}
+            >
+              <button
+                className={`
+                  px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5
+                  ${allAppItems.some(item => location.pathname === item.path)
+                    ? 'text-primary bg-primary/10' 
+                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                  }
+                `}
+              >
+                <Sparkles className="w-4 h-4" />
+                Apps
+                <ChevronDown className={`w-3 h-3 transition-transform ${openDropdown === 'Apps' ? 'rotate-180' : ''}`} />
+              </button>
+              
+              <AnimatePresence>
+                {openDropdown === 'Apps' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                    transition={{ duration: 0.15, ease: 'easeOut' }}
+                    className="absolute top-full right-0 mt-1 py-2 w-[420px] rounded-xl border border-border bg-background backdrop-blur-xl shadow-xl z-50 max-h-[70vh] overflow-y-auto"
+                    onMouseEnter={() => handleMouseEnter('Apps')}
+                    onMouseLeave={handleMouseLeave}
+                  >
+                    <div className="px-4 py-2 border-b border-border mb-1">
+                      <p className="text-xs font-medium text-muted-foreground">Interactive Applications</p>
+                    </div>
+                    {appSubcategories.map((category, catIdx) => {
+                      const CatIcon = category.icon;
+                      return (
+                        <div key={category.label} className={catIdx > 0 ? 'mt-2 pt-2 border-t border-border/50' : ''}>
+                          <div className="flex items-center gap-2 px-4 py-1.5">
+                            <CatIcon className="w-3.5 h-3.5 text-primary" />
+                            <span className="text-xs font-semibold text-primary">{category.label}</span>
+                          </div>
+                          <div className="grid grid-cols-1 gap-0.5">
+                            {category.items.map(item => (
+                              <Link
+                                key={item.id}
+                                to={item.path}
+                                className={`
+                                  flex items-center justify-between gap-4 px-4 py-2 mx-2 rounded-lg text-sm transition-all
+                                  ${location.pathname === item.path 
+                                    ? 'text-primary bg-primary/10' 
+                                    : 'text-foreground hover:bg-secondary'
+                                  }
+                                `}
+                              >
+                                <span className="font-medium">{item.label}</span>
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">{item.desc}</span>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
           {/* External Links */}
@@ -283,6 +376,45 @@ const Navigation = () => {
                   </div>
                 );
               })}
+              
+              {/* Apps with Subcategories */}
+              <div>
+                <div className="flex items-center gap-2 mb-3 px-2">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  <p className="text-sm font-semibold text-foreground">Apps</p>
+                  <span className="text-xs text-muted-foreground">— Interactive applications</span>
+                </div>
+                <div className="space-y-4">
+                  {appSubcategories.map(category => {
+                    const CatIcon = category.icon;
+                    return (
+                      <div key={category.label}>
+                        <div className="flex items-center gap-1.5 px-2 mb-1.5">
+                          <CatIcon className="w-3 h-3 text-muted-foreground" />
+                          <span className="text-xs font-medium text-muted-foreground">{category.label}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1">
+                          {category.items.map(item => (
+                            <Link
+                              key={item.id}
+                              to={item.path}
+                              className={`
+                                block px-3 py-2 rounded-lg text-sm font-medium transition-all
+                                ${location.pathname === item.path 
+                                  ? 'text-primary bg-primary/10' 
+                                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                                }
+                              `}
+                            >
+                              {item.label}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
               
               {/* Mobile external links */}
               <div className="pt-4 border-t border-border">
