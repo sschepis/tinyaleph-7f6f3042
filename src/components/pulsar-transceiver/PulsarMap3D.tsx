@@ -3,9 +3,9 @@
  * Shows pulsar positions in galactic coordinates with phase animations
  */
 
-import React, { useRef, useMemo } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Stars, Text, Line } from '@react-three/drei';
+import React, { useRef, useMemo, useState, useCallback } from 'react';
+import { Canvas, useFrame, ThreeEvent } from '@react-three/fiber';
+import { OrbitControls, Stars, Text, Line, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { Pulsar, ObserverLocation } from '@/lib/pulsar-transceiver/types';
 import { equatorialToGalactic } from '@/lib/pulsar-transceiver/pulsar-catalog';
@@ -20,22 +20,74 @@ interface PulsarMap3DProps {
   onPulsarClick?: (pulsar: Pulsar) => void;
 }
 
-// Pulsing pulsar sphere with phase animation
+// Convert visualization coordinates back to galactic for tooltip
+function vizToGalactic(vizX: number, vizY: number, vizZ: number) {
+  const x = vizX / 2;
+  const y = vizZ / 2;
+  const z = vizY / 10;
+  const r = Math.sqrt(x * x + y * y);
+  const galacticL = Math.atan2(y, x) * (180 / Math.PI);
+  const galacticB = Math.atan2(z, r) * (180 / Math.PI);
+  const distFromCenter = Math.sqrt(x * x + y * y + z * z);
+  const sunX = 0, sunY = 8.5, sunZ = 0.025;
+  const distFromSun = Math.sqrt(Math.pow(x - sunX, 2) + Math.pow(y - sunY, 2) + Math.pow(z - sunZ, 2));
+  
+  return {
+    galacticL: galacticL < 0 ? galacticL + 360 : galacticL,
+    galacticB,
+    x, y, z,
+    distFromCenter,
+    distFromSun
+  };
+}
+
+// Coordinate Tooltip Component
+function CoordinateTooltip({ position }: { position: THREE.Vector3 }) {
+  const data = vizToGalactic(position.x, position.y, position.z);
+  
+  return (
+    <Html position={[position.x, position.y + 0.4, position.z]} center>
+      <div className="bg-slate-900/95 border border-cyan-500/50 rounded-lg p-2 backdrop-blur-sm min-w-[160px] pointer-events-none text-xs">
+        <div className="font-bold text-cyan-400 mb-1 text-[10px]">GALACTIC COORDS</div>
+        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+          <span className="text-gray-400">l:</span>
+          <span className="text-cyan-300 font-mono">{data.galacticL.toFixed(1)}°</span>
+          <span className="text-gray-400">b:</span>
+          <span className="text-cyan-300 font-mono">{data.galacticB.toFixed(1)}°</span>
+          <span className="text-gray-400">r:</span>
+          <span className="text-purple-300 font-mono">{data.distFromCenter.toFixed(2)} kpc</span>
+          <span className="text-gray-400">d☉:</span>
+          <span className="text-green-300 font-mono">{data.distFromSun.toFixed(2)} kpc</span>
+        </div>
+        <div className="mt-1 pt-1 border-t border-slate-700 text-[9px] text-gray-500">
+          ~{(data.distFromSun * 3261.56).toFixed(0)} ly from Sol
+        </div>
+      </div>
+    </Html>
+  );
+}
+
+// Pulsing pulsar sphere with phase animation and hover tooltip
 function PulsarSphere({ 
   pulsar, 
   isActive, 
   isReference, 
   phase,
-  onClick 
+  onClick,
+  onHover,
+  onUnhover
 }: { 
   pulsar: Pulsar; 
   isActive: boolean; 
   isReference: boolean;
   phase: number;
   onClick?: () => void;
+  onHover?: (position: THREE.Vector3) => void;
+  onUnhover?: () => void;
 }) {
   const meshRef = useRef<THREE.Mesh>(null);
   const glowRef = useRef<THREE.Mesh>(null);
+  const groupRef = useRef<THREE.Group>(null);
   
   // Convert pulsar position to 3D coordinates (scaled for visualization)
   const position = useMemo(() => {
@@ -57,10 +109,23 @@ function PulsarSphere({
     }
   });
   
+  const handlePointerEnter = useCallback((e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    if (groupRef.current) {
+      onHover?.(new THREE.Vector3(...position));
+    }
+  }, [onHover, position]);
+  
   const color = isReference ? '#fbbf24' : isActive ? '#22d3ee' : '#6b7280';
   
   return (
-    <group position={position} onClick={onClick}>
+    <group 
+      ref={groupRef}
+      position={position} 
+      onClick={onClick}
+      onPointerEnter={handlePointerEnter}
+      onPointerLeave={onUnhover}
+    >
       {/* Core pulsar */}
       <mesh ref={meshRef}>
         <sphereGeometry args={[0.08, 16, 16]} />
@@ -233,7 +298,7 @@ function GalacticPlane() {
   );
 }
 
-// Main 3D scene
+// Main 3D scene with hover tooltip
 function Scene({
   pulsars,
   activePulsars,
@@ -244,6 +309,15 @@ function Scene({
   onPulsarClick
 }: PulsarMap3DProps) {
   const locationColors = ['#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#3b82f6'];
+  const [hoveredPosition, setHoveredPosition] = useState<THREE.Vector3 | null>(null);
+  
+  const handleHover = useCallback((position: THREE.Vector3) => {
+    setHoveredPosition(position);
+  }, []);
+  
+  const handleUnhover = useCallback(() => {
+    setHoveredPosition(null);
+  }, []);
   
   return (
     <>
@@ -266,6 +340,9 @@ function Scene({
       {/* Galactic plane */}
       <GalacticPlane />
       
+      {/* Coordinate Tooltip */}
+      {hoveredPosition && <CoordinateTooltip position={hoveredPosition} />}
+      
       {/* Pulsars */}
       {pulsars.map(pulsar => (
         <PulsarSphere
@@ -275,6 +352,8 @@ function Scene({
           isReference={pulsar.name === referencePulsar.name}
           phase={phases.get(pulsar.name) || 0}
           onClick={() => onPulsarClick?.(pulsar)}
+          onHover={handleHover}
+          onUnhover={handleUnhover}
         />
       ))}
       

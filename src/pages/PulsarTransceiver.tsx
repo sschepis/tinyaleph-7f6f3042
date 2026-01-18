@@ -13,7 +13,9 @@ import {
   MultiPartyPanel, 
   PulsarInfoPanel,
   MessageDecodingViz,
-  BroadcastPanel
+  BroadcastPanel,
+  TransmissionReplay,
+  NetworkTopology
 } from '@/components/pulsar-transceiver';
 import { Pulsar } from '@/lib/pulsar-transceiver/types';
 import { 
@@ -250,7 +252,7 @@ const PulsarTransceiver = () => {
 
           {/* Multi-Party Tab */}
           <TabsContent value="multiparty" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <div className="space-y-4">
                 <MultiPartyPanel
                   parties={parties}
@@ -269,6 +271,19 @@ const PulsarTransceiver = () => {
                   isRunning={isRunning}
                   broadcastMode={broadcastMode}
                   onToggleBroadcastMode={setBroadcastMode}
+                />
+              </div>
+              
+              <div className="space-y-4">
+                <NetworkTopology
+                  parties={parties}
+                  time={time}
+                />
+                
+                <TransmissionReplay
+                  transmissionHistory={transmissionHistory}
+                  parties={parties}
+                  semanticMap={semanticMap}
                 />
               </div>
               

@@ -3,3 +3,5 @@ export { MultiPartyPanel } from './MultiPartyPanel';
 export { PulsarInfoPanel } from './PulsarInfoPanel';
 export { MessageDecodingViz } from './MessageDecodingViz';
 export { BroadcastPanel } from './BroadcastPanel';
+export { TransmissionReplay } from './TransmissionReplay';
+export { NetworkTopology } from './NetworkTopology';
