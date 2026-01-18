@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -24,7 +25,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   Layers,
-  Zap
+  Zap,
+  Link
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SemanticMapping } from '@/lib/pulsar-transceiver/types';
@@ -175,6 +177,7 @@ export default function MessageComposer({
   const [isTransmitting, setIsTransmitting] = useState(false);
   const [includeErrorDetection, setIncludeErrorDetection] = useState(true);
   const [eccMode, setEccMode] = useState<ECCMode>('none');
+  const [useInterleaving, setUseInterleaving] = useState(false);
   
   // Binary encoding computed values with ECC
   const binaryData = useMemo(() => {
@@ -197,8 +200,8 @@ export default function MessageComposer({
     const checksum = calculateChecksum(bits);
     const crc = calculateCRC8(bits);
     
-    // Apply ECC encoding
-    const eccResult = applyECC(bits, eccMode);
+    // Apply ECC encoding with optional interleaving
+    const eccResult = applyECC(bits, eccMode, useInterleaving);
     let finalBits = [...eccResult.encodedBits];
     
     // Add simple error detection on top if enabled
@@ -225,7 +228,7 @@ export default function MessageComposer({
       dataBitCount,
       eccInfo: eccResult
     };
-  }, [binaryInput, encodingMode, includeErrorDetection, eccMode]);
+  }, [binaryInput, encodingMode, includeErrorDetection, eccMode, useInterleaving]);
   
   const handleAnalyze = useCallback(() => {
     if (!textInput.trim()) return;
@@ -536,13 +539,33 @@ export default function MessageComposer({
                   </SelectItem>
                 </SelectContent>
               </Select>
-              {eccMode !== 'none' && binaryData.eccInfo && (
-                <div className="p-2 rounded bg-primary/10 border border-primary/20">
-                  <div className="flex items-center gap-2 text-xs">
-                    <Zap className="h-3 w-3 text-primary" />
-                    <span className="text-primary">{binaryData.eccInfo.description}</span>
+              {eccMode !== 'none' && (
+                <>
+                  <div className="flex items-center justify-between p-2 rounded bg-secondary/10 border border-secondary/20">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="interleaving-toggle"
+                        checked={useInterleaving}
+                        onCheckedChange={setUseInterleaving}
+                      />
+                      <Label htmlFor="interleaving-toggle" className="text-xs flex items-center gap-1 cursor-pointer">
+                        <Link className="h-3 w-3" />
+                        Bit Interleaving
+                      </Label>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {useInterleaving ? 'Burst error resistant' : 'Standard encoding'}
+                    </span>
                   </div>
-                </div>
+                  {binaryData.eccInfo && (
+                    <div className="p-2 rounded bg-primary/10 border border-primary/20">
+                      <div className="flex items-center gap-2 text-xs">
+                        <Zap className="h-3 w-3 text-primary" />
+                        <span className="text-primary">{binaryData.eccInfo.description}</span>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
             
