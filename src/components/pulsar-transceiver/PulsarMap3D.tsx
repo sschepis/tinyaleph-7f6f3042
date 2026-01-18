@@ -9,7 +9,10 @@ import { OrbitControls, Text, Line, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { Pulsar, ObserverLocation } from '@/lib/pulsar-transceiver/types';
 import { equatorialToGalactic } from '@/lib/pulsar-transceiver/pulsar-catalog';
-import { ALL_STARS, Star, starEquatorialToGalactic } from '@/lib/pulsar-transceiver/star-catalog';
+import { ALL_STARS, Star } from '@/lib/pulsar-transceiver/star-catalog';
+import { loadHipparcosStars } from '@/lib/pulsar-transceiver/hyg-star-loader';
+import { starToVizPositionTuple } from '@/lib/pulsar-transceiver/star-viz';
+import { StarFieldPoints } from '@/components/pulsar-transceiver/StarFieldPoints';
 
 interface PulsarMap3DProps {
   pulsars: Pulsar[];
@@ -385,15 +388,7 @@ function StarSphere({
 }) {
   const meshRef = useRef<THREE.Mesh>(null);
   
-  // Convert star position to 3D coordinates (scaled for visualization)
-  // Stars are in parsecs, pulsars in kpc - need consistent scaling
-  const position = useMemo(() => {
-    const galactic = starEquatorialToGalactic(star.ra, star.dec, star.distance);
-    // Convert parsecs to kpc (1 kpc = 1000 pc) then scale like pulsars
-    // Use same scaling as pulsars: x*2, z*10, y*2
-    const distKpc = star.distance / 1000; // Already converted in starEquatorialToGalactic
-    return [galactic.x * 2, galactic.z * 10, galactic.y * 2] as [number, number, number];
-  }, [star]);
+  const position = useMemo(() => starToVizPositionTuple(star), [star]);
   
   // Size based on magnitude (brighter = larger)
   const size = useMemo(() => {
@@ -539,6 +534,12 @@ function GalacticPlane() {
   );
 }
 
+type SceneProps = Omit<PulsarMap3DProps, 'selectedStar' | 'onStarSelect'> & {
+  stars: Star[];
+  selectedStar: Star | null;
+  onStarSelect: (star: Star | null) => void;
+};
+
 // Main 3D scene with hover tooltip
 function Scene({
   pulsars,
@@ -548,12 +549,12 @@ function Scene({
   locations,
   phases,
   onPulsarClick,
+  stars,
   selectedStar,
   onStarSelect
-}: PulsarMap3DProps) {
+}: SceneProps) {
   const locationColors = ['#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#3b82f6'];
   const [hoveredPosition, setHoveredPosition] = useState<THREE.Vector3 | null>(null);
-  const [selectedStarPosition, setSelectedStarPosition] = useState<THREE.Vector3 | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   
   const handleHover = useCallback((position: THREE.Vector3) => {
@@ -566,21 +567,17 @@ function Scene({
     setHoveredPosition(null);
   }, []);
   
-  const handleStarClick = useCallback((star: Star, position: THREE.Vector3) => {
+  const handleStarClick = useCallback((star: Star) => {
     if (selectedStar?.name === star.name) {
-      // Deselect if clicking same star
       onStarSelect?.(null);
-      setSelectedStarPosition(null);
     } else {
       onStarSelect?.(star);
-      setSelectedStarPosition(position);
       setIsAnimating(true);
     }
   }, [selectedStar, onStarSelect]);
   
   const handleClosePanel = useCallback(() => {
     onStarSelect?.(null);
-    setSelectedStarPosition(null);
   }, [onStarSelect]);
   
   const handleAnimationComplete = useCallback(() => {
@@ -591,7 +588,7 @@ function Scene({
     <>
       {/* Camera controller for zoom animation */}
       <CameraController 
-        targetPosition={selectedStarPosition}
+        targetPosition={selectedStar ? new THREE.Vector3(...starToVizPositionTuple(selectedStar)) : null}
         isAnimating={isAnimating}
         onAnimationComplete={handleAnimationComplete}
       />
@@ -609,23 +606,30 @@ function Scene({
       {/* Sun marker */}
       <SunMarker />
       
-      {/* Real stars from catalog */}
-      {ALL_STARS.map(star => (
+      {/* Real stars (dense Hipparcos field rendered as GPU points) */}
+      <StarFieldPoints
+        stars={stars}
+        onHover={handleHover}
+        onUnhover={handleUnhover}
+        onSelect={handleStarClick}
+      />
+
+      {/* Selected star overlay (ring + label) */}
+      {selectedStar && (
         <StarSphere
-          key={star.name}
-          star={star}
-          isSelected={selectedStar?.name === star.name}
+          star={selectedStar}
+          isSelected
           onClick={handleStarClick}
-          onHover={(pos, name) => handleHover(pos)}
+          onHover={(pos) => handleHover(pos)}
           onUnhover={handleUnhover}
         />
-      ))}
+      )}
       
       {/* Star info panel when selected */}
-      {selectedStar && selectedStarPosition && (
-        <StarInfoPanel 
-          star={selectedStar} 
-          position={selectedStarPosition}
+      {selectedStar && (
+        <StarInfoPanel
+          star={selectedStar}
+          position={new THREE.Vector3(...starToVizPositionTuple(selectedStar))}
           onClose={handleClosePanel}
         />
       )}
@@ -674,28 +678,61 @@ function Scene({
 
 export function PulsarMap3D(props: PulsarMap3DProps) {
   const [selectedStar, setSelectedStar] = useState<Star | null>(null);
-  
+  const [hipStars, setHipStars] = useState<Star[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    loadHipparcosStars({ maxStars: 2500, maxMagnitude: 7.0, maxDistancePc: 300 })
+      .then((stars) => {
+        if (!cancelled) setHipStars(stars);
+      })
+      .catch(() => {
+        // network failures should not break the visualization
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const stars = useMemo(() => {
+    const byKey = new Map<string, Star>();
+    for (const s of [...ALL_STARS, ...hipStars]) {
+      const key = s.hip ? `hip:${s.hip}` : `name:${s.name}`;
+      if (!byKey.has(key)) byKey.set(key, s);
+    }
+    return Array.from(byKey.values());
+  }, [hipStars]);
+
   return (
-    <div className="w-full h-full min-h-[400px] bg-black rounded-lg overflow-hidden relative">
+    <div
+      className="w-full h-full min-h-[400px] rounded-lg overflow-hidden relative"
+      style={{ background: '#000000' }}
+    >
       {/* Star count indicator */}
       <div className="absolute top-2 left-2 z-10 bg-slate-900/80 backdrop-blur-sm rounded px-2 py-1 text-xs text-muted-foreground">
-        <span className="text-primary font-mono">{ALL_STARS.length}</span> stars • <span className="text-cyan-400 font-mono">{props.pulsars.length}</span> pulsars
+        <span className="text-primary font-mono">{stars.length}</span> stars •{' '}
+        <span className="text-cyan-400 font-mono">{props.pulsars.length}</span> pulsars
       </div>
-      
+
       {/* Selected star name */}
       {selectedStar && (
         <div className="absolute top-2 right-2 z-10 bg-primary/20 backdrop-blur-sm rounded px-3 py-1 text-xs text-primary border border-primary/30">
           Focused: {selectedStar.commonName || selectedStar.name}
         </div>
       )}
-      
+
       <Canvas
         camera={{ position: [5, 5, 10], fov: 60 }}
         gl={{ antialias: true }}
-        style={{ background: '#000000' }}
+        onCreated={({ gl }) => {
+          gl.setClearColor('#000000', 1);
+        }}
       >
-        <Scene 
-          {...props} 
+        <Scene
+          {...props}
+          stars={stars}
           selectedStar={selectedStar}
           onStarSelect={setSelectedStar}
         />
