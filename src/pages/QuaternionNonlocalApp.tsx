@@ -26,6 +26,9 @@ import { TransmitterPanel } from '@/components/quaternion-nonlocal/TransmitterPa
 import { ReceiverPanel } from '@/components/quaternion-nonlocal/ReceiverPanel';
 import { TopologicalNetworkPanel } from '@/components/quaternion-nonlocal/TopologicalNetworkPanel';
 import { SystemControlsPanel } from '@/components/quaternion-nonlocal/SystemControlsPanel';
+import { PrimeExplorerDialog } from '@/components/quaternion-nonlocal/PrimeExplorerDialog';
+import { TopologyViewDialog } from '@/components/quaternion-nonlocal/TopologyViewDialog';
+import { AdvancedControlsDialog } from '@/components/quaternion-nonlocal/AdvancedControlsDialog';
 
 const QuaternionNonlocalApp = () => {
   const [isFirstRun, markAsSeen] = useFirstRun('quaternion-nonlocal-help');
@@ -33,6 +36,11 @@ const QuaternionNonlocalApp = () => {
   const [isPoweredOn, setIsPoweredOn] = useState(false);
   const [uptime, setUptime] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
+  
+  // Dialog states
+  const [showPrimeExplorer, setShowPrimeExplorer] = useState(false);
+  const [showTopologyView, setShowTopologyView] = useState(false);
+  const [showAdvancedControls, setShowAdvancedControls] = useState(false);
 
   useEffect(() => {
     if (isFirstRun) setShowHelp(true);
@@ -204,6 +212,9 @@ const QuaternionNonlocalApp = () => {
             presets={PRESETS}
             onPresetSelect={applyPreset}
             onReset={reset}
+            onOpenPrimeExplorer={() => setShowPrimeExplorer(true)}
+            onOpenTopologyView={() => setShowTopologyView(true)}
+            onOpenAdvancedControls={() => setShowAdvancedControls(true)}
           />
 
           {/* Status Bar */}
@@ -235,11 +246,48 @@ const QuaternionNonlocalApp = () => {
           </footer>
         </div>
 
+        {/* Dialogs */}
         <AppHelpDialog
           open={showHelp}
           onOpenChange={handleCloseHelp}
           steps={helpSteps}
           appName="Quaternionic Non-Local Transceiver"
+        />
+        
+        <PrimeExplorerDialog
+          open={showPrimeExplorer}
+          onOpenChange={setShowPrimeExplorer}
+          availablePrimes={AVAILABLE_SPLIT_PRIMES}
+          selectedPrimeAlice={selectedPrimeAlice}
+          selectedPrimeBob={selectedPrimeBob}
+          onSelectPrime={(prime, target) => {
+            if (target === 'alice') setSelectedPrimeAlice(prime);
+            else setSelectedPrimeBob(prime);
+          }}
+        />
+        
+        <TopologyViewDialog
+          open={showTopologyView}
+          onOpenChange={setShowTopologyView}
+          entangledPair={entangledPair}
+          alicePrime={alicePrime}
+          bobPrime={bobPrime}
+          transmissionHistory={transmissionHistory}
+          time={time}
+        />
+        
+        <AdvancedControlsDialog
+          open={showAdvancedControls}
+          onOpenChange={setShowAdvancedControls}
+          epsilon={epsilon}
+          onEpsilonChange={setEpsilon}
+          twistCoupling={twistCoupling}
+          onTwistChange={setTwistCoupling}
+          presets={PRESETS}
+          onPresetSelect={applyPreset}
+          onReset={reset}
+          selectedPrimeAlice={selectedPrimeAlice}
+          selectedPrimeBob={selectedPrimeBob}
         />
       </div>
     </Layout>
