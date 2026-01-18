@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Download,
   Binary,
@@ -18,10 +19,23 @@ import {
   XCircle,
   Wrench,
   Zap,
-  FileText
+  FileText,
+  Layers,
+  RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SemanticMapping, SRCTransmission } from '@/lib/pulsar-transceiver/types';
+import { 
+  ECCMode, 
+  decodeECC, 
+  encodeHamming84, 
+  decodeHamming84,
+  encodeReedSolomon,
+  decodeReedSolomon,
+  bitsToBytes,
+  bytesToBits,
+  injectErrors
+} from '@/lib/pulsar-transceiver/error-correction';
 
 interface MessageDecoderProps {
   semanticMap: SemanticMapping[];
@@ -34,13 +48,17 @@ interface DecodingResult {
   dataBits: number[];
   text: string;
   hasErrorDetection: boolean;
+  eccMode: ECCMode;
+  eccResult: {
+    corrected: boolean;
+    errorCount: number;
+    errorPositions: number[];
+    uncorrectable: boolean;
+  };
   parity: { received: number; calculated: number; valid: boolean };
   checksum: { received: number; calculated: number; valid: boolean };
   crc: { received: number; calculated: number; valid: boolean };
   overallValid: boolean;
-  hammingCorrected: boolean;
-  hammingErrorPosition: number | null;
-  correctedBits: number[];
 }
 
 // Prime list (must match encoder)
@@ -221,16 +239,21 @@ export default function MessageDecoder({
 }: MessageDecoderProps) {
   const [primeInput, setPrimeInput] = useState('');
   const [decodingResult, setDecodingResult] = useState<DecodingResult | null>(null);
-  const [hammingInput, setHammingInput] = useState('');
-  const [hammingDemo, setHammingDemo] = useState<{
+  const [selectedEccMode, setSelectedEccMode] = useState<ECCMode>('none');
+  const [eccDemo, setEccDemo] = useState<{
+    mode: ECCMode;
     original: number[];
     encoded: number[];
     corrupted: number[];
     recovered: number[];
-    errorPos: number;
-    syndrome: number;
+    errorPositions: number[];
+    errorCount: number;
     corrected: boolean;
+    uncorrectable: boolean;
   } | null>(null);
+  const [demoInput, setDemoInput] = useState('');
+  const [errorCount, setErrorCount] = useState(1);
+  const [burstLength, setBurstLength] = useState(1);
   
   // Get recent binary transmissions
   const recentBinaryTransmissions = useMemo(() => {
@@ -239,7 +262,7 @@ export default function MessageDecoder({
       .slice(-5);
   }, [transmissions]);
   
-  // Decode prime sequence
+  // Decode prime sequence with ECC
   const handleDecode = useCallback(() => {
     const primes = primeInput
       .split(/[,\s]+/)
@@ -250,28 +273,29 @@ export default function MessageDecoder({
     
     const bits = primesToBits(primes);
     
-    // Estimate if error detection is present
-    // Format: DATA + PARITY(1) + CHECKSUM(8) + CRC(8) = DATA + 17 bits
-    // We need at least 17 bits for error detection overhead + at least 8 bits data
+    // Estimate if error detection is present (last 17 bits)
     const hasErrorDetection = bits.length >= 25;
     
-    let dataBits: number[];
+    let eccBits: number[];
     let receivedParity = 0;
     let receivedChecksum = 0;
     let receivedCRC = 0;
     
     if (hasErrorDetection) {
-      // Last 17 bits are error detection
       const dataEndIndex = bits.length - 17;
-      dataBits = bits.slice(0, dataEndIndex);
+      eccBits = bits.slice(0, dataEndIndex);
       receivedParity = bits[dataEndIndex];
       receivedChecksum = bitsToNumber(bits, dataEndIndex + 1, 8);
       receivedCRC = bitsToNumber(bits, dataEndIndex + 9, 8);
     } else {
-      dataBits = bits;
+      eccBits = bits;
     }
     
-    const calculatedParity = calculateParity(dataBits);
+    // Apply ECC decoding
+    const eccResult = decodeECC(eccBits, selectedEccMode);
+    const dataBits = eccResult.dataBits;
+    
+    const calculatedParity = calculateParity(eccBits);
     const calculatedChecksum = calculateChecksum(dataBits);
     const calculatedCRC = calculateCRC8(dataBits);
     
@@ -287,60 +311,91 @@ export default function MessageDecoder({
       dataBits,
       text,
       hasErrorDetection,
+      eccMode: selectedEccMode,
+      eccResult: {
+        corrected: eccResult.corrected,
+        errorCount: eccResult.errorCount,
+        errorPositions: eccResult.errorPositions,
+        uncorrectable: eccResult.uncorrectable
+      },
       parity: { received: receivedParity, calculated: calculatedParity, valid: parityValid },
       checksum: { received: receivedChecksum, calculated: calculatedChecksum, valid: checksumValid },
       crc: { received: receivedCRC, calculated: calculatedCRC, valid: crcValid },
-      overallValid: parityValid && checksumValid && crcValid,
-      hammingCorrected: false,
-      hammingErrorPosition: null,
-      correctedBits: dataBits
+      overallValid: parityValid && checksumValid && crcValid && !eccResult.uncorrectable
     });
-  }, [primeInput]);
+  }, [primeInput, selectedEccMode]);
   
-  // Hamming code demonstration
-  const runHammingDemo = useCallback(() => {
-    const input = hammingInput.trim() || 'Hi';
+  // ECC demonstration
+  const runEccDemo = useCallback(() => {
+    const input = demoInput.trim() || 'Test';
     const bits: number[] = [];
     
-    for (let i = 0; i < Math.min(input.length, 4); i++) {
+    for (let i = 0; i < input.length; i++) {
       const charCode = input.charCodeAt(i);
       for (let b = 7; b >= 0; b--) {
         bits.push((charCode >> b) & 1);
       }
     }
     
-    // Pad to multiple of 4
+    // Pad to multiple of 4 for Hamming
     while (bits.length % 4 !== 0) {
       bits.push(0);
     }
     
-    const encoded = encodeHamming74(bits);
+    let encoded: number[];
+    let mode: ECCMode = selectedEccMode;
     
-    // Inject random single-bit error
-    const errorPos = Math.floor(Math.random() * encoded.length);
-    const corrupted = injectError(encoded, errorPos);
+    if (mode === 'hamming84') {
+      encoded = encodeHamming84(bits);
+    } else if (mode === 'reed-solomon') {
+      // Convert to bytes for RS
+      const bytes = bitsToBytes(bits);
+      const nsym = Math.min(8, Math.max(4, Math.ceil(bytes.length * 0.25)));
+      const rsEncoded = encodeReedSolomon(bytes, nsym);
+      encoded = bytesToBits(rsEncoded);
+    } else {
+      encoded = [...bits];
+    }
+    
+    // Inject errors
+    const { corrupted, errorPositions } = injectErrors(encoded, errorCount, burstLength);
     
     // Recover
-    const { bits: recovered, corrected } = decodeHamming74(corrupted);
-    const syndrome = calculateHammingSyndrome(corrupted.slice(
-      Math.floor(errorPos / 7) * 7,
-      Math.floor(errorPos / 7) * 7 + 7
-    ));
+    let recovered: number[];
+    let corrected = false;
+    let uncorrectable = false;
     
-    setHammingDemo({
+    if (mode === 'hamming84') {
+      const result = decodeHamming84(corrupted);
+      recovered = result.bits;
+      corrected = result.corrected;
+      uncorrectable = result.uncorrectable;
+    } else if (mode === 'reed-solomon') {
+      const bytes = bitsToBytes(corrupted);
+      const nsym = Math.min(8, Math.max(4, Math.ceil((bytes.length * 0.8) * 0.25)));
+      const result = decodeReedSolomon(bytes, nsym);
+      recovered = bytesToBits(result.data);
+      corrected = result.corrected;
+      uncorrectable = result.uncorrectable;
+    } else {
+      recovered = [...corrupted];
+    }
+    
+    setEccDemo({
+      mode,
       original: bits,
       encoded,
       corrupted,
       recovered,
-      errorPos,
-      syndrome,
-      corrected
+      errorPositions,
+      errorCount: errorPositions.length,
+      corrected,
+      uncorrectable
     });
-  }, [hammingInput]);
+  }, [demoInput, selectedEccMode, errorCount, burstLength]);
   
   // Load transmission into decoder
   const loadTransmission = useCallback((t: SRCTransmission) => {
-    // For now, just load the prime
     setPrimeInput(t.prime.toString());
   }, []);
   
@@ -535,166 +590,75 @@ export default function MessageDecoder({
             </AnimatePresence>
           </TabsContent>
           
-          {/* Hamming Demo Tab */}
+          {/* ECC Demo Tab */}
           <TabsContent value="hamming" className="space-y-4 mt-4">
             <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
-              <h4 className="text-xs font-semibold text-primary mb-2">Hamming(7,4) Error Correction</h4>
+              <h4 className="text-xs font-semibold text-primary mb-2">Error Correction Demo</h4>
               <p className="text-xs text-muted-foreground">
-                Encodes 4 data bits into 7 bits with 3 parity bits. Can detect and correct any single-bit error.
+                Test Hamming(8,4) for single-bit errors or Reed-Solomon for burst errors.
               </p>
             </div>
             
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Test Message (1-4 chars)</Label>
-              <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2">
+              <Select value={selectedEccMode} onValueChange={(v) => setSelectedEccMode(v as ECCMode)}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="ECC Mode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hamming84">Hamming(8,4)</SelectItem>
+                  <SelectItem value="reed-solomon">Reed-Solomon</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="flex gap-1">
                 <Input
-                  value={hammingInput}
-                  onChange={e => setHammingInput(e.target.value)}
-                  placeholder="Hi"
-                  className="flex-1 bg-background/50 border-border/50 text-sm font-mono"
-                  maxLength={4}
+                  type="number"
+                  value={errorCount}
+                  onChange={e => setErrorCount(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-16 h-8 text-xs"
+                  min={1}
+                  max={10}
                 />
-                <Button 
-                  size="sm" 
-                  onClick={runHammingDemo}
-                >
-                  <Zap className="h-4 w-4 mr-1" />
-                  Simulate
-                </Button>
+                <span className="text-xs text-muted-foreground self-center">errors</span>
               </div>
             </div>
             
+            <div className="flex gap-2">
+              <Input
+                value={demoInput}
+                onChange={e => setDemoInput(e.target.value)}
+                placeholder="Test"
+                className="flex-1 bg-background/50 text-sm font-mono"
+                maxLength={8}
+              />
+              <Button size="sm" onClick={runEccDemo} disabled={selectedEccMode === 'none'}>
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Test
+              </Button>
+            </div>
+            
             <AnimatePresence mode="wait">
-              {hammingDemo && (
+              {eccDemo && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
                   className="space-y-3"
                 >
-                  {/* Original Data */}
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground flex items-center gap-2">
-                      Original Data Bits
-                      <Badge variant="outline" className="text-xs">{hammingDemo.original.length} bits</Badge>
-                    </Label>
-                    <div className="flex flex-wrap gap-0.5 p-2 rounded bg-black/20 font-mono text-xs">
-                      {hammingDemo.original.map((bit, i) => (
-                        <span
-                          key={i}
-                          className={`w-4 h-5 flex items-center justify-center rounded ${
-                            bit === 1 ? 'bg-blue-500/30 text-blue-400' : 'bg-blue-500/10 text-blue-400/50'
-                          } ${i % 4 === 3 ? 'mr-1' : ''}`}
-                        >
-                          {bit}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  {/* Encoded Data */}
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground flex items-center gap-2">
-                      Hamming Encoded
-                      <Badge variant="outline" className="text-xs">{hammingDemo.encoded.length} bits</Badge>
-                    </Label>
-                    <div className="flex flex-wrap gap-0.5 p-2 rounded bg-black/20 font-mono text-xs">
-                      {hammingDemo.encoded.map((bit, i) => {
-                        const inBlock = i % 7;
-                        const isParity = inBlock === 0 || inBlock === 1 || inBlock === 3;
-                        return (
-                          <span
-                            key={i}
-                            className={`w-4 h-5 flex items-center justify-center rounded ${
-                              isParity
-                                ? (bit === 1 ? 'bg-yellow-500/30 text-yellow-400' : 'bg-yellow-500/10 text-yellow-400/50')
-                                : (bit === 1 ? 'bg-green-500/30 text-green-400' : 'bg-green-500/10 text-green-400/50')
-                            } ${inBlock === 6 ? 'mr-2' : ''}`}
-                            title={isParity ? 'Parity bit' : 'Data bit'}
-                          >
-                            {bit}
-                          </span>
-                        );
-                      })}
-                    </div>
-                    <div className="flex gap-3 text-xs">
-                      <span className="flex items-center gap-1">
-                        <div className="w-3 h-3 rounded bg-yellow-500/30" /> Parity
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <div className="w-3 h-3 rounded bg-green-500/30" /> Data
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {/* Corrupted Data */}
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground flex items-center gap-2">
-                      After Transmission (1-bit error injected)
-                      <Badge className="bg-red-500/20 text-red-400 text-xs">
-                        Error at bit {hammingDemo.errorPos}
-                      </Badge>
-                    </Label>
-                    <div className="flex flex-wrap gap-0.5 p-2 rounded bg-black/20 font-mono text-xs">
-                      {hammingDemo.corrupted.map((bit, i) => {
-                        const isError = i === hammingDemo.errorPos;
-                        return (
-                          <span
-                            key={i}
-                            className={`w-4 h-5 flex items-center justify-center rounded ${
-                              isError
-                                ? 'bg-red-500/50 text-white ring-2 ring-red-500'
-                                : (bit === 1 ? 'bg-muted/30 text-foreground' : 'bg-muted/10 text-muted-foreground')
-                            } ${i % 7 === 6 ? 'mr-2' : ''}`}
-                          >
-                            {bit}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  
-                  {/* Syndrome & Recovery */}
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 rounded-lg bg-black/30 border border-border/30">
-                      <div className="text-xs text-muted-foreground mb-1">Syndrome</div>
-                      <div className="font-mono text-lg text-primary">
-                        {hammingDemo.syndrome}
-                        <span className="text-xs text-muted-foreground ml-2">
-                          (position {hammingDemo.syndrome > 0 ? hammingDemo.syndrome : 'none'})
-                        </span>
-                      </div>
+                    <div className="p-2 rounded bg-black/20 text-center">
+                      <div className="text-xs text-muted-foreground">Errors Injected</div>
+                      <div className="font-mono text-red-400">{eccDemo.errorCount}</div>
                     </div>
-                    <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30">
-                      <div className="text-xs text-muted-foreground mb-1">Status</div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-5 w-5 text-green-400" />
-                        <span className="text-sm text-green-400">Error Corrected!</span>
+                    <div className={`p-2 rounded text-center ${eccDemo.uncorrectable ? 'bg-red-500/20' : 'bg-green-500/20'}`}>
+                      <div className="text-xs text-muted-foreground">Status</div>
+                      <div className={`font-mono ${eccDemo.uncorrectable ? 'text-red-400' : 'text-green-400'}`}>
+                        {eccDemo.uncorrectable ? 'Uncorrectable' : eccDemo.corrected ? 'Corrected!' : 'No Errors'}
                       </div>
                     </div>
                   </div>
                   
-                  {/* Recovered Data */}
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground flex items-center gap-2">
-                      Recovered Data
-                      <Badge className="bg-green-500/20 text-green-400 text-xs">
-                        <CheckCircle2 className="h-3 w-3 mr-1" />
-                        Matches Original
-                      </Badge>
-                    </Label>
-                    <div className="flex flex-wrap gap-0.5 p-2 rounded bg-black/20 font-mono text-xs">
-                      {hammingDemo.recovered.slice(0, hammingDemo.original.length).map((bit, i) => (
-                        <span
-                          key={i}
-                          className={`w-4 h-5 flex items-center justify-center rounded ${
-                            bit === 1 ? 'bg-green-500/30 text-green-400' : 'bg-green-500/10 text-green-400/50'
-                          } ${i % 4 === 3 ? 'mr-1' : ''}`}
-                        >
-                          {bit}
-                        </span>
-                      ))}
-                    </div>
+                  <div className="text-xs text-muted-foreground">
+                    {eccDemo.mode === 'hamming84' && 'Hamming(8,4): Corrects 1-bit errors, detects 2-bit errors'}
+                    {eccDemo.mode === 'reed-solomon' && 'Reed-Solomon: Corrects burst errors across multiple bytes'}
                   </div>
                 </motion.div>
               )}
