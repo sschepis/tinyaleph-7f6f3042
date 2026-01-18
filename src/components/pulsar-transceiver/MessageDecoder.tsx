@@ -7,21 +7,21 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
 import { 
   Download,
   Binary,
-  Shield,
   ShieldCheck,
   ShieldAlert,
   ShieldX,
   CheckCircle2,
-  AlertTriangle,
   XCircle,
   Wrench,
-  Zap,
   FileText,
+  RefreshCw,
   Layers,
-  RefreshCw
+  Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SemanticMapping, SRCTransmission } from '@/lib/pulsar-transceiver/types';
@@ -34,7 +34,11 @@ import {
   decodeReedSolomon,
   bitsToBytes,
   bytesToBits,
-  injectErrors
+  injectErrors,
+  interleave,
+  deinterleave,
+  calculateInterleavingConfig,
+  InterleavingConfig
 } from '@/lib/pulsar-transceiver/error-correction';
 
 interface MessageDecoderProps {
@@ -53,6 +57,7 @@ interface DecodingResult {
     corrected: boolean;
     errorCount: number;
     errorPositions: number[];
+    correctedPositions: number[];
     uncorrectable: boolean;
   };
   parity: { received: number; calculated: number; valid: boolean };
@@ -71,13 +76,11 @@ const PRIMES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 
   509, 521, 523, 541, 547, 557, 563, 569, 571, 577, 587, 593, 599, 601, 607,
   613, 617, 619, 631, 641, 643, 647, 653, 659, 661, 673, 677, 683, 691, 701];
 
-// Prime to 7-bit value
 function primeToValue(prime: number): number {
   const index = PRIMES.indexOf(prime);
   return index >= 0 ? index : 0;
 }
 
-// Primes to bits
 function primesToBits(primes: number[]): number[] {
   const bits: number[] = [];
   for (const prime of primes) {
@@ -89,7 +92,6 @@ function primesToBits(primes: number[]): number[] {
   return bits;
 }
 
-// Bits to ASCII
 function bitsToAscii(bits: number[]): string {
   let text = '';
   for (let i = 0; i + 7 <= bits.length; i += 8) {
@@ -100,7 +102,6 @@ function bitsToAscii(bits: number[]): string {
     if (charCode >= 32 && charCode <= 126) {
       text += String.fromCharCode(charCode);
     } else if (charCode === 0) {
-      // Null terminator
       break;
     } else {
       text += '?';
@@ -109,12 +110,10 @@ function bitsToAscii(bits: number[]): string {
   return text;
 }
 
-// Calculate parity
 function calculateParity(bits: number[]): number {
   return bits.reduce((acc, bit) => acc ^ bit, 0);
 }
 
-// Calculate checksum
 function calculateChecksum(bits: number[]): number {
   let sum = 0;
   for (let i = 0; i < bits.length; i += 8) {
@@ -127,7 +126,6 @@ function calculateChecksum(bits: number[]): number {
   return sum;
 }
 
-// Calculate CRC-8
 function calculateCRC8(bits: number[]): number {
   let crc = 0xFF;
   const poly = 0x31;
@@ -149,7 +147,6 @@ function calculateCRC8(bits: number[]): number {
   return crc;
 }
 
-// Extract byte from bits
 function bitsToNumber(bits: number[], start: number, length: number): number {
   let value = 0;
   for (let i = 0; i < length && start + i < bits.length; i++) {
@@ -158,79 +155,88 @@ function bitsToNumber(bits: number[], start: number, length: number): number {
   return value;
 }
 
-// ========== HAMMING CODE ERROR CORRECTION ==========
-
-// Hamming(7,4) - encodes 4 data bits into 7 bits with 3 parity bits
-// Bit positions: p1, p2, d1, p3, d2, d3, d4 (1-indexed)
-
-// Hamming syndrome calculation for (7,4) code
-function calculateHammingSyndrome(block: number[]): number {
-  if (block.length !== 7) return -1;
-  
-  // Syndrome bits
-  const s1 = block[0] ^ block[2] ^ block[4] ^ block[6]; // positions 1,3,5,7
-  const s2 = block[1] ^ block[2] ^ block[5] ^ block[6]; // positions 2,3,6,7
-  const s3 = block[3] ^ block[4] ^ block[5] ^ block[6]; // positions 4,5,6,7
-  
-  return s1 + (s2 << 1) + (s3 << 2);
+// Bit Stream Visualization Component
+interface BitStreamVizProps {
+  originalBits: number[];
+  correctedBits: number[];
+  errorPositions: number[];
+  correctedPositions: number[];
+  label: string;
+  maxBits?: number;
 }
 
-// Apply Hamming(7,4) encoding to data
-function encodeHamming74(dataBits: number[]): number[] {
-  const encoded: number[] = [];
+function BitStreamVisualization({ 
+  originalBits, 
+  correctedBits, 
+  errorPositions, 
+  correctedPositions, 
+  label,
+  maxBits = 128
+}: BitStreamVizProps) {
+  const displayBits = correctedBits.slice(0, maxBits);
+  const errorSet = new Set(errorPositions);
+  const correctedSet = new Set(correctedPositions);
   
-  for (let i = 0; i + 3 < dataBits.length; i += 4) {
-    const d1 = dataBits[i];
-    const d2 = dataBits[i + 1];
-    const d3 = dataBits[i + 2];
-    const d4 = dataBits[i + 3];
-    
-    const p1 = d1 ^ d2 ^ d4;
-    const p2 = d1 ^ d3 ^ d4;
-    const p3 = d2 ^ d3 ^ d4;
-    
-    encoded.push(p1, p2, d1, p3, d2, d3, d4);
-  }
-  
-  return encoded;
-}
-
-// Decode Hamming(7,4) with error correction
-function decodeHamming74(encodedBits: number[]): { bits: number[]; corrected: boolean; errorPosition: number | null; correctedBits: number[] } {
-  const decoded: number[] = [];
-  let corrected = false;
-  let errorPosition: number | null = null;
-  const correctedBits = [...encodedBits];
-  
-  for (let i = 0; i + 6 < encodedBits.length; i += 7) {
-    const block = encodedBits.slice(i, i + 7);
-    const syndrome = calculateHammingSyndrome(block);
-    
-    if (syndrome !== 0) {
-      // Error detected at position (syndrome - 1)
-      const errPos = syndrome - 1;
-      if (errPos >= 0 && errPos < 7) {
-        correctedBits[i + errPos] = correctedBits[i + errPos] ^ 1; // Flip the bit
-        block[errPos] = block[errPos] ^ 1;
-        corrected = true;
-        errorPosition = i + errPos;
-      }
-    }
-    
-    // Extract data bits (positions 3, 5, 6, 7 in 1-indexed = indices 2, 4, 5, 6)
-    decoded.push(block[2], block[4], block[5], block[6]);
-  }
-  
-  return { bits: decoded, corrected, errorPosition, correctedBits };
-}
-
-// Inject random single-bit error for demonstration
-function injectError(bits: number[], position: number): number[] {
-  const corrupted = [...bits];
-  if (position >= 0 && position < bits.length) {
-    corrupted[position] = corrupted[position] ^ 1;
-  }
-  return corrupted;
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs text-muted-foreground">{label}</Label>
+        <div className="flex items-center gap-3 text-xs">
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-red-500/50 border border-red-500"></span>
+            Error
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-green-500/50 border border-green-500"></span>
+            Corrected
+          </span>
+        </div>
+      </div>
+      <div className="p-2 rounded-lg bg-black/30 border border-border/30 overflow-hidden">
+        <div className="flex flex-wrap gap-0.5 font-mono text-[10px]">
+          {displayBits.map((bit, i) => {
+            const isError = errorSet.has(i);
+            const isCorrected = correctedSet.has(i);
+            
+            let bgClass = bit === 1 ? 'bg-primary/30' : 'bg-muted/20';
+            let textClass = bit === 1 ? 'text-primary' : 'text-muted-foreground';
+            let borderClass = 'border-transparent';
+            
+            if (isCorrected) {
+              bgClass = 'bg-green-500/30';
+              textClass = 'text-green-400';
+              borderClass = 'border-green-500';
+            } else if (isError) {
+              bgClass = 'bg-red-500/30';
+              textClass = 'text-red-400';
+              borderClass = 'border-red-500';
+            }
+            
+            return (
+              <motion.span
+                key={i}
+                initial={isCorrected ? { scale: 1.5 } : {}}
+                animate={{ scale: 1 }}
+                transition={{ duration: 0.3 }}
+                className={`w-4 h-4 flex items-center justify-center rounded border ${bgClass} ${textClass} ${borderClass} ${i % 8 === 7 ? 'mr-1.5' : ''}`}
+                title={`Bit ${i}${isError ? ' (error)' : ''}${isCorrected ? ' (corrected)' : ''}`}
+              >
+                {bit}
+              </motion.span>
+            );
+          })}
+          {correctedBits.length > maxBits && (
+            <span className="text-muted-foreground ml-1">+{correctedBits.length - maxBits} more</span>
+          )}
+        </div>
+      </div>
+      {correctedPositions.length > 0 && (
+        <div className="text-xs text-green-400">
+          ✓ Corrected {correctedPositions.length} bit(s) at position(s): {correctedPositions.slice(0, 8).join(', ')}{correctedPositions.length > 8 ? '...' : ''}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function MessageDecoder({
@@ -239,30 +245,34 @@ export default function MessageDecoder({
 }: MessageDecoderProps) {
   const [primeInput, setPrimeInput] = useState('');
   const [decodingResult, setDecodingResult] = useState<DecodingResult | null>(null);
-  const [selectedEccMode, setSelectedEccMode] = useState<ECCMode>('none');
+  const [selectedEccMode, setSelectedEccMode] = useState<ECCMode>('hamming84');
+  const [useInterleaving, setUseInterleaving] = useState(false);
   const [eccDemo, setEccDemo] = useState<{
     mode: ECCMode;
+    useInterleaving: boolean;
     original: number[];
     encoded: number[];
     corrupted: number[];
     recovered: number[];
+    correctedBits: number[];
     errorPositions: number[];
+    correctedPositions: number[];
     errorCount: number;
     corrected: boolean;
     uncorrectable: boolean;
+    originalText: string;
+    recoveredText: string;
   } | null>(null);
-  const [demoInput, setDemoInput] = useState('');
+  const [demoInput, setDemoInput] = useState('Hello');
   const [errorCount, setErrorCount] = useState(1);
   const [burstLength, setBurstLength] = useState(1);
   
-  // Get recent binary transmissions
   const recentBinaryTransmissions = useMemo(() => {
     return transmissions
       .filter(t => t.meaning.includes('Binary') || t.meaning.includes('Sequence'))
       .slice(-5);
   }, [transmissions]);
   
-  // Decode prime sequence with ECC
   const handleDecode = useCallback(() => {
     const primes = primeInput
       .split(/[,\s]+/)
@@ -272,8 +282,6 @@ export default function MessageDecoder({
     if (primes.length === 0) return;
     
     const bits = primesToBits(primes);
-    
-    // Estimate if error detection is present (last 17 bits)
     const hasErrorDetection = bits.length >= 25;
     
     let eccBits: number[];
@@ -291,8 +299,8 @@ export default function MessageDecoder({
       eccBits = bits;
     }
     
-    // Apply ECC decoding
-    const eccResult = decodeECC(eccBits, selectedEccMode);
+    const interleavingConfig = useInterleaving ? calculateInterleavingConfig(eccBits.length, selectedEccMode) : undefined;
+    const eccResult = decodeECC(eccBits, selectedEccMode, undefined, interleavingConfig);
     const dataBits = eccResult.dataBits;
     
     const calculatedParity = calculateParity(eccBits);
@@ -316,6 +324,7 @@ export default function MessageDecoder({
         corrected: eccResult.corrected,
         errorCount: eccResult.errorCount,
         errorPositions: eccResult.errorPositions,
+        correctedPositions: eccResult.correctedPositions,
         uncorrectable: eccResult.uncorrectable
       },
       parity: { received: receivedParity, calculated: calculatedParity, valid: parityValid },
@@ -323,9 +332,8 @@ export default function MessageDecoder({
       crc: { received: receivedCRC, calculated: calculatedCRC, valid: crcValid },
       overallValid: parityValid && checksumValid && crcValid && !eccResult.uncorrectable
     });
-  }, [primeInput, selectedEccMode]);
+  }, [primeInput, selectedEccMode, useInterleaving]);
   
-  // ECC demonstration
   const runEccDemo = useCallback(() => {
     const input = demoInput.trim() || 'Test';
     const bits: number[] = [];
@@ -337,18 +345,17 @@ export default function MessageDecoder({
       }
     }
     
-    // Pad to multiple of 4 for Hamming
     while (bits.length % 4 !== 0) {
       bits.push(0);
     }
     
     let encoded: number[];
     let mode: ECCMode = selectedEccMode;
+    let interleavingConfig: InterleavingConfig | undefined;
     
     if (mode === 'hamming84') {
       encoded = encodeHamming84(bits);
     } else if (mode === 'reed-solomon') {
-      // Convert to bytes for RS
       const bytes = bitsToBytes(bits);
       const nsym = Math.min(8, Math.max(4, Math.ceil(bytes.length * 0.25)));
       const rsEncoded = encodeReedSolomon(bytes, nsym);
@@ -357,44 +364,40 @@ export default function MessageDecoder({
       encoded = [...bits];
     }
     
+    // Apply interleaving if enabled
+    if (useInterleaving && mode !== 'none') {
+      interleavingConfig = calculateInterleavingConfig(bits.length, mode);
+      const { interleaved } = interleave(encoded, interleavingConfig);
+      encoded = interleaved;
+    }
+    
     // Inject errors
     const { corrupted, errorPositions } = injectErrors(encoded, errorCount, burstLength);
     
-    // Recover
-    let recovered: number[];
-    let corrected = false;
-    let uncorrectable = false;
+    // Recover using the decodeECC which handles deinterleaving
+    const result = decodeECC(corrupted, mode, bits.length, interleavingConfig);
     
-    if (mode === 'hamming84') {
-      const result = decodeHamming84(corrupted);
-      recovered = result.bits;
-      corrected = result.corrected;
-      uncorrectable = result.uncorrectable;
-    } else if (mode === 'reed-solomon') {
-      const bytes = bitsToBytes(corrupted);
-      const nsym = Math.min(8, Math.max(4, Math.ceil((bytes.length * 0.8) * 0.25)));
-      const result = decodeReedSolomon(bytes, nsym);
-      recovered = bytesToBits(result.data);
-      corrected = result.corrected;
-      uncorrectable = result.uncorrectable;
-    } else {
-      recovered = [...corrupted];
-    }
+    // Recover text
+    const recoveredText = bitsToAscii(result.dataBits);
     
     setEccDemo({
       mode,
+      useInterleaving,
       original: bits,
       encoded,
       corrupted,
-      recovered,
+      recovered: result.dataBits,
+      correctedBits: result.correctedBits,
       errorPositions,
+      correctedPositions: result.correctedPositions,
       errorCount: errorPositions.length,
-      corrected,
-      uncorrectable
+      corrected: result.corrected,
+      uncorrectable: result.uncorrectable,
+      originalText: input,
+      recoveredText
     });
-  }, [demoInput, selectedEccMode, errorCount, burstLength]);
+  }, [demoInput, selectedEccMode, errorCount, burstLength, useInterleaving]);
   
-  // Load transmission into decoder
   const loadTransmission = useCallback((t: SRCTransmission) => {
     setPrimeInput(t.prime.toString());
   }, []);
@@ -406,22 +409,176 @@ export default function MessageDecoder({
           <Download className="h-4 w-4 text-primary" />
           Message Decoder
           <Badge variant="outline" className="ml-auto text-xs">
-            Error Correction
+            ECC + Interleaving
           </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Tabs defaultValue="decode">
+        <Tabs defaultValue="demo">
           <TabsList className="grid w-full grid-cols-2 h-8">
+            <TabsTrigger value="demo" className="text-xs gap-1">
+              <Wrench className="h-3 w-3" />
+              ECC Demo
+            </TabsTrigger>
             <TabsTrigger value="decode" className="text-xs gap-1">
               <FileText className="h-3 w-3" />
               Decode
             </TabsTrigger>
-            <TabsTrigger value="hamming" className="text-xs gap-1">
-              <Wrench className="h-3 w-3" />
-              Hamming Demo
-            </TabsTrigger>
           </TabsList>
+          
+          {/* ECC Demo Tab */}
+          <TabsContent value="demo" className="space-y-4 mt-4">
+            <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+              <h4 className="text-xs font-semibold text-primary mb-2 flex items-center gap-2">
+                <Zap className="h-3 w-3" />
+                Error Correction Demo
+              </h4>
+              <p className="text-xs text-muted-foreground">
+                Test ECC with visual bit-stream showing corrected bits. Enable interleaving for burst error resistance.
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <Select value={selectedEccMode} onValueChange={(v) => setSelectedEccMode(v as ECCMode)}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="ECC Mode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hamming84">Hamming(8,4)</SelectItem>
+                  <SelectItem value="reed-solomon">Reed-Solomon</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="interleaving"
+                  checked={useInterleaving}
+                  onCheckedChange={setUseInterleaving}
+                />
+                <Label htmlFor="interleaving" className="text-xs flex items-center gap-1">
+                  <Layers className="h-3 w-3" />
+                  Interleave
+                </Label>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Errors: {errorCount}</Label>
+                <Slider
+                  value={[errorCount]}
+                  onValueChange={([v]) => setErrorCount(v)}
+                  min={1}
+                  max={selectedEccMode === 'reed-solomon' ? 10 : 5}
+                  step={1}
+                  className="w-full"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Burst Length: {burstLength}</Label>
+                <Slider
+                  value={[burstLength]}
+                  onValueChange={([v]) => setBurstLength(v)}
+                  min={1}
+                  max={8}
+                  step={1}
+                  className="w-full"
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-2">
+              <Input
+                value={demoInput}
+                onChange={e => setDemoInput(e.target.value)}
+                placeholder="Hello"
+                className="flex-1 bg-background/50 text-sm font-mono"
+                maxLength={16}
+              />
+              <Button size="sm" onClick={runEccDemo} disabled={selectedEccMode === 'none'}>
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Test
+              </Button>
+            </div>
+            
+            <AnimatePresence mode="wait">
+              {eccDemo && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-4"
+                >
+                  {/* Status Cards */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="p-2 rounded bg-black/30 text-center">
+                      <div className="text-[10px] text-muted-foreground uppercase">Injected</div>
+                      <div className="font-mono text-red-400 text-lg">{eccDemo.errorCount}</div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {burstLength > 1 ? `${burstLength}-bit bursts` : 'random bits'}
+                      </div>
+                    </div>
+                    <div className={`p-2 rounded text-center ${eccDemo.uncorrectable ? 'bg-red-500/20' : eccDemo.corrected ? 'bg-green-500/20' : 'bg-blue-500/20'}`}>
+                      <div className="text-[10px] text-muted-foreground uppercase">Status</div>
+                      <div className={`font-mono text-lg ${eccDemo.uncorrectable ? 'text-red-400' : eccDemo.corrected ? 'text-green-400' : 'text-blue-400'}`}>
+                        {eccDemo.uncorrectable ? '✗' : eccDemo.corrected ? '✓' : '○'}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {eccDemo.uncorrectable ? 'Failed' : eccDemo.corrected ? 'Corrected' : 'Clean'}
+                      </div>
+                    </div>
+                    <div className="p-2 rounded bg-black/30 text-center">
+                      <div className="text-[10px] text-muted-foreground uppercase">Mode</div>
+                      <div className="font-mono text-primary text-sm">
+                        {eccDemo.mode === 'hamming84' ? 'H(8,4)' : 'RS'}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {eccDemo.useInterleaving ? '+Interleave' : 'Direct'}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Text Comparison */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-2 rounded bg-black/20 border border-border/30">
+                      <div className="text-[10px] text-muted-foreground uppercase mb-1">Original</div>
+                      <div className="font-mono text-primary">{eccDemo.originalText}</div>
+                    </div>
+                    <div className={`p-2 rounded border ${eccDemo.originalText === eccDemo.recoveredText ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                      <div className="text-[10px] text-muted-foreground uppercase mb-1">Recovered</div>
+                      <div className={`font-mono ${eccDemo.originalText === eccDemo.recoveredText ? 'text-green-400' : 'text-red-400'}`}>
+                        {eccDemo.recoveredText || '(empty)'}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Bit Stream Visualization */}
+                  <BitStreamVisualization
+                    originalBits={eccDemo.encoded}
+                    correctedBits={eccDemo.correctedBits}
+                    errorPositions={eccDemo.errorPositions}
+                    correctedPositions={eccDemo.correctedPositions}
+                    label={`Encoded Stream (${eccDemo.encoded.length} bits)${eccDemo.useInterleaving ? ' - Interleaved' : ''}`}
+                  />
+                  
+                  {/* Info */}
+                  <div className="text-xs text-muted-foreground p-2 rounded bg-black/20 border border-border/30">
+                    {eccDemo.mode === 'hamming84' && (
+                      <div>
+                        <strong>Hamming(8,4)</strong>: Corrects any 1-bit error, detects 2-bit errors per 8-bit block.
+                        {eccDemo.useInterleaving && ' Interleaving spreads burst errors across blocks.'}
+                      </div>
+                    )}
+                    {eccDemo.mode === 'reed-solomon' && (
+                      <div>
+                        <strong>Reed-Solomon</strong>: Corrects multiple byte errors using Galois Field arithmetic.
+                        {eccDemo.useInterleaving && ' Interleaving distributes burst errors for better recovery.'}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </TabsContent>
           
           {/* Decode Tab */}
           <TabsContent value="decode" className="space-y-4 mt-4">
@@ -442,6 +599,28 @@ export default function MessageDecoder({
                   <Binary className="h-4 w-4 mr-1" />
                   Decode
                 </Button>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <Select value={selectedEccMode} onValueChange={(v) => setSelectedEccMode(v as ECCMode)}>
+                <SelectTrigger className="h-8 text-xs w-36">
+                  <SelectValue placeholder="ECC Mode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No ECC</SelectItem>
+                  <SelectItem value="hamming84">Hamming(8,4)</SelectItem>
+                  <SelectItem value="reed-solomon">Reed-Solomon</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="decode-interleaving"
+                  checked={useInterleaving}
+                  onCheckedChange={setUseInterleaving}
+                />
+                <Label htmlFor="decode-interleaving" className="text-xs">Deinterleave</Label>
               </div>
             </div>
             
@@ -482,31 +661,17 @@ export default function MessageDecoder({
                     </div>
                   </div>
                   
-                  {/* Bit Stream */}
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">
-                      Data Bits ({decodingResult.dataBits.length})
-                    </Label>
-                    <div className="p-2 rounded-lg bg-black/20 border border-border/30 overflow-hidden">
-                      <div className="flex flex-wrap gap-0.5 font-mono text-xs">
-                        {decodingResult.dataBits.slice(0, 64).map((bit, i) => (
-                          <span
-                            key={i}
-                            className={`w-4 h-5 flex items-center justify-center rounded ${
-                              bit === 1 
-                                ? 'bg-primary/30 text-primary' 
-                                : 'bg-muted/20 text-muted-foreground'
-                            } ${i % 8 === 7 ? 'mr-2' : ''}`}
-                          >
-                            {bit}
-                          </span>
-                        ))}
-                        {decodingResult.dataBits.length > 64 && (
-                          <span className="text-muted-foreground">+{decodingResult.dataBits.length - 64} more</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                  {/* ECC Result */}
+                  {decodingResult.eccMode !== 'none' && decodingResult.eccResult.corrected && (
+                    <BitStreamVisualization
+                      originalBits={decodingResult.bits}
+                      correctedBits={decodingResult.dataBits}
+                      errorPositions={decodingResult.eccResult.errorPositions}
+                      correctedPositions={decodingResult.eccResult.correctedPositions}
+                      label="Decoded Stream (with corrections)"
+                      maxBits={64}
+                    />
+                  )}
                   
                   {/* Error Detection Status */}
                   <div className="space-y-2">
@@ -527,6 +692,20 @@ export default function MessageDecoder({
                         <Badge variant="outline" className="text-muted-foreground">
                           <ShieldAlert className="h-3 w-3 mr-1" />
                           No Error Detection
+                        </Badge>
+                      )}
+                      
+                      {decodingResult.eccResult.corrected && (
+                        <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          {decodingResult.eccResult.errorCount} Error(s) Corrected
+                        </Badge>
+                      )}
+                      
+                      {decodingResult.eccResult.uncorrectable && (
+                        <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
+                          <XCircle className="h-3 w-3 mr-1" />
+                          Uncorrectable Errors
                         </Badge>
                       )}
                     </div>
@@ -558,11 +737,6 @@ export default function MessageDecoder({
                               <XCircle className="h-3 w-3 text-red-400" />
                             )}
                           </div>
-                          {!decodingResult.checksum.valid && (
-                            <div className="text-xs text-muted-foreground">
-                              (expected 0x{decodingResult.checksum.calculated.toString(16).padStart(2, '0').toUpperCase()})
-                            </div>
-                          )}
                         </div>
                         <div className="text-center">
                           <div className="text-xs text-muted-foreground">CRC-8</div>
@@ -576,89 +750,9 @@ export default function MessageDecoder({
                               <XCircle className="h-3 w-3 text-red-400" />
                             )}
                           </div>
-                          {!decodingResult.crc.valid && (
-                            <div className="text-xs text-muted-foreground">
-                              (expected 0x{decodingResult.crc.calculated.toString(16).padStart(2, '0').toUpperCase()})
-                            </div>
-                          )}
                         </div>
                       </div>
                     )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </TabsContent>
-          
-          {/* ECC Demo Tab */}
-          <TabsContent value="hamming" className="space-y-4 mt-4">
-            <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
-              <h4 className="text-xs font-semibold text-primary mb-2">Error Correction Demo</h4>
-              <p className="text-xs text-muted-foreground">
-                Test Hamming(8,4) for single-bit errors or Reed-Solomon for burst errors.
-              </p>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-2">
-              <Select value={selectedEccMode} onValueChange={(v) => setSelectedEccMode(v as ECCMode)}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="ECC Mode" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="hamming84">Hamming(8,4)</SelectItem>
-                  <SelectItem value="reed-solomon">Reed-Solomon</SelectItem>
-                </SelectContent>
-              </Select>
-              <div className="flex gap-1">
-                <Input
-                  type="number"
-                  value={errorCount}
-                  onChange={e => setErrorCount(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-16 h-8 text-xs"
-                  min={1}
-                  max={10}
-                />
-                <span className="text-xs text-muted-foreground self-center">errors</span>
-              </div>
-            </div>
-            
-            <div className="flex gap-2">
-              <Input
-                value={demoInput}
-                onChange={e => setDemoInput(e.target.value)}
-                placeholder="Test"
-                className="flex-1 bg-background/50 text-sm font-mono"
-                maxLength={8}
-              />
-              <Button size="sm" onClick={runEccDemo} disabled={selectedEccMode === 'none'}>
-                <RefreshCw className="h-4 w-4 mr-1" />
-                Test
-              </Button>
-            </div>
-            
-            <AnimatePresence mode="wait">
-              {eccDemo && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-3"
-                >
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-2 rounded bg-black/20 text-center">
-                      <div className="text-xs text-muted-foreground">Errors Injected</div>
-                      <div className="font-mono text-red-400">{eccDemo.errorCount}</div>
-                    </div>
-                    <div className={`p-2 rounded text-center ${eccDemo.uncorrectable ? 'bg-red-500/20' : 'bg-green-500/20'}`}>
-                      <div className="text-xs text-muted-foreground">Status</div>
-                      <div className={`font-mono ${eccDemo.uncorrectable ? 'text-red-400' : 'text-green-400'}`}>
-                        {eccDemo.uncorrectable ? 'Uncorrectable' : eccDemo.corrected ? 'Corrected!' : 'No Errors'}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="text-xs text-muted-foreground">
-                    {eccDemo.mode === 'hamming84' && 'Hamming(8,4): Corrects 1-bit errors, detects 2-bit errors'}
-                    {eccDemo.mode === 'reed-solomon' && 'Reed-Solomon: Corrects burst errors across multiple bytes'}
                   </div>
                 </motion.div>
               )}

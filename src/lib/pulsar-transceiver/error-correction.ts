@@ -379,15 +379,114 @@ export function bytesToBits(bytes: number[]): number[] {
   return bits;
 }
 
-// Apply ECC encoding
-export function applyECC(dataBits: number[], mode: ECCMode): {
+// ========== INTERLEAVING ==========
+// Spreads bits across codewords to resist burst errors
+
+export interface InterleavingConfig {
+  rows: number; // Number of codewords
+  cols: number; // Bits per codeword
+}
+
+/**
+ * Interleave bits - write rows, read columns
+ * This spreads burst errors across multiple codewords
+ */
+export function interleave(bits: number[], config: InterleavingConfig): {
+  interleaved: number[];
+  paddingBits: number;
+} {
+  const { rows, cols } = config;
+  const totalSize = rows * cols;
+  
+  // Pad to fill the matrix
+  const padded = [...bits];
+  const paddingBits = (totalSize - (bits.length % totalSize)) % totalSize;
+  for (let i = 0; i < paddingBits; i++) {
+    padded.push(0);
+  }
+  
+  // Create matrix (write row by row)
+  const matrix: number[][] = [];
+  for (let r = 0; r < rows; r++) {
+    matrix.push(padded.slice(r * cols, (r + 1) * cols));
+  }
+  
+  // Read column by column
+  const interleaved: number[] = [];
+  for (let c = 0; c < cols; c++) {
+    for (let r = 0; r < rows; r++) {
+      interleaved.push(matrix[r][c]);
+    }
+  }
+  
+  return { interleaved, paddingBits };
+}
+
+/**
+ * Deinterleave bits - reverse the interleaving process
+ */
+export function deinterleave(bits: number[], config: InterleavingConfig): number[] {
+  const { rows, cols } = config;
+  
+  // Create matrix (write column by column)
+  const matrix: number[][] = Array.from({ length: rows }, () => []);
+  let idx = 0;
+  for (let c = 0; c < cols; c++) {
+    for (let r = 0; r < rows; r++) {
+      matrix[r][c] = bits[idx++] || 0;
+    }
+  }
+  
+  // Read row by row
+  const deinterleaved: number[] = [];
+  for (let r = 0; r < rows; r++) {
+    deinterleaved.push(...matrix[r]);
+  }
+  
+  return deinterleaved;
+}
+
+/**
+ * Calculate interleaving config based on data size
+ */
+export function calculateInterleavingConfig(dataLength: number, eccMode: ECCMode): InterleavingConfig {
+  if (eccMode === 'hamming84') {
+    // Each Hamming(8,4) codeword is 8 bits
+    const codewordSize = 8;
+    const numCodewords = Math.ceil(dataLength / 4); // 4 data bits per codeword
+    return { rows: numCodewords, cols: codewordSize };
+  } else if (eccMode === 'reed-solomon') {
+    // For RS, interleave at byte level
+    const byteCount = Math.ceil(dataLength / 8);
+    const rows = Math.min(16, Math.max(4, byteCount)); // 4-16 rows
+    const cols = Math.ceil(byteCount * 8 / rows);
+    return { rows, cols: cols + (cols % 8 === 0 ? 0 : 8 - cols % 8) };
+  }
+  return { rows: 1, cols: dataLength };
+}
+
+// Apply ECC encoding with optional interleaving
+export function applyECC(dataBits: number[], mode: ECCMode, useInterleaving: boolean = false): {
   encodedBits: number[];
   overhead: number;
   description: string;
+  interleavingConfig?: InterleavingConfig;
 } {
   switch (mode) {
     case 'hamming84': {
       const encoded = encodeHamming84(dataBits);
+      
+      if (useInterleaving) {
+        const config = calculateInterleavingConfig(dataBits.length, mode);
+        const { interleaved } = interleave(encoded, config);
+        return {
+          encodedBits: interleaved,
+          overhead: encoded.length - dataBits.length,
+          description: `Hamming(8,4)+Interleave: ${dataBits.length} → ${interleaved.length} bits (burst resistant)`,
+          interleavingConfig: config
+        };
+      }
+      
       return {
         encodedBits: encoded,
         overhead: encoded.length - dataBits.length,
@@ -402,7 +501,18 @@ export function applyECC(dataBits: number[], mode: ECCMode): {
       const bytes = bitsToBytes(padded);
       const nsym = Math.min(16, Math.max(4, Math.ceil(bytes.length * 0.25))); // 25% parity
       const encoded = encodeReedSolomon(bytes, nsym);
-      const encodedBits = bytesToBits(encoded);
+      let encodedBits = bytesToBits(encoded);
+      
+      if (useInterleaving) {
+        const config = calculateInterleavingConfig(dataBits.length, mode);
+        const { interleaved } = interleave(encodedBits, config);
+        return {
+          encodedBits: interleaved,
+          overhead: interleaved.length - dataBits.length,
+          description: `RS(${encoded.length},${bytes.length})+Interleave: burst resistant (corrects ${Math.floor(nsym/2)} byte errors)`,
+          interleavingConfig: config
+        };
+      }
       
       return {
         encodedBits,
@@ -419,37 +529,60 @@ export function applyECC(dataBits: number[], mode: ECCMode): {
   }
 }
 
-// Apply ECC decoding
-export function decodeECC(encodedBits: number[], mode: ECCMode, originalDataLength?: number): {
+// Apply ECC decoding with optional deinterleaving
+export function decodeECC(
+  encodedBits: number[], 
+  mode: ECCMode, 
+  originalDataLength?: number,
+  interleavingConfig?: InterleavingConfig
+): {
   dataBits: number[];
   corrected: boolean;
   errorCount: number;
   errorPositions: number[];
+  correctedPositions: number[]; // Positions in the encoded stream that were corrected
   uncorrectable: boolean;
+  correctedBits: number[]; // The corrected encoded bits
 } {
+  let bitsToProcess = encodedBits;
+  
+  // Deinterleave if config provided
+  if (interleavingConfig) {
+    bitsToProcess = deinterleave(encodedBits, interleavingConfig);
+  }
+  
   switch (mode) {
     case 'hamming84': {
-      const result = decodeHamming84(encodedBits);
+      const result = decodeHamming84(bitsToProcess);
       return {
         dataBits: originalDataLength ? result.bits.slice(0, originalDataLength) : result.bits,
         corrected: result.corrected,
         errorCount: result.errorPositions.length,
         errorPositions: result.errorPositions,
-        uncorrectable: result.uncorrectable
+        correctedPositions: result.errorPositions,
+        uncorrectable: result.uncorrectable,
+        correctedBits: result.correctedBits
       };
     }
     case 'reed-solomon': {
-      const bytes = bitsToBytes(encodedBits);
+      const bytes = bitsToBytes(bitsToProcess);
       const nsym = Math.min(16, Math.max(4, Math.ceil((bytes.length * 0.8) * 0.25)));
       const result = decodeReedSolomon(bytes, nsym);
       const dataBits = bytesToBits(result.data);
+      
+      // Convert byte error positions to bit positions
+      const bitErrorPositions = result.errorPositions.flatMap(pos => 
+        Array.from({ length: 8 }, (_, i) => pos * 8 + i)
+      );
       
       return {
         dataBits: originalDataLength ? dataBits.slice(0, originalDataLength) : dataBits,
         corrected: result.corrected,
         errorCount: result.errorCount,
         errorPositions: result.errorPositions,
-        uncorrectable: result.uncorrectable
+        correctedPositions: bitErrorPositions,
+        uncorrectable: result.uncorrectable,
+        correctedBits: bytesToBits(result.corrected ? [...result.data, ...bytes.slice(result.data.length)] : bytes)
       };
     }
     default:
@@ -458,7 +591,9 @@ export function decodeECC(encodedBits: number[], mode: ECCMode, originalDataLeng
         corrected: false,
         errorCount: 0,
         errorPositions: [],
-        uncorrectable: false
+        correctedPositions: [],
+        uncorrectable: false,
+        correctedBits: encodedBits
       };
   }
 }
