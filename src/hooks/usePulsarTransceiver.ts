@@ -239,6 +239,25 @@ export function usePulsarTransceiver() {
     setTransmissionHistory(prev => [...prev, transmission]);
   }, [time, referencePhase, phaseLock.isLocked, semanticMap]);
   
+  // Transmit a sequence of primes (multi-prime message)
+  const transmitSequence = useCallback((primes: number[]) => {
+    const transmissions: SRCTransmission[] = primes.map((prime, index) => {
+      const mapping = semanticMap.find(m => m.prime === prime);
+      return {
+        id: `TX-SEQ-${Date.now()}-${index}`,
+        timestamp: time + index * 0.001, // Slight offset for ordering
+        sender: 'local' as const,
+        prime,
+        meaning: mapping?.meaning || `Prime(${prime})`,
+        phaseAtTransmit: referencePhase + (index * Math.PI / 180), // Phase progression
+        eigenvalue: phaseLock.isLocked ? Math.sqrt(prime) : -Math.sqrt(prime),
+        wasLocked: phaseLock.isLocked
+      };
+    });
+    
+    setTransmissionHistory(prev => [...prev, ...transmissions]);
+  }, [time, referencePhase, phaseLock.isLocked, semanticMap]);
+  
   // Multi-party transmit
   const multiPartyTransmit = useCallback((senderName: string, targetName: string, prime: number) => {
     const mapping = semanticMap.find(m => m.prime === prime);
@@ -428,6 +447,7 @@ export function usePulsarTransceiver() {
     reset,
     togglePulsar,
     transmit,
+    transmitSequence,
     runSETIScan
   };
 }

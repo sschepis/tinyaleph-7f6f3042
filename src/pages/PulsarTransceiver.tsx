@@ -15,7 +15,8 @@ import {
   MessageDecodingViz,
   BroadcastPanel,
   TransmissionReplay,
-  NetworkTopology
+  NetworkTopology,
+  MessageComposer
 } from '@/components/pulsar-transceiver';
 import { Pulsar } from '@/lib/pulsar-transceiver/types';
 import { 
@@ -30,7 +31,7 @@ const PulsarTransceiver = () => {
     localLocation, remoteLocation, semanticMap, phaseLock,
     transmissionHistory, setiMode, setSetiMode, setiCandidates,
     spectrum, simParams, setSimParams, localFingerprint,
-    allPulsars, start, pause, reset, togglePulsar, transmit, runSETIScan,
+    allPulsars, start, pause, reset, togglePulsar, transmit, transmitSequence, runSETIScan,
     // Multi-party
     parties, addParty, removeParty, multiPartyTransmit, broadcastTransmit,
     broadcastMode, setBroadcastMode, selectedPulsar, setSelectedPulsar,
@@ -184,6 +185,14 @@ const PulsarTransceiver = () => {
                 {!phaseLock.isLocked && " (Requires Lock)"}
               </Button>
             </Card>
+
+            {/* Multi-Prime Message Composer */}
+            <MessageComposer
+              semanticMap={semanticMap}
+              phaseLocked={phaseLock.isLocked}
+              onTransmitSequence={transmitSequence}
+              referencePhase={referencePhase}
+            />
 
             {/* Transmission History */}
             <Card className="bg-slate-800/50 border-slate-700 p-4">
