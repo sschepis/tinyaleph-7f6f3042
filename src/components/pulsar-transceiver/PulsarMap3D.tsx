@@ -399,7 +399,7 @@ function StarSphere({
   const size = useMemo(() => {
     // Brighter stars (lower magnitude) should be larger
     const magFactor = Math.max(0, (6 - star.magnitude) / 6);
-    return 0.02 + magFactor * 0.06;
+    return 0.05 + magFactor * 0.12;
   }, [star.magnitude]);
   
   // Subtle twinkle animation
@@ -676,7 +676,7 @@ export function PulsarMap3D(props: PulsarMap3DProps) {
   const [selectedStar, setSelectedStar] = useState<Star | null>(null);
   
   return (
-    <div className="w-full h-full min-h-[400px] bg-slate-950 rounded-lg overflow-hidden relative">
+    <div className="w-full h-full min-h-[400px] bg-black rounded-lg overflow-hidden relative">
       {/* Star count indicator */}
       <div className="absolute top-2 left-2 z-10 bg-slate-900/80 backdrop-blur-sm rounded px-2 py-1 text-xs text-muted-foreground">
         <span className="text-primary font-mono">{ALL_STARS.length}</span> stars • <span className="text-cyan-400 font-mono">{props.pulsars.length}</span> pulsars
@@ -692,6 +692,7 @@ export function PulsarMap3D(props: PulsarMap3DProps) {
       <Canvas
         camera={{ position: [5, 5, 10], fov: 60 }}
         gl={{ antialias: true }}
+        style={{ background: '#000000' }}
       >
         <Scene 
           {...props} 
