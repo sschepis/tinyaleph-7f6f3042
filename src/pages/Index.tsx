@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import Hero from '../components/Hero';
-import { Layers, Waves, Database, Cpu, ArrowRight, Play, Server, Atom, MessageSquare, Languages, BookOpen, Sparkles, Bot, Zap, Shuffle, Dna, Brain, Eye, Music, Radio } from 'lucide-react';
+import { Layers, Waves, Database, Cpu, ArrowRight, Play, Server, Atom, MessageSquare, Languages, BookOpen, Sparkles, Bot, Zap, Shuffle, Dna, Brain, Eye, Music, Radio, Satellite } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -503,6 +503,36 @@ const Index = () => {
                   <div className="px-6 py-3 bg-fuchsia-500/5 border-t border-fuchsia-500/10 flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">Quantum Comms</span>
                     <ArrowRight className="w-4 h-4 text-fuchsia-400 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </Card>
+              </Link>
+            </motion.div>
+
+            {/* Pulsar Transceiver */}
+            <motion.div variants={scaleIn}>
+              <Link to="/pulsar-transceiver" className="group block h-full">
+                <Card className="h-full overflow-hidden border-2 border-transparent hover:border-sky-500/50 transition-all duration-300 bg-gradient-to-br from-sky-500/5 to-blue-500/5">
+                  <div className="p-6">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-sky-500/20 to-blue-500/20 border border-sky-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Satellite className="w-6 h-6 text-sky-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2 group-hover:text-sky-400 transition-colors">
+                      Pulsar Transceiver
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Cosmic communication via pulsar-synchronized resonance. 3D galactic maps and multi-party messaging.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['3D Map', 'Phase Lock', 'SETI'].map(tag => (
+                        <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="px-6 py-3 bg-sky-500/5 border-t border-sky-500/10 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Cosmic Comms</span>
+                    <ArrowRight className="w-4 h-4 text-sky-400 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </Card>
               </Link>
