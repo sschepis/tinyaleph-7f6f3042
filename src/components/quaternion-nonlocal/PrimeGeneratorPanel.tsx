@@ -43,24 +43,24 @@ export function PrimeGeneratorPanel({
   }, [time]);
 
   return (
-    <div className="bg-gray-800/50 rounded-xl p-6 shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_25px_rgba(99,102,241,0.5)] transition-shadow border border-gray-700/50">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-indigo-300">PRIME GENERATOR</h2>
-        <span className={`px-3 py-1 rounded-full text-xs ${
-          isPoweredOn ? 'bg-green-900/50 text-green-300' : 'bg-indigo-900/50 text-indigo-300'
+    <div className="bg-card rounded-lg p-4 border border-border shadow-sm">
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="text-sm font-semibold text-primary">Prime Generator</h2>
+        <span className={`px-2 py-0.5 rounded-full text-[10px] ${
+          isPoweredOn ? 'bg-green-500/20 text-green-400' : 'bg-muted text-muted-foreground'
         }`}>
           {isPoweredOn ? 'ACTIVE' : 'IDLE'}
         </span>
       </div>
       
       {/* Prime selectors */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-2 gap-3 mb-4">
         <div>
-          <label className="block text-sm text-gray-400 mb-2">Alice's Prime</label>
+          <label className="block text-xs text-muted-foreground mb-1">Alice's Prime</label>
           <select
             value={selectedPrimeAlice}
             onChange={(e) => setSelectedPrimeAlice(parseInt(e.target.value))}
-            className="w-full bg-gray-800 rounded px-3 py-2 text-sm border border-gray-700 text-green-300"
+            className="w-full bg-muted rounded px-2 py-1.5 text-xs border border-border text-green-400"
           >
             {availablePrimes.map(p => (
               <option key={p} value={p}>p = {p}</option>
@@ -68,11 +68,11 @@ export function PrimeGeneratorPanel({
           </select>
         </div>
         <div>
-          <label className="block text-sm text-gray-400 mb-2">Bob's Prime</label>
+          <label className="block text-xs text-muted-foreground mb-1">Bob's Prime</label>
           <select
             value={selectedPrimeBob}
             onChange={(e) => setSelectedPrimeBob(parseInt(e.target.value))}
-            className="w-full bg-gray-800 rounded px-3 py-2 text-sm border border-gray-700 text-blue-300"
+            className="w-full bg-muted rounded px-2 py-1.5 text-xs border border-border text-cyan-400"
           >
             {availablePrimes.map(p => (
               <option key={p} value={p}>p = {p}</option>
@@ -82,7 +82,7 @@ export function PrimeGeneratorPanel({
       </div>
       
       {/* Spectrum visualization */}
-      <div className="relative h-32 mb-4 bg-gray-900/50 rounded-lg overflow-hidden border border-gray-700/30">
+      <div className="relative h-24 mb-3 bg-muted/50 rounded-lg overflow-hidden border border-border/50">
         <svg className="w-full h-full">
           {/* Grid lines */}
           {Array.from({ length: 10 }).map((_, i) => (
@@ -92,8 +92,9 @@ export function PrimeGeneratorPanel({
               y1="0"
               x2={`${i * 10}%`}
               y2="100%"
-              stroke="#334155"
+              stroke="hsl(var(--border))"
               strokeWidth="1"
+              opacity="0.3"
             />
           ))}
           {Array.from({ length: 6 }).map((_, i) => (
@@ -103,8 +104,9 @@ export function PrimeGeneratorPanel({
               y1={`${i * 20}%`}
               x2="100%"
               y2={`${i * 20}%`}
-              stroke="#334155"
+              stroke="hsl(var(--border))"
               strokeWidth="1"
+              opacity="0.3"
             />
           ))}
           
@@ -113,7 +115,7 @@ export function PrimeGeneratorPanel({
             <motion.path
               d={spectrumPath}
               fill="none"
-              stroke="#818cf8"
+              stroke="hsl(var(--primary))"
               strokeWidth="2"
               initial={{ pathLength: 0 }}
               animate={{ pathLength: 1 }}
@@ -124,21 +126,21 @@ export function PrimeGeneratorPanel({
       </div>
       
       {/* Prime info */}
-      <div className="grid grid-cols-2 text-sm text-gray-400">
+      <div className="grid grid-cols-2 text-xs text-muted-foreground">
         <div>
           <span>Alice p:</span>
-          <span className="text-green-300 block text-lg font-mono">{selectedPrimeAlice}</span>
+          <span className="text-green-400 block text-base font-mono">{selectedPrimeAlice}</span>
           {alicePrime && (
-            <span className="text-[10px] text-gray-500">
+            <span className="text-[9px] text-muted-foreground">
               G:({alicePrime.gaussian.a},{alicePrime.gaussian.b.toFixed(0)})
             </span>
           )}
         </div>
         <div className="text-right">
           <span>Bob p:</span>
-          <span className="text-blue-300 block text-lg font-mono">{selectedPrimeBob}</span>
+          <span className="text-cyan-400 block text-base font-mono">{selectedPrimeBob}</span>
           {bobPrime && (
-            <span className="text-[10px] text-gray-500">
+            <span className="text-[9px] text-muted-foreground">
               G:({bobPrime.gaussian.a},{bobPrime.gaussian.b.toFixed(0)})
             </span>
           )}

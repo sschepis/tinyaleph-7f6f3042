@@ -98,29 +98,33 @@ export function TopologicalNetworkPanel({
   }, [nodes, entangledPair]);
 
   return (
-    <div className="bg-gray-800/50 rounded-xl p-6 mb-6 shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_25px_rgba(99,102,241,0.5)] transition-shadow border border-gray-700/50">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-indigo-300">TOPOLOGICAL PRIME NETWORK</h2>
-        <div className="flex items-center gap-3">
-          <span className="px-3 py-1 bg-indigo-900/50 text-indigo-300 rounded-full text-xs">QUATERNIONIC</span>
-          <div className="text-sm text-gray-400">
-            <span>Nodes:</span>
-            <span className="text-indigo-300 ml-2">{nodes.length}</span>
-          </div>
+    <div className="bg-card rounded-lg p-4 border border-border shadow-sm">
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="text-sm font-semibold text-primary">Topological Prime Network</h2>
+        <div className="flex items-center gap-2">
+          <span className="px-2 py-0.5 bg-muted text-muted-foreground rounded-full text-[10px]">QUATERNIONIC</span>
+          <span className="text-[10px] text-muted-foreground">
+            Nodes: <span className="text-primary font-mono">{nodes.length}</span>
+          </span>
         </div>
       </div>
       
-      <div className="relative h-64 rounded-lg overflow-hidden bg-gray-900 border border-gray-700">
+      <div className="relative h-48 rounded-lg overflow-hidden bg-muted/30 border border-border">
         <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
           {/* Background grid */}
           <defs>
             <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-              <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#1e293b" strokeWidth="0.3" />
+              <path d="M 10 0 L 0 0 0 10" fill="none" stroke="hsl(var(--border))" strokeWidth="0.3" opacity="0.5" />
             </pattern>
             <radialGradient id="nodePulse" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#818cf8" stopOpacity="0.5" />
-              <stop offset="100%" stopColor="#818cf8" stopOpacity="0" />
+              <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
             </radialGradient>
+            <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.5" />
+              <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity="1" />
+              <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.5" />
+            </linearGradient>
           </defs>
           <rect width="100" height="100" fill="url(#grid)" />
           
@@ -140,15 +144,6 @@ export function TopologicalNetworkPanel({
               transition={{ duration: 0.5, delay: i * 0.05 }}
             />
           ))}
-          
-          {/* Line gradient */}
-          <defs>
-            <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#818cf8" stopOpacity="0.5" />
-              <stop offset="50%" stopColor="#818cf8" stopOpacity="1" />
-              <stop offset="100%" stopColor="#818cf8" stopOpacity="0.5" />
-            </linearGradient>
-          </defs>
           
           {/* Nodes */}
           {isPoweredOn && nodes.map((node, i) => (
@@ -196,7 +191,7 @@ export function TopologicalNetworkPanel({
               <text
                 x={`${node.x}%`}
                 y={`${node.y + (node.label ? 6 : 4)}%`}
-                fill="#a5b4fc"
+                fill="hsl(var(--primary))"
                 fontSize="1.5"
                 textAnchor="middle"
               >
@@ -210,7 +205,7 @@ export function TopologicalNetworkPanel({
             <motion.path
               d={generateEntanglementPath(nodes[0], nodes[1], time)}
               fill="none"
-              stroke="#a855f7"
+              stroke="hsl(var(--primary))"
               strokeWidth="0.3"
               strokeDasharray="2 1"
               opacity={0.6}
@@ -220,8 +215,8 @@ export function TopologicalNetworkPanel({
         
         {/* Not powered overlay */}
         {!isPoweredOn && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
-            <span className="text-gray-500">System offline</span>
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+            <span className="text-muted-foreground text-xs">System offline</span>
           </div>
         )}
       </div>

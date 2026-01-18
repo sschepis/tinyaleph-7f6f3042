@@ -32,34 +32,32 @@ export function TransmitterPanel({
   };
 
   return (
-    <div className="bg-gray-800/50 rounded-xl p-6 shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_25px_rgba(99,102,241,0.5)] transition-shadow border border-gray-700/50">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-indigo-300">TRANSMITTER</h2>
-        <div className="flex items-center gap-2">
-          <span className={`px-3 py-1 rounded-full text-xs ${
-            isPoweredOn ? 'bg-indigo-900/50 text-indigo-300' : 'bg-gray-700 text-gray-400'
-          }`}>
-            {isPoweredOn ? 'STANDBY' : 'OFFLINE'}
-          </span>
-        </div>
+    <div className="bg-card rounded-lg p-4 border border-border shadow-sm">
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="text-sm font-semibold text-primary">Transmitter</h2>
+        <span className={`px-2 py-0.5 rounded-full text-[10px] ${
+          isPoweredOn ? 'bg-muted text-muted-foreground' : 'bg-muted text-muted-foreground'
+        }`}>
+          {isPoweredOn ? 'STANDBY' : 'OFFLINE'}
+        </span>
       </div>
       
       {/* Mode selector and controls */}
-      <div className="mb-4">
-        <div className="flex space-x-2 mb-3">
+      <div className="mb-3">
+        <div className="flex space-x-2 mb-2">
           <select
             value={transmitMode}
             onChange={(e) => setTransmitMode(e.target.value as 'alice' | 'bob')}
-            className="flex-grow bg-gray-800 rounded px-3 py-2 text-sm border border-gray-700"
+            className="flex-grow bg-muted rounded px-2 py-1.5 text-xs border border-border"
           >
             <option value="alice">Alice's Channel</option>
             <option value="bob">Bob's Channel</option>
           </select>
           <button
             onClick={() => setInputText('')}
-            className="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+            className="px-2 py-1.5 bg-muted hover:bg-muted/80 border border-border rounded text-xs"
           >
-            <Eraser className="w-4 h-4" />
+            <Eraser className="w-3 h-3" />
           </button>
         </div>
         
@@ -67,8 +65,8 @@ export function TransmitterPanel({
         <textarea
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
-          placeholder="Enter symbolic message to transmit..."
-          className="w-full h-24 bg-gray-900 rounded p-3 text-sm font-mono mb-3 border border-gray-700 resize-none placeholder-gray-600"
+          placeholder="Enter symbolic message..."
+          className="w-full h-16 bg-muted/50 rounded p-2 text-xs font-mono mb-2 border border-border resize-none placeholder-muted-foreground"
           disabled={!isPoweredOn}
         />
         
@@ -77,21 +75,21 @@ export function TransmitterPanel({
           <button
             onClick={handleTransmit}
             disabled={!isPoweredOn}
-            className={`flex-1 px-4 py-2 rounded-md text-sm flex items-center justify-center gap-2 ${
+            className={`flex-1 px-3 py-1.5 rounded text-xs flex items-center justify-center gap-1 ${
               transmitMode === 'alice' 
-                ? 'bg-green-600 hover:bg-green-700' 
-                : 'bg-blue-600 hover:bg-blue-700'
+                ? 'bg-green-600 hover:bg-green-700 text-white' 
+                : 'bg-cyan-600 hover:bg-cyan-700 text-white'
             } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
-            <Send className="w-4 h-4" />
-            TRANSMIT ({transmitMode.toUpperCase()})
+            <Send className="w-3 h-3" />
+            TX ({transmitMode.toUpperCase()})
           </button>
           <button
             onClick={handleMeasure}
             disabled={!isPoweredOn}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-md text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded text-xs flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Target className="w-4 h-4" />
+            <Target className="w-3 h-3" />
             MEASURE
           </button>
         </div>
@@ -102,30 +100,30 @@ export function TransmitterPanel({
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-3 mb-4 bg-purple-900/30 rounded-lg border border-purple-500/30"
+          className="p-2 mb-3 bg-primary/10 rounded border border-primary/30"
         >
-          <div className="text-xs text-gray-400 mb-1">Collapse Result</div>
-          <div className="flex items-center gap-2 text-sm">
-            <span className={`px-2 py-0.5 rounded text-xs ${
-              lastProjection.eigenvalue > 0 ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'
+          <div className="text-[10px] text-muted-foreground mb-1">Collapse Result</div>
+          <div className="flex items-center gap-2 text-xs">
+            <span className={`px-1.5 py-0.5 rounded text-[10px] ${
+              lastProjection.eigenvalue > 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
             }`}>
               {lastProjection.eigenvalue > 0 ? '+' : ''}√p = {lastProjection.eigenvalue.toFixed(4)}
             </span>
-            <span className="text-indigo-300 text-xs">{lastProjection.symbolicMeaning}</span>
+            <span className="text-primary text-[10px]">{lastProjection.symbolicMeaning}</span>
           </div>
         </motion.div>
       )}
       
       {/* Transmission history */}
-      <div className="pt-4 border-t border-gray-700">
-        <div className="text-sm text-gray-400 mb-2">Transmission History</div>
-        <div className="h-20 overflow-y-auto text-xs font-mono bg-gray-900 p-2 rounded border border-gray-700">
+      <div className="pt-3 border-t border-border">
+        <div className="text-[10px] text-muted-foreground mb-1">TX History</div>
+        <div className="h-16 overflow-y-auto text-[10px] font-mono bg-muted/50 p-1.5 rounded border border-border">
           {transmissionHistory.length === 0 ? (
-            <div className="text-gray-500">[SYSTEM] Transmitter initialized</div>
+            <div className="text-muted-foreground">[SYS] Transmitter ready</div>
           ) : (
             transmissionHistory.slice(-5).reverse().map((tx, i) => (
-              <div key={i} className={tx.phaseLockAchieved ? 'text-green-400' : 'text-gray-400'}>
-                [{new Date(tx.timestamp).toLocaleTimeString()}] TX: p={tx.prime.p} γ={tx.twistApplied.toFixed(2)}
+              <div key={i} className={tx.phaseLockAchieved ? 'text-green-400' : 'text-muted-foreground'}>
+                [{new Date(tx.timestamp).toLocaleTimeString()}] p={tx.prime.p} γ={tx.twistApplied.toFixed(2)}
                 {tx.phaseLockAchieved ? ' ✓' : ' ✗'}
               </div>
             ))
