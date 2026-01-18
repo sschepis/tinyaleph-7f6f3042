@@ -18,4 +18,9 @@ export { PrimeExplorerDialog } from './PrimeExplorerDialog';
 export { TopologyViewDialog } from './TopologyViewDialog';
 export { AdvancedControlsDialog } from './AdvancedControlsDialog';
 
+// Enhanced communication components
+export { NodePanel } from './NodePanel';
+export { DualBlochSpheres } from './DualBlochSpheres';
+export { CommunicationLog } from './CommunicationLog';
+
 export { helpSteps } from './HelpContent';
