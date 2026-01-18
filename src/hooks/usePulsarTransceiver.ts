@@ -80,6 +80,8 @@ export function usePulsarTransceiver() {
   
   // Communication
   const [transmissionHistory, setTransmissionHistory] = useState<SRCTransmission[]>([]);
+  const [broadcastMode, setBroadcastMode] = useState(false);
+  const [selectedPulsar, setSelectedPulsar] = useState<Pulsar | null>(null);
   
   // SETI mode
   const [setiMode, setSetiMode] = useState(false);
@@ -270,6 +272,37 @@ export function usePulsarTransceiver() {
     setTransmissionHistory(prev => [...prev, transmission]);
   }, [time, referencePhase, semanticMap, parties]);
   
+  // Broadcast to all phase-locked parties
+  const broadcastTransmit = useCallback((senderName: string, prime: number) => {
+    const mapping = semanticMap.find(m => m.prime === prime);
+    if (!mapping) return;
+    
+    const senderParty = parties.find(p => p.location.name === senderName);
+    if (!senderParty || senderParty.phaseLockWith.length === 0) return;
+    
+    // Create transmission for each locked target
+    const transmissions: SRCTransmission[] = senderParty.phaseLockWith.map(targetName => ({
+      id: `TX-${Date.now()}-${senderName}-${targetName}`,
+      timestamp: time,
+      sender: 'local',
+      prime,
+      meaning: mapping.meaning,
+      phaseAtTransmit: referencePhase,
+      eigenvalue: Math.sqrt(prime), // Always locked in broadcast
+      wasLocked: true
+    }));
+    
+    // Add to sender's transmissions
+    setParties(prev => prev.map(p => 
+      p.location.name === senderName 
+        ? { ...p, transmissions: [...p.transmissions, ...transmissions] }
+        : p
+    ));
+    
+    // Add to global history
+    setTransmissionHistory(prev => [...prev, ...transmissions]);
+  }, [time, referencePhase, semanticMap, parties]);
+  
   // Add party
   const addParty = useCallback((location: ObserverLocation) => {
     setParties(prev => {
@@ -376,6 +409,11 @@ export function usePulsarTransceiver() {
     addParty,
     removeParty,
     multiPartyTransmit,
+    broadcastTransmit,
+    broadcastMode,
+    setBroadcastMode,
+    selectedPulsar,
+    setSelectedPulsar,
     allLocations,
     allPhases,
     

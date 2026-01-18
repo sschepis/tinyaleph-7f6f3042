@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { usePulsarTransceiver } from '@/hooks/usePulsarTransceiver';
 import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
@@ -8,7 +8,14 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { PulsarMap3D, MultiPartyPanel } from '@/components/pulsar-transceiver';
+import { 
+  PulsarMap3D, 
+  MultiPartyPanel, 
+  PulsarInfoPanel,
+  MessageDecodingViz,
+  BroadcastPanel
+} from '@/components/pulsar-transceiver';
+import { Pulsar } from '@/lib/pulsar-transceiver/types';
 import { 
   Power, Radio, Satellite, Search, Send, Lock, Unlock,
   Activity, Waves, Globe, AlertTriangle, CheckCircle,
@@ -17,13 +24,15 @@ import {
 
 const PulsarTransceiver = () => {
   const {
-    isRunning, time, referencePulsar, activePulsars, referencePhase,
+    isRunning, time, referencePulsar, setReferencePulsar, activePulsars, referencePhase,
     localLocation, remoteLocation, semanticMap, phaseLock,
     transmissionHistory, setiMode, setSetiMode, setiCandidates,
     spectrum, simParams, setSimParams, localFingerprint,
     allPulsars, start, pause, reset, togglePulsar, transmit, runSETIScan,
     // Multi-party
-    parties, addParty, removeParty, multiPartyTransmit, allLocations, allPhases
+    parties, addParty, removeParty, multiPartyTransmit, broadcastTransmit,
+    broadcastMode, setBroadcastMode, selectedPulsar, setSelectedPulsar,
+    allLocations, allPhases
   } = usePulsarTransceiver();
 
   const [selectedPrime, setSelectedPrime] = useState(13);
@@ -204,9 +213,9 @@ const PulsarTransceiver = () => {
 
           {/* 3D Map Tab */}
           <TabsContent value="map3d" className="space-y-4">
-            <Card className="bg-slate-800/50 border-slate-700 p-4">
+            <Card className="bg-slate-800/50 border-slate-700 p-4 relative">
               <h3 className="text-lg font-semibold text-cyan-400 mb-4">Galactic Pulsar Network</h3>
-              <div className="h-[500px]">
+              <div className="h-[500px] relative">
                 <PulsarMap3D
                   pulsars={allPulsars}
                   activePulsars={activePulsars}
@@ -214,26 +223,63 @@ const PulsarTransceiver = () => {
                   referencePhase={referencePhase}
                   locations={allLocations}
                   phases={allPhases}
-                  onPulsarClick={(p) => togglePulsar(p.name)}
+                  onPulsarClick={(p: Pulsar) => setSelectedPulsar(p)}
                 />
+                
+                {/* Pulsar Info Panel Overlay */}
+                {selectedPulsar && (
+                  <PulsarInfoPanel
+                    pulsar={selectedPulsar}
+                    isActive={activePulsars.some(p => p.name === selectedPulsar.name)}
+                    isReference={referencePulsar.name === selectedPulsar.name}
+                    phase={allPhases.get(selectedPulsar.name) || 0}
+                    onClose={() => setSelectedPulsar(null)}
+                    onToggleActive={() => togglePulsar(selectedPulsar.name)}
+                    onSetReference={() => {
+                      setReferencePulsar(selectedPulsar);
+                      setSelectedPulsar(null);
+                    }}
+                  />
+                )}
               </div>
               <p className="text-xs text-gray-500 mt-2 text-center">
-                Click pulsars to toggle. Drag to rotate. Scroll to zoom.
+                Click pulsars for details • Set reference pulsar • Drag to rotate • Scroll to zoom
               </p>
             </Card>
           </TabsContent>
 
           {/* Multi-Party Tab */}
           <TabsContent value="multiparty" className="space-y-4">
-            <MultiPartyPanel
-              parties={parties}
-              onAddParty={addParty}
-              onRemoveParty={removeParty}
-              onTransmit={multiPartyTransmit}
-              semanticMap={semanticMap}
-              time={time}
-              isRunning={isRunning}
-            />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="space-y-4">
+                <MultiPartyPanel
+                  parties={parties}
+                  onAddParty={addParty}
+                  onRemoveParty={removeParty}
+                  onTransmit={multiPartyTransmit}
+                  semanticMap={semanticMap}
+                  time={time}
+                  isRunning={isRunning}
+                />
+                
+                <BroadcastPanel
+                  parties={parties}
+                  semanticMap={semanticMap}
+                  onBroadcast={broadcastTransmit}
+                  isRunning={isRunning}
+                  broadcastMode={broadcastMode}
+                  onToggleBroadcastMode={setBroadcastMode}
+                />
+              </div>
+              
+              <MessageDecodingViz
+                transmissions={transmissionHistory}
+                parties={parties}
+                semanticMap={semanticMap}
+                time={time}
+                broadcastMode={broadcastMode}
+              />
+            </div>
           </TabsContent>
 
           {/* SETI Tab */}
