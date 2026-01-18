@@ -445,16 +445,7 @@ function Scene({
       <pointLight position={[10, 10, 10]} intensity={1} />
       <pointLight position={[-10, -10, -10]} intensity={0.5} color="#8b5cf6" />
       
-      {/* Background stars */}
-      <Stars 
-        radius={50} 
-        depth={50} 
-        count={2000} 
-        factor={4} 
-        saturation={0} 
-        fade 
-        speed={0.5}
-      />
+      {/* No fake stars - only real astronomical objects */}
       
       {/* Galactic plane */}
       <GalacticPlane />
