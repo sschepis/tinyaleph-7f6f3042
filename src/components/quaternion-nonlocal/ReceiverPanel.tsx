@@ -30,21 +30,19 @@ export function ReceiverPanel({
     : '0.0000';
 
   return (
-    <div className="bg-gray-800/50 rounded-xl p-6 shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_25px_rgba(99,102,241,0.5)] transition-shadow border border-gray-700/50">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-indigo-300">RECEIVER</h2>
-        <div className="flex items-center gap-2">
-          <span className={`px-3 py-1 rounded-full text-xs ${
-            isReceiving ? 'bg-purple-900/50 text-purple-300' : 'bg-gray-700 text-gray-400'
-          }`}>
-            {isPoweredOn ? 'LISTENING' : 'OFFLINE'}
-          </span>
-        </div>
+    <div className="bg-card rounded-lg p-4 border border-border shadow-sm">
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="text-sm font-semibold text-primary">Receiver</h2>
+        <span className={`px-2 py-0.5 rounded-full text-[10px] ${
+          isReceiving ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
+        }`}>
+          {isPoweredOn ? 'LISTENING' : 'OFFLINE'}
+        </span>
       </div>
       
       {/* Receiver display */}
-      <div className="relative mb-4">
-        <div className="w-full h-32 bg-gray-900 rounded p-3 text-sm font-mono overflow-y-auto border border-gray-700">
+      <div className="relative mb-3">
+        <div className="w-full h-24 bg-muted/50 rounded p-2 text-xs font-mono overflow-y-auto border border-border">
           <AnimatePresence mode="wait">
             {!isPoweredOn || transmissionHistory.length === 0 ? (
               <motion.div
@@ -52,10 +50,10 @@ export function ReceiverPanel({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="text-center text-gray-600 py-8"
+                className="text-center text-muted-foreground py-6"
               >
-                <Satellite className="w-6 h-6 mx-auto mb-2" />
-                <div className="text-sm">Waiting for incoming signal...</div>
+                <Satellite className="w-5 h-5 mx-auto mb-1" />
+                <div className="text-[10px]">Waiting for signal...</div>
               </motion.div>
             ) : (
               <motion.div
@@ -67,25 +65,22 @@ export function ReceiverPanel({
                 {/* Active receiver indicator */}
                 {phaseData?.isLocked && (
                   <motion.div 
-                    className="text-center mb-2"
-                    animate={{ color: ['#818cf8', '#a78bfa', '#818cf8'] }}
+                    className="text-center mb-1"
+                    animate={{ color: ['hsl(var(--primary))', 'hsl(var(--primary) / 0.7)', 'hsl(var(--primary))'] }}
                     transition={{ duration: 2, repeat: Infinity }}
                   >
-                    <Zap className="w-8 h-8 mx-auto text-green-400" />
+                    <Zap className="w-6 h-6 mx-auto text-green-400" />
                   </motion.div>
                 )}
                 
                 {/* Display received primes */}
                 {transmissionHistory.slice(-3).reverse().map((tx, i) => (
-                  <div key={i} className={`p-2 rounded ${tx.phaseLockAchieved ? 'bg-green-900/20' : 'bg-gray-800/50'}`}>
+                  <div key={i} className={`p-1.5 rounded ${tx.phaseLockAchieved ? 'bg-green-500/10' : 'bg-muted'}`}>
                     <div className="flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full ${tx.sender === 'alice' ? 'bg-green-400' : 'bg-blue-400'}`} />
-                      <span className="text-xs text-gray-400">{tx.sender.toUpperCase()}</span>
-                      <span className="text-indigo-300">p = {tx.prime.p}</span>
-                      {tx.phaseLockAchieved && <span className="text-green-400 text-xs">LOCKED</span>}
-                    </div>
-                    <div className="text-[10px] text-gray-500 mt-1">
-                      q = {tx.prime.quaternion.a.toFixed(2)} + {tx.prime.quaternion.b.toFixed(2)}i + {tx.prime.quaternion.c.toFixed(2)}j + {tx.prime.quaternion.d.toFixed(2)}k
+                      <span className={`w-1.5 h-1.5 rounded-full ${tx.sender === 'alice' ? 'bg-green-400' : 'bg-cyan-400'}`} />
+                      <span className="text-[10px] text-muted-foreground">{tx.sender.toUpperCase()}</span>
+                      <span className="text-primary text-[10px]">p = {tx.prime.p}</span>
+                      {tx.phaseLockAchieved && <span className="text-green-400 text-[9px]">LOCKED</span>}
                     </div>
                   </div>
                 ))}
@@ -96,29 +91,29 @@ export function ReceiverPanel({
       </div>
       
       {/* Integrity metrics */}
-      <div className="grid grid-cols-2 gap-2 mb-4">
-        <div className="text-xs text-gray-400">
-          <span>Message Integrity:</span>
-          <span className="text-indigo-300 ml-1">{integrity}%</span>
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <div className="text-[10px] text-muted-foreground">
+          <span>Integrity:</span>
+          <span className="text-primary ml-1 font-mono">{integrity}%</span>
         </div>
-        <div className="text-xs text-gray-400 text-right">
+        <div className="text-[10px] text-muted-foreground text-right">
           <span>Entropy:</span>
-          <span className="text-indigo-300 ml-1">{messageEntropy}</span>
+          <span className="text-primary ml-1 font-mono">{messageEntropy}</span>
         </div>
       </div>
       
       {/* Signal log */}
-      <div className="pt-4 border-t border-gray-700">
-        <div className="text-sm text-gray-400 mb-2">Signal Log</div>
-        <div className="h-20 overflow-y-auto text-xs font-mono bg-gray-900 p-2 rounded border border-gray-700">
-          <div className="text-gray-500">[SYSTEM] Receiver initialized</div>
+      <div className="pt-3 border-t border-border">
+        <div className="text-[10px] text-muted-foreground mb-1">Signal Log</div>
+        <div className="h-16 overflow-y-auto text-[10px] font-mono bg-muted/50 p-1.5 rounded border border-border">
+          <div className="text-muted-foreground">[SYS] Receiver ready</div>
           {syncEvents.slice(-5).map((t, i) => (
             <div key={i} className="text-green-400">
-              [t={t.toFixed(2)}s] Phase lock achieved
+              [t={t.toFixed(2)}s] Phase lock
             </div>
           ))}
           {transmissionHistory.slice(-3).reverse().map((tx, i) => (
-            <div key={`tx-${i}`} className={tx.phaseLockAchieved ? 'text-green-400' : 'text-gray-400'}>
+            <div key={`tx-${i}`} className={tx.phaseLockAchieved ? 'text-green-400' : 'text-muted-foreground'}>
               [{new Date(tx.timestamp).toLocaleTimeString()}] <span className="text-green-400">RX</span>: p={tx.prime.p}
             </div>
           ))}

@@ -37,13 +37,13 @@ export function SystemControlsPanel({
   onOpenAdvancedControls
 }: SystemControlsPanelProps) {
   return (
-    <div className="bg-gray-800/50 rounded-xl p-6 shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:shadow-[0_0_25px_rgba(99,102,241,0.5)] transition-shadow border border-gray-700/50">
-      <h2 className="text-xl font-semibold text-indigo-300 mb-4">SYSTEM CONTROLS</h2>
+    <div className="bg-card rounded-lg p-4 border border-border shadow-sm">
+      <h2 className="text-sm font-semibold text-primary mb-3">System Controls</h2>
       
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
         {/* Epsilon threshold */}
-        <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/30">
-          <h3 className="text-sm text-gray-400 mb-2">Phase Threshold ε</h3>
+        <div className="bg-muted/50 rounded p-2.5 border border-border/50">
+          <h3 className="text-[10px] text-muted-foreground mb-1.5">Phase Threshold ε</h3>
           <div className="flex items-center">
             <input
               type="range"
@@ -53,19 +53,19 @@ export function SystemControlsPanel({
               value={epsilon}
               onChange={(e) => onEpsilonChange(parseFloat(e.target.value))}
               disabled={!isPoweredOn}
-              className="w-full mr-2"
+              className="w-full mr-2 h-1.5 accent-primary"
             />
-            <span className="text-xs w-12 text-indigo-300">{epsilon.toFixed(2)}</span>
+            <span className="text-[10px] w-8 text-primary font-mono">{epsilon.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between text-xs text-gray-500 mt-1">
+          <div className="flex justify-between text-[9px] text-muted-foreground mt-0.5">
             <span>Tight</span>
             <span>Loose</span>
           </div>
         </div>
         
         {/* Twist coupling */}
-        <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/30">
-          <h3 className="text-sm text-gray-400 mb-2">Twist Coupling γ</h3>
+        <div className="bg-muted/50 rounded p-2.5 border border-border/50">
+          <h3 className="text-[10px] text-muted-foreground mb-1.5">Twist Coupling γ</h3>
           <div className="flex items-center">
             <input
               type="range"
@@ -75,23 +75,23 @@ export function SystemControlsPanel({
               value={twistCoupling}
               onChange={(e) => onTwistChange(parseFloat(e.target.value))}
               disabled={!isPoweredOn}
-              className="w-full mr-2"
+              className="w-full mr-2 h-1.5 accent-primary"
             />
-            <span className="text-xs w-12 text-indigo-300">{twistCoupling.toFixed(2)}</span>
+            <span className="text-[10px] w-8 text-primary font-mono">{twistCoupling.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between text-xs text-gray-500 mt-1">
+          <div className="flex justify-between text-[9px] text-muted-foreground mt-0.5">
             <span>Weak</span>
             <span>Strong</span>
           </div>
         </div>
         
         {/* Preset selector */}
-        <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/30">
-          <h3 className="text-sm text-gray-400 mb-2">Configuration Preset</h3>
+        <div className="bg-muted/50 rounded p-2.5 border border-border/50">
+          <h3 className="text-[10px] text-muted-foreground mb-1.5">Configuration Preset</h3>
           <select
             onChange={(e) => onPresetSelect(parseInt(e.target.value))}
             disabled={!isPoweredOn}
-            className="w-full bg-gray-800 rounded px-3 py-2 text-sm border border-gray-700 disabled:opacity-50"
+            className="w-full bg-muted rounded px-2 py-1 text-[10px] border border-border disabled:opacity-50"
           >
             <option value="">Select preset...</option>
             {presets.map((preset, i) => (
@@ -101,11 +101,11 @@ export function SystemControlsPanel({
         </div>
         
         {/* Reset button */}
-        <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/30 flex flex-col justify-center">
+        <div className="bg-muted/50 rounded p-2.5 border border-border/50 flex flex-col justify-center">
           <button
             onClick={onReset}
             disabled={!isPoweredOn}
-            className="px-4 py-2 bg-red-600/80 hover:bg-red-600 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 bg-destructive/80 hover:bg-destructive text-destructive-foreground rounded text-[10px] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             RESET SYSTEM
           </button>
@@ -113,12 +113,12 @@ export function SystemControlsPanel({
       </div>
       
       {/* Action buttons */}
-      <div className="pt-4 border-t border-gray-700 flex justify-between">
-        <div className="flex space-x-2">
+      <div className="pt-3 border-t border-border flex justify-between">
+        <div className="flex space-x-1.5">
           <button 
             onClick={onOpenPrimeExplorer}
             disabled={!isPoweredOn}
-            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-2 py-1 bg-muted hover:bg-muted/80 border border-border rounded text-[10px] flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Dna className="w-3 h-3 mr-1" />
             Prime Explorer
@@ -126,7 +126,7 @@ export function SystemControlsPanel({
           <button 
             onClick={onOpenTopologyView}
             disabled={!isPoweredOn}
-            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-2 py-1 bg-muted hover:bg-muted/80 border border-border rounded text-[10px] flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Network className="w-3 h-3 mr-1" />
             Topology View
@@ -135,10 +135,10 @@ export function SystemControlsPanel({
         <button 
           onClick={onOpenAdvancedControls}
           disabled={!isPoweredOn}
-          className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded text-xs flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-2 py-1 bg-primary hover:bg-primary/90 text-primary-foreground rounded text-[10px] flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Settings className="w-3 h-3 mr-1" />
-          Advanced Controls
+          Advanced
         </button>
       </div>
     </div>

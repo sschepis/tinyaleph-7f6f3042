@@ -97,52 +97,56 @@ const QuaternionNonlocalApp = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-[radial-gradient(circle_at_center,#1e1b4b_0%,#0f172a_100%)] text-gray-100 font-mono p-4">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <header className="flex flex-col md:flex-row justify-between items-center mb-8">
-            <div className="text-center md:text-left mb-4 md:mb-0">
-              <h1 className="text-3xl md:text-4xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-600">
-                QUATERNIONIC NON-LOCAL TRANSCEIVER
+      <div className="min-h-screen bg-background text-foreground p-2 lg:p-3">
+        <div className="max-w-[1920px] mx-auto space-y-2">
+          {/* Compact Header */}
+          <header className="flex items-center justify-between py-1">
+            <div className="flex items-center gap-3">
+              <h1 className="text-lg font-bold flex items-center gap-2">
+                <Radio className="h-4 w-4 text-primary" />
+                Quaternionic Non-Local Transceiver
               </h1>
-              <p className="text-indigo-300 text-sm">Split Prime Encoded Symbolic Communication System</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center">
+              <div className="hidden md:flex items-center gap-1.5">
                 <motion.div 
-                  className={`w-3 h-3 rounded-full mr-2 ${isPoweredOn ? 'bg-green-500' : 'bg-gray-500'}`}
+                  className={`w-2 h-2 rounded-full ${isPoweredOn ? 'bg-green-500' : 'bg-muted-foreground'}`}
                   animate={isPoweredOn ? { opacity: [1, 0.5, 1] } : {}}
                   transition={{ duration: 2, repeat: Infinity }}
                 />
-                <span className="text-sm">{isPoweredOn ? 'ONLINE' : 'OFFLINE'}</span>
+                <span className="text-xs text-muted-foreground">{isPoweredOn ? 'ONLINE' : 'OFFLINE'}</span>
+                {isPoweredOn && (
+                  <>
+                    <span className="text-muted-foreground">|</span>
+                    <Clock className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-xs text-primary font-mono">{formatUptime(uptime)}</span>
+                  </>
+                )}
               </div>
-              <div className="flex space-x-2">
-                <button
-                  onClick={handlePowerToggle}
-                  className={`px-4 py-2 rounded-md transition-colors flex items-center ${
-                    isPoweredOn 
-                      ? 'bg-red-600 hover:bg-red-700' 
-                      : 'bg-purple-600 hover:bg-purple-700'
-                  }`}
-                >
-                  <Power className="w-4 h-4 mr-2" />
-                  {isPoweredOn ? 'SHUTDOWN' : 'POWER'}
-                </button>
-                <button
-                  onClick={() => isRunning ? pause() : start()}
-                  disabled={!isPoweredOn}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Radio className="w-4 h-4 mr-2" />
-                  TRANSMIT
-                </button>
-                <HelpButton onClick={() => setShowHelp(true)} />
-              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleLockToggle}
+                className="p-2 rounded-md hover:bg-muted transition-colors"
+                title={isLocked ? 'Unlock controls' : 'Lock controls'}
+              >
+                {isLocked ? <Lock className="w-4 h-4 text-amber-400" /> : <LockOpen className="w-4 h-4 text-muted-foreground" />}
+              </button>
+              <button
+                onClick={handlePowerToggle}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                  isPoweredOn 
+                    ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground' 
+                    : 'bg-primary hover:bg-primary/90 text-primary-foreground'
+                }`}
+              >
+                <Power className="w-3 h-3" />
+                {isPoweredOn ? 'Stop' : 'Start'}
+              </button>
+              <HelpButton onClick={() => setShowHelp(true)} />
             </div>
           </header>
 
           {/* Main Dashboard - Top Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
             <PrimeGeneratorPanel
               isPoweredOn={isPoweredOn}
               selectedPrimeAlice={selectedPrimeAlice}
@@ -174,7 +178,7 @@ const QuaternionNonlocalApp = () => {
           </div>
 
           {/* Transmission Panels */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 mt-2">
             <TransmitterPanel
               isPoweredOn={isPoweredOn}
               onTransmit={sendTransmission}
@@ -193,55 +197,55 @@ const QuaternionNonlocalApp = () => {
           </div>
 
           {/* Network Visualization */}
-          <TopologicalNetworkPanel
-            isPoweredOn={isPoweredOn}
-            entangledPair={entangledPair}
-            alicePrime={alicePrime}
-            bobPrime={bobPrime}
-            time={time}
-            transmissionHistory={transmissionHistory}
-          />
+          <div className="mt-2">
+            <TopologicalNetworkPanel
+              isPoweredOn={isPoweredOn}
+              entangledPair={entangledPair}
+              alicePrime={alicePrime}
+              bobPrime={bobPrime}
+              time={time}
+              transmissionHistory={transmissionHistory}
+            />
+          </div>
 
           {/* System Controls */}
-          <SystemControlsPanel
-            isPoweredOn={isPoweredOn}
-            epsilon={epsilon}
-            onEpsilonChange={setEpsilon}
-            twistCoupling={twistCoupling}
-            onTwistChange={setTwistCoupling}
-            presets={PRESETS}
-            onPresetSelect={applyPreset}
-            onReset={reset}
-            onOpenPrimeExplorer={() => setShowPrimeExplorer(true)}
-            onOpenTopologyView={() => setShowTopologyView(true)}
-            onOpenAdvancedControls={() => setShowAdvancedControls(true)}
-          />
+          <div className="mt-2">
+            <SystemControlsPanel
+              isPoweredOn={isPoweredOn}
+              epsilon={epsilon}
+              onEpsilonChange={setEpsilon}
+              twistCoupling={twistCoupling}
+              onTwistChange={setTwistCoupling}
+              presets={PRESETS}
+              onPresetSelect={applyPreset}
+              onReset={reset}
+              onOpenPrimeExplorer={() => setShowPrimeExplorer(true)}
+              onOpenTopologyView={() => setShowTopologyView(true)}
+              onOpenAdvancedControls={() => setShowAdvancedControls(true)}
+            />
+          </div>
 
           {/* Status Bar */}
-          <footer className="mt-6 bg-gray-800 rounded-lg p-2 text-xs flex flex-wrap justify-between items-center">
-            <div className="flex items-center px-2 py-1">
-              <Cpu className="w-3 h-3 text-gray-400 mr-1" />
-              <span>CPU: <span className="text-indigo-300">{isPoweredOn ? `${Math.round(30 + Math.sin(time) * 20)}%` : '0%'}</span></span>
+          <footer className="mt-2 bg-card border border-border rounded-lg p-2 text-xs flex flex-wrap justify-between items-center">
+            <div className="flex items-center px-2 py-0.5">
+              <Cpu className="w-3 h-3 text-muted-foreground mr-1" />
+              <span className="text-muted-foreground">CPU: <span className="text-primary font-mono">{isPoweredOn ? `${Math.round(30 + Math.sin(time) * 20)}%` : '0%'}</span></span>
             </div>
-            <div className="flex items-center px-2 py-1">
-              <HardDrive className="w-3 h-3 text-gray-400 mr-1" />
-              <span>MEM: <span className="text-indigo-300">{isPoweredOn ? '1.2GB/4GB' : '0.0GB/4GB'}</span></span>
+            <div className="flex items-center px-2 py-0.5">
+              <HardDrive className="w-3 h-3 text-muted-foreground mr-1" />
+              <span className="text-muted-foreground">MEM: <span className="text-primary font-mono">{isPoweredOn ? '1.2GB/4GB' : '0.0GB/4GB'}</span></span>
             </div>
-            <div className="flex items-center px-2 py-1">
-              <Wifi className="w-3 h-3 text-gray-400 mr-1" />
-              <span>TX: <span className="text-indigo-300">{isPoweredOn && isRunning ? `${Math.round(50 + Math.random() * 100)}bps` : '0bps'}</span></span>
+            <div className="flex items-center px-2 py-0.5">
+              <Wifi className="w-3 h-3 text-muted-foreground mr-1" />
+              <span className="text-muted-foreground">TX: <span className="text-primary font-mono">{isPoweredOn && isRunning ? `${Math.round(50 + Math.random() * 100)}bps` : '0bps'}</span></span>
             </div>
-            <div className="flex items-center px-2 py-1">
-              <Satellite className="w-3 h-3 text-gray-400 mr-1" />
-              <span>RX: <span className="text-indigo-300">{isPoweredOn && isRunning ? `${Math.round(30 + Math.random() * 80)}bps` : '0bps'}</span></span>
+            <div className="flex items-center px-2 py-0.5">
+              <Satellite className="w-3 h-3 text-muted-foreground mr-1" />
+              <span className="text-muted-foreground">RX: <span className="text-primary font-mono">{isPoweredOn && isRunning ? `${Math.round(30 + Math.random() * 80)}bps` : '0bps'}</span></span>
             </div>
-            <div className="flex items-center px-2 py-1">
-              <Shield className="w-3 h-3 text-gray-400 mr-1" />
-              <span>SECURITY: <span className="text-indigo-300">QUATERNION ENCRYPTED</span></span>
-            </div>
-            <div className="flex items-center px-2 py-1">
-              <Clock className="w-3 h-3 text-gray-400 mr-1" />
-              <span>UPTIME: <span className="text-indigo-300">{formatUptime(uptime)}</span></span>
+            <div className="flex items-center px-2 py-0.5">
+              <Shield className="w-3 h-3 text-muted-foreground mr-1" />
+              <span className="text-muted-foreground">SECURITY: <span className="text-primary font-mono">QUATERNION ENCRYPTED</span></span>
             </div>
           </footer>
         </div>
