@@ -73,6 +73,7 @@ const docsTree = [
       { id: 'sephirotic-oscillator', title: 'Sephirotic Oscillator' },
       { id: 'prime-resonance', title: 'Prime Resonance' },
       { id: 'quantum-wavefunction', title: 'Quantum Wavefunction' },
+      { id: 'quaternion-nonlocal', title: 'Quaternion Transceiver' },
     ],
   },
 ];
@@ -105,6 +106,7 @@ const markdownFiles: Record<string, () => Promise<string>> = {
   '06-applications/sephirotic-oscillator': () => import('../../../docs/06-applications/sephirotic-oscillator.md?raw').then(m => m.default),
   '06-applications/prime-resonance': () => import('../../../docs/06-applications/prime-resonance.md?raw').then(m => m.default),
   '06-applications/quantum-wavefunction': () => import('../../../docs/06-applications/quantum-wavefunction.md?raw').then(m => m.default),
+  '06-applications/quaternion-nonlocal': () => import('../../../docs/06-applications/quaternion-nonlocal.md?raw').then(m => m.default),
 };
 
 interface SidebarContentProps {
