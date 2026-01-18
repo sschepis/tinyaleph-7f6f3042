@@ -45,68 +45,81 @@ const PulsarTransceiver = () => {
   const formatPhase = (p: number) => `${(p * 180 / Math.PI).toFixed(1)}°`;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-gray-100 p-4 pt-20">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <header className="flex flex-col md:flex-row justify-between items-center mb-6">
-          <div className="text-center md:text-left mb-4 md:mb-0">
-            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600">
-              PULSAR-SYNCHRONIZED TRANSCEIVER
-            </h1>
-            <p className="text-cyan-300/70 text-sm">Cosmic Symbolic Resonance Communication System</p>
-          </div>
+    <div className="min-h-screen bg-background text-foreground p-2 lg:p-3">
+      <div className="max-w-[1920px] mx-auto space-y-2">
+        {/* Compact Header */}
+        <header className="flex items-center justify-between py-1">
           <div className="flex items-center gap-3">
-            <Badge variant={isRunning ? "default" : "secondary"} className={isRunning ? "bg-green-600" : ""}>
-              {isRunning ? 'ONLINE' : 'OFFLINE'}
-            </Badge>
-            <Button onClick={isRunning ? pause : start} variant={isRunning ? "destructive" : "default"}>
-              <Power className="w-4 h-4 mr-2" />
-              {isRunning ? 'STOP' : 'START'}
+            <h1 className="text-lg font-bold flex items-center gap-2">
+              <Radio className="h-4 w-4 text-primary" />
+              Pulsar-Synchronized Transceiver
+            </h1>
+            <div className="hidden md:flex items-center gap-1.5">
+              <Badge variant={isRunning ? "default" : "secondary"} className="text-[10px] py-0 h-5">
+                {isRunning ? 'ONLINE' : 'OFFLINE'}
+              </Badge>
+              <Badge variant="outline" className="text-[10px] py-0 h-5">
+                φ = {formatPhase(referencePhase)}
+              </Badge>
+              <Badge 
+                variant={phaseLock.isLocked ? 'default' : 'secondary'} 
+                className="text-[10px] py-0 h-5"
+              >
+                {phaseLock.isLocked ? 'LOCKED' : 'SEEKING'}
+              </Badge>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" onClick={isRunning ? pause : start} variant={isRunning ? "destructive" : "default"}>
+              <Power className="w-3 h-3 mr-1" />
+              {isRunning ? 'Stop' : 'Start'}
             </Button>
-            <Button onClick={reset} variant="outline">Reset</Button>
+            <Button size="sm" onClick={reset} variant="outline">Reset</Button>
           </div>
         </header>
 
         {/* Main Content */}
-        <Tabs defaultValue="transceiver" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4 bg-slate-800/50">
-            <TabsTrigger value="transceiver"><Radio className="w-4 h-4 mr-2" />Transceiver</TabsTrigger>
-            <TabsTrigger value="map3d"><Box className="w-4 h-4 mr-2" />3D Map</TabsTrigger>
-            <TabsTrigger value="multiparty"><Users className="w-4 h-4 mr-2" />Multi-Party</TabsTrigger>
-            <TabsTrigger value="seti"><Search className="w-4 h-4 mr-2" />SETI Scanner</TabsTrigger>
+        <Tabs defaultValue="transceiver" className="space-y-2">
+          <TabsList className="grid w-full grid-cols-4 h-8">
+            <TabsTrigger value="transceiver" className="text-xs gap-1"><Radio className="w-3 h-3" />Transceiver</TabsTrigger>
+            <TabsTrigger value="map3d" className="text-xs gap-1"><Box className="w-3 h-3" />3D Map</TabsTrigger>
+            <TabsTrigger value="multiparty" className="text-xs gap-1"><Users className="w-3 h-3" />Multi-Party</TabsTrigger>
+            <TabsTrigger value="seti" className="text-xs gap-1"><Search className="w-3 h-3" />SETI Scanner</TabsTrigger>
           </TabsList>
 
           {/* Transceiver Tab */}
-          <TabsContent value="transceiver" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <TabsContent value="transceiver" className="space-y-2">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
               {/* Phase Lock Status */}
-              <Card className="bg-slate-800/50 border-slate-700 p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-cyan-400">Phase Lock</h3>
+              <Card className="p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-semibold text-primary flex items-center gap-1.5">
+                    <Activity className="h-3.5 w-3.5" />
+                    Phase Lock
+                  </h3>
                   {phaseLock.isLocked ? 
-                    <Lock className="w-5 h-5 text-green-400" /> : 
-                    <Unlock className="w-5 h-5 text-yellow-400" />
+                    <Lock className="w-4 h-4 text-green-500" /> : 
+                    <Unlock className="w-4 h-4 text-yellow-500" />
                   }
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-1.5 text-xs">
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Status</span>
-                    <Badge variant={phaseLock.isLocked ? "default" : "secondary"} 
-                           className={phaseLock.isLocked ? "bg-green-600" : "bg-yellow-600"}>
+                    <span className="text-muted-foreground">Status</span>
+                    <Badge variant={phaseLock.isLocked ? "default" : "secondary"} className="text-[10px] h-4">
                       {phaseLock.isLocked ? 'LOCKED' : 'SEEKING'}
                     </Badge>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Δφ</span>
-                    <span className="font-mono text-cyan-300">{formatPhase(phaseLock.phaseDifference)}</span>
+                    <span className="text-muted-foreground">Δφ</span>
+                    <span className="font-mono text-primary">{formatPhase(phaseLock.phaseDifference)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Strength</span>
-                    <span className="font-mono text-cyan-300">{(phaseLock.lockStrength * 100).toFixed(1)}%</span>
+                    <span className="text-muted-foreground">Strength</span>
+                    <span className="font-mono text-primary">{(phaseLock.lockStrength * 100).toFixed(1)}%</span>
                   </div>
-                  <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                     <motion.div 
-                      className="h-full bg-gradient-to-r from-cyan-500 to-green-500"
+                      className="h-full bg-gradient-to-r from-primary to-green-500"
                       animate={{ width: `${phaseLock.lockStrength * 100}%` }}
                     />
                   </div>
@@ -114,61 +127,71 @@ const PulsarTransceiver = () => {
               </Card>
 
               {/* Reference Pulsar */}
-              <Card className="bg-slate-800/50 border-slate-700 p-4">
-                <h3 className="text-lg font-semibold text-cyan-400 mb-4">Reference Pulsar</h3>
-                <div className="space-y-2">
+              <Card className="p-3">
+                <h3 className="text-sm font-semibold text-primary flex items-center gap-1.5 mb-2">
+                  <Satellite className="h-3.5 w-3.5" />
+                  Reference Pulsar
+                </h3>
+                <div className="space-y-1.5 text-xs">
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Name</span>
-                    <span className="font-mono text-cyan-300">{referencePulsar.name}</span>
+                    <span className="text-muted-foreground">Name</span>
+                    <span className="font-mono text-primary">{referencePulsar.name}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Period</span>
-                    <span className="font-mono text-cyan-300">{(referencePulsar.period * 1000).toFixed(3)} ms</span>
+                    <span className="text-muted-foreground">Period</span>
+                    <span className="font-mono text-primary">{(referencePulsar.period * 1000).toFixed(3)} ms</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Current Phase</span>
-                    <span className="font-mono text-cyan-300">{formatPhase(referencePhase)}</span>
+                    <span className="text-muted-foreground">Current Phase</span>
+                    <span className="font-mono text-primary">{formatPhase(referencePhase)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Distance</span>
-                    <span className="font-mono text-cyan-300">{referencePulsar.distance} pc</span>
+                    <span className="text-muted-foreground">Distance</span>
+                    <span className="font-mono text-primary">{referencePulsar.distance} pc</span>
                   </div>
                 </div>
               </Card>
 
               {/* System Time */}
-              <Card className="bg-slate-800/50 border-slate-700 p-4">
-                <h3 className="text-lg font-semibold text-cyan-400 mb-4">System Status</h3>
-                <div className="space-y-2">
+              <Card className="p-3">
+                <h3 className="text-sm font-semibold text-primary flex items-center gap-1.5 mb-2">
+                  <Cpu className="h-3.5 w-3.5" />
+                  System Status
+                </h3>
+                <div className="space-y-1.5 text-xs">
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Time</span>
-                    <span className="font-mono text-cyan-300">{formatTime(time)} s</span>
+                    <span className="text-muted-foreground">Time</span>
+                    <span className="font-mono text-primary">{formatTime(time)} s</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Active Pulsars</span>
-                    <span className="font-mono text-cyan-300">{activePulsars.length}</span>
+                    <span className="text-muted-foreground">Active Pulsars</span>
+                    <span className="font-mono text-primary">{activePulsars.length}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Transmissions</span>
-                    <span className="font-mono text-cyan-300">{transmissionHistory.length}</span>
+                    <span className="text-muted-foreground">Transmissions</span>
+                    <span className="font-mono text-primary">{transmissionHistory.length}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Local</span>
-                    <span className="font-mono text-cyan-300 text-xs">{localLocation.name}</span>
+                    <span className="text-muted-foreground">Local</span>
+                    <span className="font-mono text-primary text-[10px]">{localLocation.name}</span>
                   </div>
                 </div>
               </Card>
             </div>
 
             {/* Transmission Panel */}
-            <Card className="bg-slate-800/50 border-slate-700 p-4">
-              <h3 className="text-lg font-semibold text-cyan-400 mb-4">Symbolic Transmission</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 mb-4">
+            <Card className="p-3">
+              <h3 className="text-sm font-semibold text-primary flex items-center gap-1.5 mb-2">
+                <Send className="h-3.5 w-3.5" />
+                Symbolic Transmission
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-1.5 mb-2">
                 {semanticMap.slice(0, 10).map(mapping => (
                   <Button
                     key={mapping.prime}
                     variant={selectedPrime === mapping.prime ? "default" : "outline"}
-                    className={`text-xs ${selectedPrime === mapping.prime ? 'bg-cyan-600' : ''}`}
+                    size="sm"
+                    className="text-[10px] h-7"
                     onClick={() => setSelectedPrime(mapping.prime)}
                   >
                     <span className="font-mono mr-1">{mapping.prime}</span>
@@ -177,18 +200,19 @@ const PulsarTransceiver = () => {
                 ))}
               </div>
               <Button 
+                size="sm"
                 onClick={() => transmit(selectedPrime)} 
                 disabled={!phaseLock.isLocked}
-                className="w-full bg-gradient-to-r from-cyan-600 to-blue-600"
+                className="w-full"
               >
-                <Send className="w-4 h-4 mr-2" />
+                <Send className="w-3 h-3 mr-1" />
                 Transmit "{semanticMap.find(m => m.prime === selectedPrime)?.meaning}"
                 {!phaseLock.isLocked && " (Requires Lock)"}
               </Button>
             </Card>
 
             {/* Message Composer & Decoder */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
               <MessageComposer
                 semanticMap={semanticMap}
                 phaseLocked={phaseLock.isLocked}
@@ -203,25 +227,28 @@ const PulsarTransceiver = () => {
             </div>
 
             {/* Transmission History */}
-            <Card className="bg-slate-800/50 border-slate-700 p-4">
-              <h3 className="text-lg font-semibold text-cyan-400 mb-4">Transmission Log</h3>
-              <ScrollArea className="h-40">
+            <Card className="p-3">
+              <h3 className="text-sm font-semibold text-primary flex items-center gap-1.5 mb-2">
+                <Clock className="h-3.5 w-3.5" />
+                Transmission Log
+              </h3>
+              <ScrollArea className="h-28">
                 {transmissionHistory.length === 0 ? (
-                  <p className="text-gray-500 text-center">No transmissions yet</p>
+                  <p className="text-muted-foreground text-center text-xs py-4">No transmissions yet</p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     {transmissionHistory.slice(-10).reverse().map(tx => (
-                      <div key={tx.id} className="flex items-center justify-between text-sm bg-slate-700/50 p-2 rounded">
-                        <div className="flex items-center gap-2">
+                      <div key={tx.id} className="flex items-center justify-between text-xs bg-muted/50 p-1.5 rounded">
+                        <div className="flex items-center gap-1.5">
                           {tx.wasLocked ? 
-                            <CheckCircle className="w-4 h-4 text-green-400" /> : 
-                            <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                            <CheckCircle className="w-3 h-3 text-green-500" /> : 
+                            <AlertTriangle className="w-3 h-3 text-yellow-500" />
                           }
-                          <span className="font-mono text-cyan-300">{tx.prime}</span>
-                          <span className="text-gray-400">→</span>
+                          <span className="font-mono text-primary">{tx.prime}</span>
+                          <span className="text-muted-foreground">→</span>
                           <span>{tx.meaning}</span>
                         </div>
-                        <span className="text-gray-500 font-mono text-xs">{tx.timestamp.toFixed(2)}s</span>
+                        <span className="text-muted-foreground font-mono text-[10px]">{tx.timestamp.toFixed(2)}s</span>
                       </div>
                     ))}
                   </div>
@@ -231,9 +258,12 @@ const PulsarTransceiver = () => {
           </TabsContent>
 
           {/* 3D Map Tab */}
-          <TabsContent value="map3d" className="space-y-4">
-            <Card className="bg-slate-800/50 border-slate-700 p-4 relative">
-              <h3 className="text-lg font-semibold text-cyan-400 mb-4">Galactic Pulsar Network</h3>
+          <TabsContent value="map3d" className="space-y-2">
+            <Card className="p-3 relative">
+              <h3 className="text-sm font-semibold text-primary flex items-center gap-1.5 mb-2">
+                <Globe className="h-3.5 w-3.5" />
+                Galactic Pulsar Network
+              </h3>
               <div className="h-[500px] relative">
                 <PulsarMap3D
                   pulsars={allPulsars}
@@ -261,16 +291,16 @@ const PulsarTransceiver = () => {
                   />
                 )}
               </div>
-              <p className="text-xs text-gray-500 mt-2 text-center">
+              <p className="text-[10px] text-muted-foreground mt-2 text-center">
                 Click pulsars for details • Set reference pulsar • Drag to rotate • Scroll to zoom
               </p>
             </Card>
           </TabsContent>
 
           {/* Multi-Party Tab */}
-          <TabsContent value="multiparty" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="space-y-4">
+          <TabsContent value="multiparty" className="space-y-2">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
+              <div className="space-y-2">
                 <MultiPartyPanel
                   parties={parties}
                   onAddParty={addParty}
@@ -291,7 +321,7 @@ const PulsarTransceiver = () => {
                 />
               </div>
               
-              <div className="space-y-4">
+              <div className="space-y-2">
                 <NetworkTopology
                   parties={parties}
                   time={time}
@@ -315,92 +345,98 @@ const PulsarTransceiver = () => {
           </TabsContent>
 
           {/* SETI Tab */}
-          <TabsContent value="seti" className="space-y-4">
-            <Card className="bg-slate-800/50 border-slate-700 p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-cyan-400">SETI Scanner</h3>
-                <div className="flex items-center gap-4">
+          <TabsContent value="seti" className="space-y-2">
+            <Card className="p-3">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-primary flex items-center gap-1.5">
+                  <Search className="h-3.5 w-3.5" />
+                  SETI Scanner
+                </h3>
+                <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-400">Inject Alien Signal</span>
+                    <span className="text-xs text-muted-foreground">Inject Alien Signal</span>
                     <Switch
                       checked={simParams.setiInjection}
                       onCheckedChange={(v) => setSimParams({...simParams, setiInjection: v})}
                     />
                   </div>
-                  <Button onClick={runSETIScan} className="bg-purple-600 hover:bg-purple-700">
-                    <Search className="w-4 h-4 mr-2" />
+                  <Button size="sm" onClick={runSETIScan}>
+                    <Search className="w-3 h-3 mr-1" />
                     Run Scan
                   </Button>
                 </div>
               </div>
 
               {simParams.setiInjection && (
-                <div className="mb-4 p-3 bg-purple-900/30 border border-purple-600 rounded-lg">
-                  <p className="text-sm text-purple-300">
-                    <AlertTriangle className="w-4 h-4 inline mr-2" />
+                <div className="mb-3 p-2 bg-accent/10 border border-accent/30 rounded text-xs">
+                  <p className="text-accent">
+                    <AlertTriangle className="w-3 h-3 inline mr-1" />
                     Alien signal injection enabled (primes: {simParams.alienPrimes.join(', ')})
                   </p>
                 </div>
               )}
 
               {setiCandidates.length > 0 ? (
-                <div className="space-y-3">
-                  <h4 className="font-semibold text-yellow-400">Candidates Detected: {setiCandidates.length}</h4>
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-xs text-accent">Candidates Detected: {setiCandidates.length}</h4>
                   {setiCandidates.map(candidate => (
-                    <div key={candidate.id} className="p-3 bg-slate-700/50 rounded-lg border border-slate-600">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-mono text-sm">{candidate.id}</span>
-                        <Badge className={
-                          candidate.intelligenceProbability > 0.7 ? 'bg-red-600' :
-                          candidate.intelligenceProbability > 0.4 ? 'bg-yellow-600' : 'bg-gray-600'
-                        }>
+                    <div key={candidate.id} className="p-2 bg-muted/50 rounded border border-border">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="font-mono text-xs">{candidate.id}</span>
+                        <Badge variant={
+                          candidate.intelligenceProbability > 0.7 ? 'destructive' :
+                          candidate.intelligenceProbability > 0.4 ? 'default' : 'secondary'
+                        } className="text-[10px] h-4">
                           {(candidate.intelligenceProbability * 100).toFixed(0)}% Intelligence
                         </Badge>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-400">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[10px] text-muted-foreground">
                         <div>
                           <span className="block">Pulsars</span>
-                          <span className="text-cyan-300">{candidate.pulsars.join(', ')}</span>
+                          <span className="text-primary">{candidate.pulsars.join(', ')}</span>
                         </div>
                         <div>
                           <span className="block">Correlation</span>
-                          <span className="text-cyan-300">{(candidate.correlationStrength * 100).toFixed(1)}%</span>
+                          <span className="text-primary">{(candidate.correlationStrength * 100).toFixed(1)}%</span>
                         </div>
                         <div>
                           <span className="block">Prime Match</span>
-                          <span className="text-cyan-300">{candidate.associatedPrime || 'None'}</span>
+                          <span className="text-primary">{candidate.associatedPrime || 'None'}</span>
                         </div>
                         <div>
                           <span className="block">SNR</span>
-                          <span className="text-cyan-300">{candidate.snr.toFixed(2)}</span>
+                          <span className="text-primary">{candidate.snr.toFixed(2)}</span>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No scans performed yet. Click "Run Scan" to analyze pulsar timing data.</p>
+                <div className="text-center py-6 text-muted-foreground">
+                  <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-xs">No scans performed yet. Click "Run Scan" to analyze pulsar timing data.</p>
                 </div>
               )}
             </Card>
 
             {spectrum && (
-              <Card className="bg-slate-800/50 border-slate-700 p-4">
-                <h3 className="text-lg font-semibold text-cyan-400 mb-4">Frequency Spectrum</h3>
-                <div className="h-40 flex items-end gap-0.5">
+              <Card className="p-3">
+                <h3 className="text-sm font-semibold text-primary flex items-center gap-1.5 mb-2">
+                  <Waves className="h-3.5 w-3.5" />
+                  Frequency Spectrum
+                </h3>
+                <div className="h-32 flex items-end gap-0.5">
                   {spectrum.powers.slice(0, 100).map((power, i) => (
                     <div
                       key={i}
-                      className="flex-1 bg-gradient-to-t from-cyan-600 to-purple-600 rounded-t"
+                      className="flex-1 bg-gradient-to-t from-primary to-accent rounded-t"
                       style={{ height: `${Math.min(power / spectrum.noiseFloor * 10, 100)}%` }}
                     />
                   ))}
                 </div>
                 {spectrum.splitPrimeMatches.length > 0 && (
-                  <div className="mt-3 p-2 bg-yellow-900/30 border border-yellow-600 rounded">
-                    <span className="text-yellow-400 text-sm">
+                  <div className="mt-2 p-1.5 bg-accent/10 border border-accent/30 rounded">
+                    <span className="text-accent text-xs">
                       ⚠️ Split prime frequencies detected: {spectrum.splitPrimeMatches.join(', ')}
                     </span>
                   </div>
@@ -409,28 +445,6 @@ const PulsarTransceiver = () => {
             )}
           </TabsContent>
         </Tabs>
-
-        {/* Footer */}
-        <footer className="mt-6 bg-slate-800/50 rounded-lg p-2 text-xs flex flex-wrap justify-between items-center gap-2">
-          <div className="flex items-center gap-1">
-            <Clock className="w-3 h-3 text-gray-400" />
-            <span>T: <span className="text-cyan-300 font-mono">{formatTime(time)}</span></span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Satellite className="w-3 h-3 text-gray-400" />
-            <span>Pulsars: <span className="text-cyan-300">{activePulsars.length}/{allPulsars.length}</span></span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Waves className="w-3 h-3 text-gray-400" />
-            <span>φ_ref: <span className="text-cyan-300 font-mono">{formatPhase(referencePhase)}</span></span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Activity className="w-3 h-3 text-gray-400" />
-            <span>Lock: <span className={phaseLock.isLocked ? "text-green-400" : "text-yellow-400"}>
-              {phaseLock.isLocked ? 'LOCKED' : 'SEEKING'}
-            </span></span>
-          </div>
-        </footer>
       </div>
     </div>
   );
