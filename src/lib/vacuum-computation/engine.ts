@@ -446,6 +446,167 @@ export const CIRCUIT_PRESETS: CircuitPreset[] = [
     ],
     inputLabels: ['A', 'B', 'C'],
     outputLabels: ['Parity']
+  },
+  {
+    name: '2:1 Multiplexer',
+    description: 'Select A or B based on Sel input',
+    gates: [
+      { id: 'not1', type: 'NOT', inputs: [], position: [80, 100] },
+      { id: 'and1', type: 'AND', inputs: [], position: [160, 80] },
+      { id: 'and2', type: 'AND', inputs: [], position: [160, 180] },
+      { id: 'or1', type: 'OR', inputs: [], position: [240, 130] }
+    ],
+    wires: [
+      { from: { type: 'input', index: 2 }, to: { gateId: 'not1', port: 'input', index: 0 }, id: 'w1', value: null, entropyFlow: 0 },
+      { from: { type: 'input', index: 0 }, to: { gateId: 'and1', port: 'input', index: 0 }, id: 'w2', value: null, entropyFlow: 0 },
+      { from: { gateId: 'not1', port: 'output' }, to: { gateId: 'and1', port: 'input', index: 1 }, id: 'w3', value: null, entropyFlow: 0 },
+      { from: { type: 'input', index: 1 }, to: { gateId: 'and2', port: 'input', index: 0 }, id: 'w4', value: null, entropyFlow: 0 },
+      { from: { type: 'input', index: 2 }, to: { gateId: 'and2', port: 'input', index: 1 }, id: 'w5', value: null, entropyFlow: 0 },
+      { from: { gateId: 'and1', port: 'output' }, to: { gateId: 'or1', port: 'input', index: 0 }, id: 'w6', value: null, entropyFlow: 0 },
+      { from: { gateId: 'and2', port: 'output' }, to: { gateId: 'or1', port: 'input', index: 1 }, id: 'w7', value: null, entropyFlow: 0 }
+    ],
+    inputLabels: ['A', 'B', 'Sel'],
+    outputLabels: ['Out']
+  },
+  {
+    name: 'NOR SR Latch',
+    description: 'Basic memory element with Set/Reset',
+    gates: [
+      { id: 'nor1', type: 'NOR', inputs: [], position: [150, 100] },
+      { id: 'nor2', type: 'NOR', inputs: [], position: [150, 200] }
+    ],
+    wires: [
+      { from: { type: 'input', index: 0 }, to: { gateId: 'nor1', port: 'input', index: 0 }, id: 'w1', value: null, entropyFlow: 0 },
+      { from: { type: 'input', index: 1 }, to: { gateId: 'nor2', port: 'input', index: 1 }, id: 'w2', value: null, entropyFlow: 0 },
+      { from: { gateId: 'nor2', port: 'output' }, to: { gateId: 'nor1', port: 'input', index: 1 }, id: 'w3', value: null, entropyFlow: 0 },
+      { from: { gateId: 'nor1', port: 'output' }, to: { gateId: 'nor2', port: 'input', index: 0 }, id: 'w4', value: null, entropyFlow: 0 }
+    ],
+    inputLabels: ['Set', 'Reset'],
+    outputLabels: ['Q', '¬Q']
+  },
+  {
+    name: 'XNOR Equality',
+    description: 'Tests if two inputs are equal',
+    gates: [
+      { id: 'xnor1', type: 'XNOR', inputs: [], position: [150, 150] }
+    ],
+    wires: [
+      { from: { type: 'input', index: 0 }, to: { gateId: 'xnor1', port: 'input', index: 0 }, id: 'w1', value: null, entropyFlow: 0 },
+      { from: { type: 'input', index: 1 }, to: { gateId: 'xnor1', port: 'input', index: 1 }, id: 'w2', value: null, entropyFlow: 0 }
+    ],
+    inputLabels: ['A', 'B'],
+    outputLabels: ['A = B']
+  },
+  {
+    name: '2-bit Comparator',
+    description: 'Compare two 2-bit numbers',
+    gates: [
+      { id: 'xnor1', type: 'XNOR', inputs: [], position: [100, 80] },
+      { id: 'xnor2', type: 'XNOR', inputs: [], position: [100, 180] },
+      { id: 'and1', type: 'AND', inputs: [], position: [200, 130] }
+    ],
+    wires: [
+      { from: { type: 'input', index: 0 }, to: { gateId: 'xnor1', port: 'input', index: 0 }, id: 'w1', value: null, entropyFlow: 0 },
+      { from: { type: 'input', index: 2 }, to: { gateId: 'xnor1', port: 'input', index: 1 }, id: 'w2', value: null, entropyFlow: 0 },
+      { from: { type: 'input', index: 1 }, to: { gateId: 'xnor2', port: 'input', index: 0 }, id: 'w3', value: null, entropyFlow: 0 },
+      { from: { type: 'input', index: 3 }, to: { gateId: 'xnor2', port: 'input', index: 1 }, id: 'w4', value: null, entropyFlow: 0 },
+      { from: { gateId: 'xnor1', port: 'output' }, to: { gateId: 'and1', port: 'input', index: 0 }, id: 'w5', value: null, entropyFlow: 0 },
+      { from: { gateId: 'xnor2', port: 'output' }, to: { gateId: 'and1', port: 'input', index: 1 }, id: 'w6', value: null, entropyFlow: 0 }
+    ],
+    inputLabels: ['A₁', 'A₀', 'B₁', 'B₀'],
+    outputLabels: ['A = B']
+  },
+  {
+    name: 'Double Inverter',
+    description: 'Two NOT gates in series (identity)',
+    gates: [
+      { id: 'not1', type: 'NOT', inputs: [], position: [100, 150] },
+      { id: 'not2', type: 'NOT', inputs: [], position: [200, 150] }
+    ],
+    wires: [
+      { from: { type: 'input', index: 0 }, to: { gateId: 'not1', port: 'input', index: 0 }, id: 'w1', value: null, entropyFlow: 0 },
+      { from: { gateId: 'not1', port: 'output' }, to: { gateId: 'not2', port: 'input', index: 0 }, id: 'w2', value: null, entropyFlow: 0 }
+    ],
+    inputLabels: ['In'],
+    outputLabels: ['Out']
+  },
+  {
+    name: 'OR from NOR',
+    description: 'OR gate using NOR universal gates',
+    gates: [
+      { id: 'nor1', type: 'NOR', inputs: [], position: [100, 150] },
+      { id: 'nor2', type: 'NOR', inputs: [], position: [200, 150] }
+    ],
+    wires: [
+      { from: { type: 'input', index: 0 }, to: { gateId: 'nor1', port: 'input', index: 0 }, id: 'w1', value: null, entropyFlow: 0 },
+      { from: { type: 'input', index: 1 }, to: { gateId: 'nor1', port: 'input', index: 1 }, id: 'w2', value: null, entropyFlow: 0 },
+      { from: { gateId: 'nor1', port: 'output' }, to: { gateId: 'nor2', port: 'input', index: 0 }, id: 'w3', value: null, entropyFlow: 0 },
+      { from: { gateId: 'nor1', port: 'output' }, to: { gateId: 'nor2', port: 'input', index: 1 }, id: 'w4', value: null, entropyFlow: 0 }
+    ],
+    inputLabels: ['A', 'B'],
+    outputLabels: ['A OR B']
+  },
+  {
+    name: 'XOR from NAND',
+    description: 'XOR built from universal NAND gates',
+    gates: [
+      { id: 'nand1', type: 'NAND', inputs: [], position: [100, 130] },
+      { id: 'nand2', type: 'NAND', inputs: [], position: [180, 80] },
+      { id: 'nand3', type: 'NAND', inputs: [], position: [180, 180] },
+      { id: 'nand4', type: 'NAND', inputs: [], position: [260, 130] }
+    ],
+    wires: [
+      { from: { type: 'input', index: 0 }, to: { gateId: 'nand1', port: 'input', index: 0 }, id: 'w1', value: null, entropyFlow: 0 },
+      { from: { type: 'input', index: 1 }, to: { gateId: 'nand1', port: 'input', index: 1 }, id: 'w2', value: null, entropyFlow: 0 },
+      { from: { type: 'input', index: 0 }, to: { gateId: 'nand2', port: 'input', index: 0 }, id: 'w3', value: null, entropyFlow: 0 },
+      { from: { gateId: 'nand1', port: 'output' }, to: { gateId: 'nand2', port: 'input', index: 1 }, id: 'w4', value: null, entropyFlow: 0 },
+      { from: { gateId: 'nand1', port: 'output' }, to: { gateId: 'nand3', port: 'input', index: 0 }, id: 'w5', value: null, entropyFlow: 0 },
+      { from: { type: 'input', index: 1 }, to: { gateId: 'nand3', port: 'input', index: 1 }, id: 'w6', value: null, entropyFlow: 0 },
+      { from: { gateId: 'nand2', port: 'output' }, to: { gateId: 'nand4', port: 'input', index: 0 }, id: 'w7', value: null, entropyFlow: 0 },
+      { from: { gateId: 'nand3', port: 'output' }, to: { gateId: 'nand4', port: 'input', index: 1 }, id: 'w8', value: null, entropyFlow: 0 }
+    ],
+    inputLabels: ['A', 'B'],
+    outputLabels: ['A XOR B']
+  },
+  {
+    name: 'Majority Gate',
+    description: 'Output true if 2+ inputs are true',
+    gates: [
+      { id: 'and1', type: 'AND', inputs: [], position: [100, 60] },
+      { id: 'and2', type: 'AND', inputs: [], position: [100, 140] },
+      { id: 'and3', type: 'AND', inputs: [], position: [100, 220] },
+      { id: 'or1', type: 'OR', inputs: [], position: [200, 100] },
+      { id: 'or2', type: 'OR', inputs: [], position: [280, 140] }
+    ],
+    wires: [
+      { from: { type: 'input', index: 0 }, to: { gateId: 'and1', port: 'input', index: 0 }, id: 'w1', value: null, entropyFlow: 0 },
+      { from: { type: 'input', index: 1 }, to: { gateId: 'and1', port: 'input', index: 1 }, id: 'w2', value: null, entropyFlow: 0 },
+      { from: { type: 'input', index: 0 }, to: { gateId: 'and2', port: 'input', index: 0 }, id: 'w3', value: null, entropyFlow: 0 },
+      { from: { type: 'input', index: 2 }, to: { gateId: 'and2', port: 'input', index: 1 }, id: 'w4', value: null, entropyFlow: 0 },
+      { from: { type: 'input', index: 1 }, to: { gateId: 'and3', port: 'input', index: 0 }, id: 'w5', value: null, entropyFlow: 0 },
+      { from: { type: 'input', index: 2 }, to: { gateId: 'and3', port: 'input', index: 1 }, id: 'w6', value: null, entropyFlow: 0 },
+      { from: { gateId: 'and1', port: 'output' }, to: { gateId: 'or1', port: 'input', index: 0 }, id: 'w7', value: null, entropyFlow: 0 },
+      { from: { gateId: 'and2', port: 'output' }, to: { gateId: 'or1', port: 'input', index: 1 }, id: 'w8', value: null, entropyFlow: 0 },
+      { from: { gateId: 'or1', port: 'output' }, to: { gateId: 'or2', port: 'input', index: 0 }, id: 'w9', value: null, entropyFlow: 0 },
+      { from: { gateId: 'and3', port: 'output' }, to: { gateId: 'or2', port: 'input', index: 1 }, id: 'w10', value: null, entropyFlow: 0 }
+    ],
+    inputLabels: ['A', 'B', 'C'],
+    outputLabels: ['Majority']
+  },
+  {
+    name: 'Implication Gate',
+    description: 'A → B (if A then B)',
+    gates: [
+      { id: 'not1', type: 'NOT', inputs: [], position: [100, 120] },
+      { id: 'or1', type: 'OR', inputs: [], position: [200, 150] }
+    ],
+    wires: [
+      { from: { type: 'input', index: 0 }, to: { gateId: 'not1', port: 'input', index: 0 }, id: 'w1', value: null, entropyFlow: 0 },
+      { from: { gateId: 'not1', port: 'output' }, to: { gateId: 'or1', port: 'input', index: 0 }, id: 'w2', value: null, entropyFlow: 0 },
+      { from: { type: 'input', index: 1 }, to: { gateId: 'or1', port: 'input', index: 1 }, id: 'w3', value: null, entropyFlow: 0 }
+    ],
+    inputLabels: ['A', 'B'],
+    outputLabels: ['A → B']
   }
 ];
 
