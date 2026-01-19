@@ -42,8 +42,11 @@ export interface PulsarReference {
   id: string;
   name: string;
   position: [number, number, number];
-  period: number; // ms
-  phase: number;
+  period: number; // ms (display)
+  periodSeconds?: number; // seconds (for phase calculation)
+  epoch?: number; // MJD
+  phase0?: number; // radians at epoch
+  phase: number; // current phase (radians)
   stability: number; // Parts per billion
   isReference: boolean;
 }
