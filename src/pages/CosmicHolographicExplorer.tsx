@@ -70,11 +70,10 @@ const CosmicHolographicExplorer = () => {
     loadPreset, store, query, selectNode, setMode, toggleRunning
   } = useCosmicHolographic();
 
-  const [helpOpen, setHelpOpen] = useState(false);
+  const [isFirstRun, markAsSeen] = useFirstRun('cosmic-holographic-explorer');
+  const [helpOpen, setHelpOpen] = useState(isFirstRun);
   const [storeInput, setStoreInput] = useState('');
   const [queryInput, setQueryInput] = useState('');
-  
-  useFirstRun('cosmic-holographic-explorer', () => setHelpOpen(true));
 
   return (
     <Layout>
@@ -283,8 +282,8 @@ const CosmicHolographicExplorer = () => {
 
         <AppHelpDialog
           open={helpOpen}
-          onOpenChange={setHelpOpen}
-          title="Cosmic Holographic Explorer"
+          onOpenChange={(open) => { setHelpOpen(open); if (!open) markAsSeen(); }}
+          appName="Cosmic Holographic Explorer"
           steps={helpSteps}
         />
       </div>

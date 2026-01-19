@@ -16,6 +16,7 @@ const appSubcategories = [
       { id: 'grover-search', label: "Grover's Search", path: '/grover-search', desc: 'Quantum search' },
       { id: 'decoherence', label: 'Decoherence', path: '/decoherence', desc: 'T₁/T₂ decay' },
       { id: 'qec-lab', label: 'QEC Lab', path: '/qec-lab', desc: 'Error correction' },
+      { id: 'vacuum-computation', label: 'Vacuum Computation', path: '/vacuum-computation', desc: 'Entropy gates' },
     ],
   },
   {
@@ -24,6 +25,7 @@ const appSubcategories = [
     items: [
       { id: 'pulsar-transceiver', label: 'Pulsar Transceiver', path: '/pulsar-transceiver', desc: 'Cosmic SRC' },
       { id: 'quaternion-nonlocal', label: 'Quaternion Nonlocal', path: '/quaternion-nonlocal', desc: 'Split prime comms' },
+      { id: 'cosmic-holographic', label: 'Cosmic Holographic', path: '/cosmic-holographic', desc: 'Galactic memory' },
       { id: 'bb84', label: 'BB84 QKD', path: '/bb84', desc: 'Quantum cryptography' },
     ],
   },
