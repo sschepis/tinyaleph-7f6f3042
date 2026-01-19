@@ -472,21 +472,46 @@ export const COSMIC_PRESETS: CosmicPreset[] = [
   }
 ];
 
-// Initialize from preset
+// Deterministic hash for consistent seeding
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash);
+}
+
+// Seeded random for deterministic behavior
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed * 9999) * 10000;
+  return x - Math.floor(x);
+}
+
+// Initialize from preset with deterministic phases
 export function initializeFromPreset(preset: CosmicPreset): {
   nodes: MemoryNode[];
   pulsars: PulsarReference[];
 } {
-  const nodes = preset.nodes.map(n => ({
+  const presetSeed = hashString(preset.name);
+  
+  const nodes = preset.nodes.map((n, i) => ({
     ...n,
     stored: 0,
-    phase: Math.random() * Math.PI * 2
+    phase: seededRandom(presetSeed + i) * Math.PI * 2
   }));
   
-  const pulsars = preset.pulsars.map(p => ({
-    ...p,
-    phase: Math.random() * Math.PI * 2
-  }));
+  // Pulsars start synchronized (phase derived from their period ratio to reference)
+  const refPulsar = preset.pulsars.find(p => p.isReference) || preset.pulsars[0];
+  const pulsars = preset.pulsars.map((p, i) => {
+    // Start with high sync: phases proportional to period ratios
+    const basePhase = seededRandom(presetSeed + 1000 + i) * 0.1; // Small random offset (0-10% of cycle)
+    return {
+      ...p,
+      phase: basePhase
+    };
+  });
   
   return { nodes, pulsars };
 }
