@@ -164,6 +164,8 @@ const CosmicHolographicExplorer = () => {
                     onSelectNode={selectNode}
                     showLabels={showLabels}
                     showLightTimeRings={showLightTimeRings}
+                    holographicRecords={holographicRecords}
+                    simulationTime={simulationTime}
                   />
                 </Canvas>
               </CardContent>
