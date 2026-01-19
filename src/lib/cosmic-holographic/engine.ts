@@ -16,6 +16,7 @@ import {
   StoreParams,
   CosmicPreset
 } from './types';
+import { PULSAR_CATALOG, equatorialToGalactic } from '../pulsar-transceiver/pulsar-catalog';
 
 // Physical constants
 const LIGHT_SPEED_KPC_PER_YEAR = 0.000306601; // Light speed in kpc/year
@@ -394,6 +395,24 @@ export function calculateMetrics(
   };
 }
 
+// Convert catalog pulsar to cosmic holographic format
+function catalogPulsarToReference(pulsar: typeof PULSAR_CATALOG[0], isRef: boolean = false): Omit<PulsarReference, 'phase'> {
+  const galPos = equatorialToGalactic(pulsar.ra, pulsar.dec, pulsar.distance);
+  return {
+    id: pulsar.name.toLowerCase().replace(/\s+/g, '-'),
+    name: pulsar.name,
+    position: [galPos.x, galPos.y, galPos.z] as [number, number, number],
+    period: pulsar.period * 1000, // Convert to ms
+    stability: pulsar.periodDot || 1e-15,
+    isReference: isRef || pulsar.isReference
+  };
+}
+
+// Get pulsars from real catalog
+function getRealPulsars(count: number = 10): Omit<PulsarReference, 'phase'>[] {
+  return PULSAR_CATALOG.slice(0, count).map((p, i) => catalogPulsarToReference(p, i === 0));
+}
+
 // Preset configurations
 export const COSMIC_PRESETS: CosmicPreset[] = [
   {
@@ -406,9 +425,7 @@ export const COSMIC_PRESETS: CosmicPreset[] = [
       { id: 'vega', name: 'Vega', position: [8.2 + 0.0076, 0.001, 0.02], type: 'star', capacity: 150, coherence: 0.92, frequency: 1.2 },
       { id: 'barnard', name: "Barnard's Star", position: [8.2 + 0.0018, -0.001, 0.02], type: 'star', capacity: 30, coherence: 0.88, frequency: 1.05 }
     ],
-    pulsars: [
-      { id: 'psr-j0437', name: 'PSR J0437-4715', position: [8.2 + 0.046, -0.02, 0], period: 5.757, stability: 1e-15, isReference: true }
-    ]
+    pulsars: getRealPulsars(5)
   },
   {
     name: 'Galactic Network',
@@ -422,24 +439,35 @@ export const COSMIC_PRESETS: CosmicPreset[] = [
       { id: 'perseus', name: 'Perseus Arm Hub', position: [10, 3, 0], type: 'cluster', capacity: 6000, coherence: 0.88, frequency: 0.75 },
       { id: 'scutum', name: 'Scutum-Centaurus', position: [4, -3, 0], type: 'cluster', capacity: 7000, coherence: 0.92, frequency: 0.65 }
     ],
-    pulsars: [
-      { id: 'crab-psr', name: 'Crab Pulsar', position: [2, 0.5, 0], period: 33.5, stability: 1e-14, isReference: true },
-      { id: 'vela', name: 'Vela Pulsar', position: [7.9, -0.3, 0], period: 89.3, stability: 1e-13, isReference: false },
-      { id: 'psr-b1919', name: 'PSR B1919+21', position: [9, 1, 0.2], period: 1337, stability: 1e-12, isReference: false }
-    ]
+    pulsars: getRealPulsars(8)
   },
   {
-    name: 'Pulsar Array',
-    description: 'High-precision timing network',
+    name: 'Pulsar Timing Array',
+    description: 'Full millisecond pulsar network from ATNF catalog',
     nodes: [
-      { id: 'sol', name: 'Sol', position: SUN_POSITION, type: 'star', capacity: 100, coherence: 1, frequency: 1 }
+      { id: 'sol', name: 'Sol', position: SUN_POSITION, type: 'star', capacity: 100, coherence: 1, frequency: 1 },
+      { id: 'earth-station', name: 'Earth Station', position: [8.2, 0, 0.02], type: 'artificial', capacity: 500, coherence: 0.99, frequency: 1 }
+    ],
+    pulsars: getRealPulsars(20) // All 20 real pulsars from catalog
+  },
+  {
+    name: 'Dense Core Network',
+    description: 'High-density galactic core cluster network',
+    nodes: [
+      { id: 'sgr-a', name: 'Sagittarius A*', position: [0, 0, 0], type: 'cluster', capacity: 50000, coherence: 0.99, frequency: 0.3 },
+      { id: 'core-1', name: 'Core Cluster Alpha', position: [0.5, 0.2, 0.1], type: 'cluster', capacity: 20000, coherence: 0.95, frequency: 0.4 },
+      { id: 'core-2', name: 'Core Cluster Beta', position: [-0.3, 0.4, -0.1], type: 'cluster', capacity: 18000, coherence: 0.93, frequency: 0.45 },
+      { id: 'core-3', name: 'Core Cluster Gamma', position: [0.2, -0.5, 0.2], type: 'cluster', capacity: 15000, coherence: 0.91, frequency: 0.5 },
+      { id: 'sol', name: 'Sol (Observer)', position: SUN_POSITION, type: 'star', capacity: 100, coherence: 1, frequency: 1 }
     ],
     pulsars: [
-      { id: 'psr-j0437', name: 'PSR J0437-4715', position: [8.15, -0.02, 0], period: 5.757, stability: 1e-15, isReference: true },
-      { id: 'psr-j1909', name: 'PSR J1909-3744', position: [3.5, -1.2, 0], period: 2.947, stability: 2e-15, isReference: false },
-      { id: 'psr-j0030', name: 'PSR J0030+0451', position: [10.2, 0.8, 0.1], period: 4.865, stability: 3e-15, isReference: false },
-      { id: 'psr-b1937', name: 'PSR B1937+21', position: [4.8, 2.1, 0], period: 1.558, stability: 1e-14, isReference: false },
-      { id: 'psr-j0613', name: 'PSR J0613-0200', position: [9.1, -0.5, 0], period: 3.062, stability: 2e-15, isReference: false }
+      // Core pulsars from catalog
+      ...PULSAR_CATALOG.filter(p => {
+        const pos = equatorialToGalactic(p.ra, p.dec, p.distance);
+        return Math.sqrt(pos.x * pos.x + pos.y * pos.y + pos.z * pos.z) < 5;
+      }).slice(0, 6).map((p, i) => catalogPulsarToReference(p, i === 0)),
+      // Add reference pulsar
+      catalogPulsarToReference(PULSAR_CATALOG[0], true)
     ]
   }
 ];
