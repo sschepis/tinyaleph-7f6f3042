@@ -51,6 +51,7 @@ import QuaternionNonlocalApp from "./pages/QuaternionNonlocalApp";
 import PulsarTransceiver from "./pages/PulsarTransceiver";
 import VacuumComputationLab from "./pages/VacuumComputationLab";
 import CosmicHolographicExplorer from "./pages/CosmicHolographicExplorer";
+import ThermodynamicSemanticsDashboard from "./pages/ThermodynamicSemanticsDashboard";
 import GettingStarted from "./pages/docs/GettingStarted";
 import UserGuide from "./pages/docs/UserGuide";
 import AppIdeas from "./pages/docs/AppIdeas";
