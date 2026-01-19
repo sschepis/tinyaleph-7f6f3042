@@ -121,6 +121,7 @@ const App = () => (
             <Route path="/pulsar-transceiver" element={<PulsarTransceiver />} />
             <Route path="/vacuum-computation" element={<VacuumComputationLab />} />
             <Route path="/cosmic-holographic" element={<CosmicHolographicExplorer />} />
+            <Route path="/thermodynamic-semantics" element={<ThermodynamicSemanticsDashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
