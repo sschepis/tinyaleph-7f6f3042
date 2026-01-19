@@ -68,7 +68,7 @@ export function ChatInterface({
               {message.role === 'assistant' ? (
                 <AssistantMessage content={message.content} showCopyButton={true} />
               ) : (
-                <span dangerouslySetInnerHTML={{ __html: message.content }} />
+                <span>{message.content}</span>
               )}
               
               {/* Thinking indicator */}

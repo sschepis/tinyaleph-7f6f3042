@@ -160,7 +160,7 @@ export default function QuantumConsciousnessResonator() {
                               showCopyButton={true}
                             />
                           ) : (
-                            <span dangerouslySetInnerHTML={{ __html: message.content }} />
+                            <span>{message.content}</span>
                           )}
                         </div>
                       </div>

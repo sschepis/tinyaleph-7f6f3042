@@ -135,9 +135,9 @@ export function useConsciousnessResonator() {
     const isCurrentlyActive = state.activePerspectives.includes(perspective);
     
     if (isCurrentlyActive) {
-      addMessage('system', `Deactivated <strong>${node.name}</strong> perspective`);
+      addMessage('system', `Deactivated ${node.name} perspective`);
     } else {
-      addMessage('system', `Activated <strong>${node.name}</strong> perspective`);
+      addMessage('system', `Activated ${node.name} perspective`);
     }
   }, [state.activePerspectives, addMessage]);
 
