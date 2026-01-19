@@ -19,8 +19,8 @@ const VacuumComputationLab = () => {
     loadPreset, toggleInput, runSimulation, reset, toggleRunning, setTemperature
   } = useVacuumComputation();
 
-  const [helpOpen, setHelpOpen] = useState(false);
-  useFirstRun('vacuum-computation-lab', () => setHelpOpen(true));
+  const [isFirstRun, markAsSeen] = useFirstRun('vacuum-computation-lab');
+  const [helpOpen, setHelpOpen] = useState(isFirstRun);
 
   return (
     <Layout>
@@ -276,8 +276,8 @@ const VacuumComputationLab = () => {
 
         <AppHelpDialog
           open={helpOpen}
-          onOpenChange={setHelpOpen}
-          title="Vacuum Computation Lab"
+          onOpenChange={(open) => { setHelpOpen(open); if (!open) markAsSeen(); }}
+          appName="Vacuum Computation Lab"
           steps={helpSteps}
         />
       </div>
