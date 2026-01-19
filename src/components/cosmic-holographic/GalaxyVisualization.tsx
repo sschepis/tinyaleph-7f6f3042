@@ -159,6 +159,11 @@ function LightTimeRings({ show }: { show: boolean }) {
   );
 }
 
+// Check if this is the Sol/Earth node
+function isSolNode(node: MemoryNode): boolean {
+  return node.id === 'sol' || node.name.toLowerCase() === 'sol' || node.name.toLowerCase().includes('earth');
+}
+
 // Memory node with optional label
 function MemoryNodeMesh({ 
   node, 
@@ -173,36 +178,54 @@ function MemoryNodeMesh({
   showLabel: boolean;
   onClick: () => void;
 }) {
+  const isSol = isSolNode(node);
+  
   const getColor = () => {
+    if (isSol) return '#00ff00'; // Bright green for Sol/Earth
     if (isSelected) return '#00ff88';
     if (isHighlighted) return '#ffaa00';
     if (node.type === 'pulsar') return '#00ffff';
     if (node.type === 'cluster') return '#ff88ff';
     if (node.type === 'nebula') return '#88ffff';
+    if (node.type === 'artificial') return '#ffffff';
     return '#8888ff';
   };
 
   const color = getColor();
+  const size = isSol ? 0.25 : 0.1 + node.capacity * 0.00005;
   
   return (
-    <mesh
-      position={node.position}
-      onClick={(e) => { e.stopPropagation(); onClick(); }}
-    >
-      <sphereGeometry args={[0.1 + node.capacity * 0.00005, 8, 8]} />
-      <meshStandardMaterial
-        color={color}
-        emissive={color}
-        emissiveIntensity={node.coherence * 0.5 + (isHighlighted ? 0.3 : 0)}
-      />
-      {showLabel && (
+    <group position={node.position}>
+      <mesh onClick={(e) => { e.stopPropagation(); onClick(); }}>
+        <sphereGeometry args={[size, isSol ? 16 : 8, isSol ? 16 : 8]} />
+        <meshStandardMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={isSol ? 1.0 : node.coherence * 0.5 + (isHighlighted ? 0.3 : 0)}
+        />
+      </mesh>
+      
+      {/* Sol indicator ring */}
+      {isSol && (
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.35, 0.4, 32]} />
+          <meshBasicMaterial color="#00ff00" transparent opacity={0.6} side={THREE.DoubleSide} />
+        </mesh>
+      )}
+      
+      {/* Always show label for Sol, otherwise respect showLabel */}
+      {(showLabel || isSol) && (
         <Html distanceFactor={15} style={{ pointerEvents: 'none' }}>
-          <div className="bg-background/80 px-1 py-0.5 rounded text-[10px] text-foreground whitespace-nowrap">
-            {node.name}
+          <div className={`px-1.5 py-0.5 rounded text-[10px] whitespace-nowrap ${
+            isSol 
+              ? 'bg-green-500/90 text-white font-bold border border-green-300' 
+              : 'bg-background/80 text-foreground'
+          }`}>
+            {isSol ? '🌍 Sol (Earth)' : node.name}
           </div>
         </Html>
       )}
-    </mesh>
+    </group>
   );
 }
 
