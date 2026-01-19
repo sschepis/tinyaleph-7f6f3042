@@ -680,6 +680,66 @@ const Index = () => {
                   </Card>
                 </Link>
               </motion.div>
+
+              {/* Vacuum Computation */}
+              <motion.div variants={scaleIn}>
+                <Link to="/vacuum-computation" className="group block h-full">
+                  <Card className="h-full overflow-hidden border-2 border-transparent hover:border-violet-500/50 transition-all duration-300 bg-gradient-to-br from-violet-500/5 to-purple-500/5">
+                    <div className="p-6">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-500/20 border border-violet-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <Zap className="w-6 h-6 text-violet-400" />
+                      </div>
+                      <h3 className="text-xl font-semibold mb-2 group-hover:text-violet-400 transition-colors">
+                        Vacuum Computation
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Entropy-based logical operations through structured vacuum fluctuations. Thermodynamic gates.
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {['Entropy Gates', 'Landauer', 'Fluctuations'].map(tag => (
+                          <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="px-6 py-3 bg-violet-500/5 border-t border-violet-500/10 flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Thermodynamic</span>
+                      <ArrowRight className="w-4 h-4 text-violet-400 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </Card>
+                </Link>
+              </motion.div>
+
+              {/* Thermodynamic Semantics */}
+              <motion.div variants={scaleIn}>
+                <Link to="/thermodynamic-semantics" className="group block h-full">
+                  <Card className="h-full overflow-hidden border-2 border-transparent hover:border-amber-500/50 transition-all duration-300 bg-gradient-to-br from-amber-500/5 to-orange-500/5">
+                    <div className="p-6">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <Activity className="w-6 h-6 text-amber-400" />
+                      </div>
+                      <h3 className="text-xl font-semibold mb-2 group-hover:text-amber-400 transition-colors">
+                        Thermodynamic Semantics
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Visualize entropy reduction, meaning emergence, and computational efficiency relationships.
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {['Landauer', 'Shannon', 'Emergence'].map(tag => (
+                          <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="px-6 py-3 bg-amber-500/5 border-t border-amber-500/10 flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Meaning Physics</span>
+                      <ArrowRight className="w-4 h-4 text-amber-400 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </Card>
+                </Link>
+              </motion.div>
             </motion.div>
           </div>
 
@@ -752,6 +812,36 @@ const Index = () => {
                     <div className="px-6 py-3 bg-sky-500/5 border-t border-sky-500/10 flex items-center justify-between">
                       <span className="text-xs text-muted-foreground">Cosmic Comms</span>
                       <ArrowRight className="w-4 h-4 text-sky-400 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </Card>
+                </Link>
+              </motion.div>
+
+              {/* Cosmic Holographic */}
+              <motion.div variants={scaleIn}>
+                <Link to="/cosmic-holographic" className="group block h-full">
+                  <Card className="h-full overflow-hidden border-2 border-transparent hover:border-indigo-500/50 transition-all duration-300 bg-gradient-to-br from-indigo-500/5 to-purple-500/5">
+                    <div className="p-6">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <Database className="w-6 h-6 text-indigo-400" />
+                      </div>
+                      <h3 className="text-xl font-semibold mb-2 group-hover:text-indigo-400 transition-colors">
+                        Cosmic Holographic
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Galactic-scale holographic memory network with pulsar-synchronized access and interference patterns.
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {['Holographic', 'Pulsar Sync', 'Galactic'].map(tag => (
+                          <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="px-6 py-3 bg-indigo-500/5 border-t border-indigo-500/10 flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Memory Network</span>
+                      <ArrowRight className="w-4 h-4 text-indigo-400 group-hover:translate-x-1 transition-transform" />
                     </div>
                   </Card>
                 </Link>

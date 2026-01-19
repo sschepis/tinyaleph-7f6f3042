@@ -17,6 +17,7 @@ const appSubcategories = [
       { id: 'decoherence', label: 'Decoherence', path: '/decoherence', desc: 'T₁/T₂ decay' },
       { id: 'qec-lab', label: 'QEC Lab', path: '/qec-lab', desc: 'Error correction' },
       { id: 'vacuum-computation', label: 'Vacuum Computation', path: '/vacuum-computation', desc: 'Entropy gates' },
+      { id: 'thermodynamic-semantics', label: 'Thermodynamic Semantics', path: '/thermodynamic-semantics', desc: 'Meaning & entropy' },
     ],
   },
   {
