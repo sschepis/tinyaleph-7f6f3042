@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import {
-  CosmicHolographicState,
   MemoryNode,
   MemoryPattern,
   PulsarReference,
@@ -9,7 +8,8 @@ import {
   CosmicMetrics,
   QueryResult,
   QueryParams,
-  StoreParams
+  StoreParams,
+  HolographicRecord
 } from '@/lib/cosmic-holographic/types';
 import {
   evolveNodes,
@@ -58,6 +58,7 @@ export function useCosmicHolographic() {
   const [time, setTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState(1); // Galactic Network
+  const [holographicRecords, setHolographicRecords] = useState<HolographicRecord[]>([]);
   
   const animationRef = useRef<number | null>(null);
   
@@ -113,12 +114,14 @@ export function useCosmicHolographic() {
     setNodes(newNodes);
     setPulsars(newPulsars);
     setPatterns([]);
+    setHolographicRecords([]);
     setActiveQuery(null);
     setQueryResults([]);
     setSelectedNode(null);
+    setSimulationTime(0);
   }, []);
   
-  // Store content
+  // Store content using holographic encoding
   const store = useCallback((content: string, redundancy: number = 3) => {
     const params: StoreParams = {
       content,
@@ -126,14 +129,21 @@ export function useCosmicHolographic() {
       coherenceThreshold: 0.8
     };
     
-    const { pattern, updatedNodes } = storePattern(content, nodes, params);
+    const { pattern, updatedNodes, record } = storePattern(
+      content, 
+      nodes, 
+      pulsars, 
+      simulationTime, 
+      params
+    );
     setNodes(updatedNodes);
     setPatterns(prev => [...prev, pattern]);
+    setHolographicRecords(prev => [...prev, record]);
     
     return pattern;
-  }, [nodes]);
+  }, [nodes, pulsars, simulationTime]);
   
-  // Query content
+  // Query content using holographic reconstruction
   const query = useCallback((content: string) => {
     const params: QueryParams = {
       content,
@@ -142,7 +152,7 @@ export function useCosmicHolographic() {
       requireSync: syncState.isSynchronized
     };
     
-    const results = queryPatterns(patterns, nodes, params);
+    const results = queryPatterns(patterns, nodes, pulsars, simulationTime, params);
     setQueryResults(results);
     
     if (results.length > 0) {
@@ -156,7 +166,7 @@ export function useCosmicHolographic() {
     }
     
     return results;
-  }, [patterns, nodes, syncState]);
+  }, [patterns, nodes, pulsars, simulationTime, syncState]);
   
   // Select node
   const selectNode = useCallback((nodeId: string | null) => {
@@ -187,6 +197,8 @@ export function useCosmicHolographic() {
     time,
     isRunning,
     selectedPreset,
+    simulationTime,
+    holographicRecords,
     
     // Actions
     loadPreset,
