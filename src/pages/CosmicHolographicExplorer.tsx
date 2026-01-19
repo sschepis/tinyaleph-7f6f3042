@@ -18,6 +18,7 @@ import { GalaxyVisualization } from '@/components/cosmic-holographic/GalaxyVisua
 import { RegionStatsPanel } from '@/components/cosmic-holographic/RegionStatsPanel';
 import { PatternListPanel } from '@/components/cosmic-holographic/PatternListPanel';
 import { StoreMemoryPanel } from '@/components/cosmic-holographic/StoreMemoryPanel';
+import { PulsarTimingPanel } from '@/components/cosmic-holographic/PulsarTimingPanel';
 
 const CosmicHolographicExplorer = () => {
   const {
@@ -123,31 +124,10 @@ const CosmicHolographicExplorer = () => {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="py-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Radio className="w-4 h-4" /> Pulsar Sync
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm pt-0">
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Active Pulsars</span>
-                  <span>{pulsars.length}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Sync Quality</span>
-                  <span className={syncState.isSynchronized ? 'text-green-500' : 'text-yellow-500'}>
-                    {(syncState.syncQuality * 100).toFixed(1)}%
-                  </span>
-                </div>
-                <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-primary"
-                    animate={{ width: `${syncState.syncQuality * 100}%` }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+            <PulsarTimingPanel 
+              pulsars={pulsars} 
+              syncQuality={syncState.syncQuality} 
+            />
           </div>
 
           {/* Center - 3D Visualization */}
