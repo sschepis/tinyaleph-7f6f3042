@@ -21,11 +21,13 @@ import {
   calculateMetrics,
   COSMIC_PRESETS,
   initializeFromPreset,
-  reconstructFromRecord
+  reconstructFromRecord,
+  refreshHolographicRecord
 } from '@/lib/cosmic-holographic/engine';
 import {
   saveHolographicRecord,
-  loadHolographicRecords
+  loadHolographicRecords,
+  updateHolographicRecord
 } from '@/lib/cosmic-holographic/persistence';
 import { toast } from 'sonner';
 
@@ -206,6 +208,62 @@ export function useCosmicHolographic() {
     return results;
   }, [patterns, nodes, pulsars, simulationTime, syncState]);
   
+  // Refresh encoding for a record (re-encode at current phases to reset fidelity)
+  const refreshEncoding = useCallback(async (recordId: string) => {
+    const preset = COSMIC_PRESETS[selectedPreset];
+    const recordToRefresh = holographicRecords.find(r => r.id === recordId);
+    
+    if (!recordToRefresh) {
+      toast.error('Record not found');
+      return null;
+    }
+    
+    // Create refreshed record with current pulsar phases
+    const refreshedRecord = refreshHolographicRecord(recordToRefresh, pulsars, simulationTime);
+    
+    // Update local state
+    setHolographicRecords(prev => 
+      prev.map(r => r.id === recordId ? refreshedRecord : r)
+    );
+    
+    // Update patterns with new record reference
+    setPatterns(prev => prev.map(p => 
+      p.holographicRecord?.id === recordId 
+        ? { ...p, holographicRecord: refreshedRecord }
+        : p
+    ));
+    
+    // Persist to database
+    const { success, error } = await updateHolographicRecord(recordId, refreshedRecord, preset?.name);
+    if (success) {
+      toast.success('Encoding refreshed - fidelity restored');
+    } else {
+      console.warn('Failed to persist refreshed record:', error);
+      toast.warning('Encoding refreshed locally (persistence failed)');
+    }
+    
+    return refreshedRecord;
+  }, [holographicRecords, pulsars, simulationTime, selectedPreset]);
+  
+  // Refresh all critical records (fidelity below threshold)
+  const refreshAllCritical = useCallback(async (threshold: number = 0.5) => {
+    const criticalRecords = holographicRecords.filter(record => {
+      const reconstruction = reconstructFromRecord(record, pulsars, simulationTime);
+      return reconstruction.fidelity < threshold;
+    });
+    
+    if (criticalRecords.length === 0) {
+      toast.info('No critical records to refresh');
+      return;
+    }
+    
+    for (const record of criticalRecords) {
+      await refreshEncoding(record.id);
+    }
+    
+    toast.success(`Refreshed ${criticalRecords.length} critical record(s)`);
+  }, [holographicRecords, pulsars, simulationTime, refreshEncoding]);
+  
   // Select node
   const selectNode = useCallback((nodeId: string | null) => {
     setSelectedNode(nodeId);
@@ -245,6 +303,8 @@ export function useCosmicHolographic() {
     selectNode,
     setMode,
     toggleRunning,
+    refreshEncoding,
+    refreshAllCritical,
     
     // Constants
     presets: COSMIC_PRESETS

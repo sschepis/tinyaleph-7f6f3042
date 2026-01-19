@@ -140,6 +140,34 @@ export async function deleteHolographicRecord(
 }
 
 /**
+ * Update a holographic record in the database (for refresh encoding)
+ */
+export async function updateHolographicRecord(
+  recordId: string,
+  record: HolographicRecord,
+  presetName?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const dbRecord = toDbRecord(record, presetName);
+    
+    const { error } = await supabase
+      .from('holographic_records')
+      .update(dbRecord)
+      .eq('id', recordId);
+    
+    if (error) {
+      console.error('Failed to update holographic record:', error);
+      return { success: false, error: error.message };
+    }
+    
+    return { success: true };
+  } catch (err) {
+    console.error('Exception updating holographic record:', err);
+    return { success: false, error: String(err) };
+  }
+}
+
+/**
  * Delete all holographic records for a preset
  */
 export async function clearPresetRecords(
