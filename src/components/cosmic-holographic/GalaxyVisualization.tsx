@@ -54,24 +54,24 @@ function AnimatedPulsar({ pulsar }: { pulsar: PulsarReference }) {
       
       {/* Pulse ring 1 */}
       <mesh ref={ring1Ref} rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.3, 0.35, 32]} />
+        <ringGeometry args={[0.4, 0.5, 32]} />
         <meshBasicMaterial 
           ref={mat1Ref}
           color={color} 
           transparent 
-          opacity={0.5}
+          opacity={0.7}
           side={THREE.DoubleSide}
         />
       </mesh>
       
       {/* Pulse ring 2 */}
       <mesh ref={ring2Ref} rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.3, 0.35, 32]} />
+        <ringGeometry args={[0.4, 0.5, 32]} />
         <meshBasicMaterial 
           ref={mat2Ref}
           color={color} 
           transparent 
-          opacity={0.5}
+          opacity={0.7}
           side={THREE.DoubleSide}
         />
       </mesh>
@@ -123,10 +123,10 @@ function PatternConnections({
           <Line
             key={i}
             points={points}
-            color={isHighlighted ? '#00ff88' : '#4444ff'}
-            lineWidth={isHighlighted ? 2 : 1}
+            color={isHighlighted ? '#00ff88' : '#66aaff'}
+            lineWidth={isHighlighted ? 4 : 2}
             transparent
-            opacity={isHighlighted ? 0.8 : 0.2}
+            opacity={isHighlighted ? 1 : 0.6}
           />
         );
       })}
@@ -146,11 +146,11 @@ function LightTimeRings({ show }: { show: boolean }) {
     <group position={SUN_POSITION}>
       {distances.map((dist, i) => (
         <mesh key={i} rotation={[Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[dist - 0.02, dist + 0.02, 64]} />
+          <ringGeometry args={[dist - 0.08, dist + 0.08, 64]} />
           <meshBasicMaterial 
-            color="#884400" 
+            color="#ffaa44" 
             transparent 
-            opacity={0.15}
+            opacity={0.5}
             side={THREE.DoubleSide}
           />
         </mesh>
