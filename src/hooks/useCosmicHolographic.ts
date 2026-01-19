@@ -66,13 +66,19 @@ export function useCosmicHolographic() {
     loadPreset(1);
   }, []);
   
-  // Animation loop
+  // Animation loop with simulation time tracking
+  const [simulationTime, setSimulationTime] = useState(0);
+  
   useEffect(() => {
     if (!isRunning) return;
     
     const tick = () => {
       setNodes(prev => evolveNodes(prev, DT));
-      setPulsars(prev => evolvePulsars(prev, DT));
+      setSimulationTime(t => {
+        const newTime = t + DT;
+        setPulsars(prev => evolvePulsars(prev, DT, newTime));
+        return newTime;
+      });
       setTime(t => t + DT);
       animationRef.current = window.setTimeout(tick, TICK_RATE);
     };

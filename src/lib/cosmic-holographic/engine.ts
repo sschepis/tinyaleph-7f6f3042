@@ -139,12 +139,22 @@ export function evolveNodes(nodes: MemoryNode[], dt: number): MemoryNode[] {
   }));
 }
 
-// Evolve pulsar phases
-export function evolvePulsars(pulsars: PulsarReference[], dt: number): PulsarReference[] {
-  return pulsars.map(pulsar => ({
-    ...pulsar,
-    phase: (pulsar.phase + (2 * Math.PI / pulsar.period) * dt) % (Math.PI * 2)
-  }));
+// Evolve pulsar phases using real timing data (phase-locked loop)
+export function evolvePulsars(pulsars: PulsarReference[], dt: number, simulationTime: number): PulsarReference[] {
+  return pulsars.map(pulsar => {
+    // If we have real timing data, use phase-locked calculation
+    if (pulsar.periodSeconds && pulsar.epoch !== undefined && pulsar.phase0 !== undefined) {
+      return {
+        ...pulsar,
+        phase: calculatePulsarPhase(pulsar.periodSeconds, pulsar.phase0, pulsar.epoch, simulationTime)
+      };
+    }
+    // Fallback to simple phase evolution
+    return {
+      ...pulsar,
+      phase: (pulsar.phase + (2 * Math.PI / pulsar.period) * dt) % (Math.PI * 2)
+    };
+  });
 }
 
 // Calculate sync state from pulsars
@@ -395,14 +405,43 @@ export function calculateMetrics(
   };
 }
 
-// Convert catalog pulsar to cosmic holographic format
-function catalogPulsarToReference(pulsar: typeof PULSAR_CATALOG[0], isRef: boolean = false): Omit<PulsarReference, 'phase'> {
+// MJD epoch reference (Jan 1, 2020 = MJD 58849)
+const REFERENCE_EPOCH_MJD = 58000; // Common epoch for all catalog pulsars
+const SECONDS_PER_DAY = 86400;
+
+// Calculate pulsar phase at a given time offset (in seconds) from reference epoch
+export function calculatePulsarPhase(
+  period: number,      // seconds
+  phase0: number,      // radians at epoch
+  epoch: number,       // MJD
+  timeOffset: number   // seconds from simulation start
+): number {
+  // Days since pulsar's epoch
+  const daysSinceEpoch = (Date.now() / 1000 / SECONDS_PER_DAY) - epoch + 40587; // Unix to MJD offset
+  const secondsSinceEpoch = daysSinceEpoch * SECONDS_PER_DAY + timeOffset;
+  
+  // Number of complete rotations
+  const rotations = secondsSinceEpoch / period;
+  
+  // Current phase (radians, wrapped to 0-2π)
+  const phase = (phase0 + rotations * 2 * Math.PI) % (2 * Math.PI);
+  return phase >= 0 ? phase : phase + 2 * Math.PI;
+}
+
+// Convert catalog pulsar to cosmic holographic format with real timing
+function catalogPulsarToReference(
+  pulsar: typeof PULSAR_CATALOG[0], 
+  isRef: boolean = false
+): Omit<PulsarReference, 'phase'> & { epoch: number; phase0: number; periodSeconds: number } {
   const galPos = equatorialToGalactic(pulsar.ra, pulsar.dec, pulsar.distance);
   return {
     id: pulsar.name.toLowerCase().replace(/\s+/g, '-'),
     name: pulsar.name,
     position: [galPos.x, galPos.y, galPos.z] as [number, number, number],
-    period: pulsar.period * 1000, // Convert to ms
+    period: pulsar.period * 1000, // Display period in ms
+    periodSeconds: pulsar.period, // Actual period for phase calculation
+    epoch: pulsar.epoch,
+    phase0: pulsar.phase0,
     stability: pulsar.periodDot || 1e-15,
     isReference: isRef || pulsar.isReference
   };
@@ -489,7 +528,7 @@ function seededRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
-// Initialize from preset with deterministic phases
+// Initialize from preset with phase-locked pulsar timing
 export function initializeFromPreset(preset: CosmicPreset): {
   nodes: MemoryNode[];
   pulsars: PulsarReference[];
@@ -502,15 +541,30 @@ export function initializeFromPreset(preset: CosmicPreset): {
     phase: seededRandom(presetSeed + i) * Math.PI * 2
   }));
   
-  // Pulsars start synchronized (phase derived from their period ratio to reference)
-  const refPulsar = preset.pulsars.find(p => p.isReference) || preset.pulsars[0];
-  const pulsars = preset.pulsars.map((p, i) => {
-    // Start with high sync: phases proportional to period ratios
-    const basePhase = seededRandom(presetSeed + 1000 + i) * 0.1; // Small random offset (0-10% of cycle)
+  // Pulsars use real timing data - calculate current phase from epoch
+  const pulsars = preset.pulsars.map((p) => {
+    // Calculate the real current phase based on catalog timing data
+    const pulsarWithTiming = p as typeof p & { epoch?: number; phase0?: number; periodSeconds?: number };
+    
+    if (pulsarWithTiming.periodSeconds && pulsarWithTiming.epoch !== undefined) {
+      // Use real phase-locked timing
+      const currentPhase = calculatePulsarPhase(
+        pulsarWithTiming.periodSeconds,
+        pulsarWithTiming.phase0 || 0,
+        pulsarWithTiming.epoch,
+        0 // Initial simulation time
+      );
+      return {
+        ...p,
+        phase: currentPhase
+      } as PulsarReference;
+    }
+    
+    // Fallback for pulsars without full timing data
     return {
       ...p,
-      phase: basePhase
-    };
+      phase: 0
+    } as PulsarReference;
   });
   
   return { nodes, pulsars };
