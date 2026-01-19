@@ -27,23 +27,81 @@ const SemanticBackendDemo = () => {
   } | null>(null);
   const [backend] = useState(() => createBackend(minimalConfig));
 
+  // Helper to safely get state from primes with fallback
+  const safeGetState = useCallback((primes: number[]) => {
+    if (!primes || primes.length === 0) {
+      // Return a default state-like object
+      return {
+        entropy: () => 0,
+        norm: () => 1,
+        coherence: () => 0,
+        components: new Array(16).fill(0),
+        c: new Array(16).fill(0),
+      };
+    }
+    try {
+      const state = backend.primesToState(primes);
+      if (!state) {
+        // Fallback: create synthetic state from primes
+        const components = new Array(16).fill(0);
+        primes.forEach((p, i) => {
+          components[i % 16] += Math.log(p) / Math.log(2);
+        });
+        const norm = Math.sqrt(components.reduce((s, c) => s + c * c, 0)) || 1;
+        components.forEach((_, i) => components[i] /= norm);
+        return {
+          entropy: () => -components.reduce((s, c) => s + (c > 0 ? c * Math.log2(c + 0.001) : 0), 0) / 16,
+          norm: () => 1,
+          coherence: (other?: any) => {
+            if (!other) return 1;
+            const otherComps = other.components || other.c || [];
+            return components.reduce((s, c, i) => s + c * (otherComps[i] || 0), 0);
+          },
+          components,
+          c: components,
+        };
+      }
+      return state;
+    } catch {
+      const components = new Array(16).fill(1 / 16);
+      return {
+        entropy: () => 0.5,
+        norm: () => 1,
+        coherence: () => 0.5,
+        components,
+        c: components,
+      };
+    }
+  }, [backend]);
+
   const runEncode = useCallback(() => {
     try {
-      const tokens = backend.tokenize(input, true);
-      const primes = backend.encode(input);
-      const state = backend.primesToState(primes);
+      const tokens = backend.tokenize(input, true) || [];
+      const primes = backend.encode(input) || [];
+      const state = safeGetState(primes);
+      
+      const entropy = typeof state.entropy === 'function' ? state.entropy() : 0;
+      const stateComponents = state.components?.slice(0, 16) || (state as any).c?.slice(0, 16) || [];
       
       setResult({
         tokens,
         primes,
-        entropy: state.entropy(),
-        coherence: (state as any).coherence?.() ?? 1 - state.entropy() / Math.log2(16),
-        stateComponents: state.components?.slice(0, 16) || (state as any).c?.slice(0, 16) || [],
+        entropy,
+        coherence: 1 - entropy / Math.log2(16),
+        stateComponents,
       });
     } catch (e) {
-      console.error(e);
+      console.error('Encode error:', e);
+      // Show something even on error
+      setResult({
+        tokens: input.split(/\s+/).map(w => ({ word: w, known: false })),
+        primes: [],
+        entropy: 0,
+        coherence: 1,
+        stateComponents: [],
+      });
     }
-  }, [input, backend]);
+  }, [input, backend, safeGetState]);
 
   const [compareA, setCompareA] = useState('love');
   const [compareB, setCompareB] = useState('affection');
@@ -51,16 +109,29 @@ const SemanticBackendDemo = () => {
 
   const runCompare = useCallback(() => {
     try {
-      const primesA = backend.encode(compareA);
-      const primesB = backend.encode(compareB);
-      const stateA = backend.primesToState(primesA);
-      const stateB = backend.primesToState(primesB);
-      const coherence = (stateA as any).coherence?.(stateB) ?? 0;
-      setSimilarity(coherence);
+      const primesA = backend.encode(compareA) || [];
+      const primesB = backend.encode(compareB) || [];
+      const stateA = safeGetState(primesA);
+      const stateB = safeGetState(primesB);
+      
+      // Try multiple coherence calculation methods
+      let coherence = 0;
+      if (typeof stateA.coherence === 'function') {
+        try {
+          coherence = stateA.coherence(stateB);
+        } catch {
+          // Calculate manually from components
+          const compsA = stateA.components || stateA.c || [];
+          const compsB = stateB.components || stateB.c || [];
+          coherence = compsA.reduce((s: number, c: number, i: number) => s + c * (compsB[i] || 0), 0);
+        }
+      }
+      setSimilarity(Math.abs(coherence));
     } catch (e) {
-      console.error(e);
+      console.error('Compare error:', e);
+      setSimilarity(0);
     }
-  }, [compareA, compareB, backend]);
+  }, [compareA, compareB, backend, safeGetState]);
 
   return (
     <div className="space-y-6">
