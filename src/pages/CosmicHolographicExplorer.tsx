@@ -1,66 +1,23 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Pause, Database, Search, Radio, Globe, HelpCircle } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Play, Pause, Search, Radio, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Stars } from '@react-three/drei';
 import { useCosmicHolographic } from '@/hooks/useCosmicHolographic';
 import { AppHelpDialog, HelpButton } from '@/components/app-help';
 import { helpSteps } from '@/components/cosmic-holographic/HelpContent';
 import { useFirstRun } from '@/hooks/useFirstRun';
-
-// 3D Galaxy visualization
-function GalaxyViz({ nodes, pulsars, selectedNode, onSelectNode }: any) {
-  return (
-    <>
-      <ambientLight intensity={0.3} />
-      <pointLight position={[0, 0, 0]} intensity={2} color="#ffd700" />
-      <Stars radius={50} depth={50} count={2000} factor={2} />
-      
-      {/* Galactic center */}
-      <mesh position={[0, 0, 0]}>
-        <sphereGeometry args={[0.3, 16, 16]} />
-        <meshStandardMaterial color="#ffd700" emissive="#ff8800" emissiveIntensity={0.5} />
-      </mesh>
-      
-      {/* Memory nodes */}
-      {nodes.map((node: any) => (
-        <mesh
-          key={node.id}
-          position={node.position}
-          onClick={() => onSelectNode(node.id)}
-        >
-          <sphereGeometry args={[0.1 + node.capacity * 0.00005, 8, 8]} />
-          <meshStandardMaterial
-            color={node.id === selectedNode ? '#00ff88' : node.type === 'pulsar' ? '#00ffff' : '#8888ff'}
-            emissive={node.id === selectedNode ? '#00ff88' : '#4444ff'}
-            emissiveIntensity={node.coherence * 0.5}
-          />
-        </mesh>
-      ))}
-      
-      {/* Pulsars */}
-      {pulsars.map((pulsar: any) => (
-        <mesh key={pulsar.id} position={pulsar.position}>
-          <octahedronGeometry args={[0.15]} />
-          <meshStandardMaterial
-            color={pulsar.isReference ? '#ffff00' : '#00ffff'}
-            emissive={pulsar.isReference ? '#ffff00' : '#00ffff'}
-            emissiveIntensity={0.8}
-          />
-        </mesh>
-      ))}
-      
-      <OrbitControls enablePan enableZoom enableRotate />
-    </>
-  );
-}
+import { GalaxyVisualization } from '@/components/cosmic-holographic/GalaxyVisualization';
+import { RegionStatsPanel } from '@/components/cosmic-holographic/RegionStatsPanel';
+import { PatternListPanel } from '@/components/cosmic-holographic/PatternListPanel';
+import { StoreMemoryPanel } from '@/components/cosmic-holographic/StoreMemoryPanel';
 
 const CosmicHolographicExplorer = () => {
   const {
@@ -72,8 +29,10 @@ const CosmicHolographicExplorer = () => {
 
   const [isFirstRun, markAsSeen] = useFirstRun('cosmic-holographic-explorer');
   const [helpOpen, setHelpOpen] = useState(isFirstRun);
-  const [storeInput, setStoreInput] = useState('');
   const [queryInput, setQueryInput] = useState('');
+  const [highlightedPattern, setHighlightedPattern] = useState<string | null>(null);
+  const [showLabels, setShowLabels] = useState(false);
+  const [showLightTimeRings, setShowLightTimeRings] = useState(true);
 
   return (
     <Layout>
@@ -82,14 +41,30 @@ const CosmicHolographicExplorer = () => {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
-              <Globe className="w-6 h-6 text-primary" />
+              <Radio className="w-6 h-6 text-primary" />
             </div>
             <div>
               <h1 className="text-xl font-bold">Cosmic Holographic Explorer</h1>
-              <p className="text-xs text-muted-foreground">Galactic-scale holographic memory</p>
+              <p className="text-xs text-muted-foreground">Galactic-scale holographic memory network</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Switch 
+                id="labels" 
+                checked={showLabels} 
+                onCheckedChange={setShowLabels}
+              />
+              <Label htmlFor="labels" className="text-xs">Labels</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch 
+                id="light-rings" 
+                checked={showLightTimeRings} 
+                onCheckedChange={setShowLightTimeRings}
+              />
+              <Label htmlFor="light-rings" className="text-xs">Light-time</Label>
+            </div>
             <Badge variant={syncState.isSynchronized ? 'default' : 'secondary'}>
               Sync: {(syncState.syncQuality * 100).toFixed(0)}%
             </Badge>
@@ -102,12 +77,12 @@ const CosmicHolographicExplorer = () => {
 
         <div className="grid grid-cols-12 gap-4">
           {/* Left Panel */}
-          <div className="col-span-3 space-y-4">
+          <div className="col-span-3 space-y-3">
             <Card>
-              <CardHeader className="py-3">
+              <CardHeader className="py-2">
                 <CardTitle className="text-sm">Network Preset</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-0">
                 <Select value={String(selectedPreset)} onValueChange={v => loadPreset(Number(v))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -119,39 +94,23 @@ const CosmicHolographicExplorer = () => {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="py-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Database className="w-4 h-4" /> Store Memory
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Input
-                  placeholder="Enter content to store..."
-                  value={storeInput}
-                  onChange={e => setStoreInput(e.target.value)}
-                />
-                <Button
-                  className="w-full"
-                  onClick={() => { store(storeInput); setStoreInput(''); }}
-                  disabled={!storeInput}
-                >
-                  Store Pattern
-                </Button>
-              </CardContent>
-            </Card>
+            <StoreMemoryPanel 
+              onStore={store} 
+              maxNodes={nodes.length} 
+            />
 
             <Card>
-              <CardHeader className="py-3">
+              <CardHeader className="py-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Search className="w-4 h-4" /> Query Memory
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-2 pt-0">
                 <Input
                   placeholder="Search for content..."
                   value={queryInput}
                   onChange={e => setQueryInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && query(queryInput)}
                 />
                 <Button
                   className="w-full"
@@ -165,23 +124,23 @@ const CosmicHolographicExplorer = () => {
             </Card>
 
             <Card>
-              <CardHeader className="py-3">
+              <CardHeader className="py-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Radio className="w-4 h-4" /> Pulsar Sync
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <div className="flex justify-between">
+              <CardContent className="space-y-2 text-sm pt-0">
+                <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">Active Pulsars</span>
                   <span>{pulsars.length}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">Sync Quality</span>
                   <span className={syncState.isSynchronized ? 'text-green-500' : 'text-yellow-500'}>
                     {(syncState.syncQuality * 100).toFixed(1)}%
                   </span>
                 </div>
-                <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
+                <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
                   <motion.div
                     className="h-full bg-primary"
                     animate={{ width: `${syncState.syncQuality * 100}%` }}
@@ -193,17 +152,34 @@ const CosmicHolographicExplorer = () => {
 
           {/* Center - 3D Visualization */}
           <div className="col-span-6">
-            <Card className="h-[500px]">
+            <Card className="h-[520px]">
               <CardHeader className="py-2">
-                <CardTitle className="text-sm">Galactic Memory Network</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm">Galactic Memory Network</CardTitle>
+                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-yellow-500" /> Reference
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-cyan-500" /> Pulsar
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-orange-500" /> Highlighted
+                    </span>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="h-[calc(100%-48px)] p-0">
                 <Canvas camera={{ position: [15, 10, 15], fov: 60 }}>
-                  <GalaxyViz
+                  <GalaxyVisualization
                     nodes={nodes}
+                    patterns={patterns}
                     pulsars={pulsars}
                     selectedNode={selectedNode}
+                    highlightedPattern={highlightedPattern}
                     onSelectNode={selectNode}
+                    showLabels={showLabels}
+                    showLightTimeRings={showLightTimeRings}
                   />
                 </Canvas>
               </CardContent>
@@ -211,12 +187,12 @@ const CosmicHolographicExplorer = () => {
           </div>
 
           {/* Right Panel */}
-          <div className="col-span-3 space-y-4">
+          <div className="col-span-3 space-y-3">
             <Card>
-              <CardHeader className="py-3">
+              <CardHeader className="py-2">
                 <CardTitle className="text-sm">System Metrics</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 text-sm">
+              <CardContent className="space-y-1.5 text-xs pt-0">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total Nodes</span>
                   <span>{metrics.totalNodes}</span>
@@ -236,13 +212,15 @@ const CosmicHolographicExplorer = () => {
               </CardContent>
             </Card>
 
+            <RegionStatsPanel regions={regions} />
+
             {selectedNodeData && (
               <Card>
-                <CardHeader className="py-3">
+                <CardHeader className="py-2">
                   <CardTitle className="text-sm">Selected: {selectedNodeData.name}</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  <Badge>{selectedNodeData.type}</Badge>
+                <CardContent className="space-y-2 text-xs pt-0">
+                  <Badge variant="outline">{selectedNodeData.type}</Badge>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Capacity</span>
                     <span>{selectedNodeData.capacity}</span>
@@ -251,29 +229,43 @@ const CosmicHolographicExplorer = () => {
                     <span className="text-muted-foreground">Coherence</span>
                     <span>{(selectedNodeData.coherence * 100).toFixed(1)}%</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Stored</span>
+                    <span>{selectedNodeData.stored} patterns</span>
+                  </div>
                 </CardContent>
               </Card>
             )}
 
+            <PatternListPanel
+              patterns={patterns}
+              highlightedPattern={highlightedPattern}
+              onHighlightPattern={setHighlightedPattern}
+            />
+
             <Card>
-              <CardHeader className="py-3">
+              <CardHeader className="py-2">
                 <CardTitle className="text-sm">Query Results</CardTitle>
               </CardHeader>
-              <CardContent className="max-h-[200px] overflow-y-auto">
+              <CardContent className="max-h-[150px] overflow-y-auto pt-0">
                 {queryResults.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {queryResults.map((r, i) => (
-                      <div key={i} className="p-2 bg-secondary/50 rounded text-xs">
+                      <button
+                        key={i}
+                        onClick={() => setHighlightedPattern(r.pattern.id)}
+                        className="w-full text-left p-2 bg-secondary/50 hover:bg-secondary/70 rounded text-xs transition-colors"
+                      >
                         <div className="font-medium truncate">{r.pattern.content}</div>
                         <div className="flex justify-between mt-1 text-muted-foreground">
                           <span>Sim: {(r.similarity * 100).toFixed(0)}%</span>
                           <span>{r.latency.toFixed(0)} ly</span>
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground text-center py-4">No results</p>
+                  <p className="text-xs text-muted-foreground text-center py-3">No results</p>
                 )}
               </CardContent>
             </Card>
