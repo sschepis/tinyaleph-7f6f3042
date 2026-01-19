@@ -2,7 +2,8 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars, Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
-import { MemoryNode, MemoryPattern, PulsarReference } from '@/lib/cosmic-holographic/types';
+import { MemoryNode, MemoryPattern, PulsarReference, HolographicRecord } from '@/lib/cosmic-holographic/types';
+import { reconstructFromRecord } from '@/lib/cosmic-holographic/engine';
 
 interface GalaxyVisualizationProps {
   nodes: MemoryNode[];
@@ -13,6 +14,8 @@ interface GalaxyVisualizationProps {
   onSelectNode: (nodeId: string) => void;
   showLabels?: boolean;
   showLightTimeRings?: boolean;
+  holographicRecords?: HolographicRecord[];
+  simulationTime?: number;
 }
 
 // Pulsar with animated pulse rings
@@ -164,21 +167,35 @@ function isSolNode(node: MemoryNode): boolean {
   return node.id === 'sol' || node.name.toLowerCase() === 'sol' || node.name.toLowerCase().includes('earth');
 }
 
-// Memory node with optional label
+// Memory node with optional label and fidelity glow
 function MemoryNodeMesh({ 
   node, 
   isSelected,
   isHighlighted,
   showLabel,
+  fidelity,
   onClick 
 }: { 
   node: MemoryNode;
   isSelected: boolean;
   isHighlighted: boolean;
   showLabel: boolean;
+  fidelity: number; // 0-1, affects glow intensity
   onClick: () => void;
 }) {
+  const glowRef = useRef<THREE.Mesh>(null);
   const isSol = isSolNode(node);
+  
+  // Animate glow based on fidelity
+  useFrame((_, delta) => {
+    if (glowRef.current && fidelity < 1) {
+      const material = glowRef.current.material as THREE.MeshBasicMaterial;
+      // Pulse faster as fidelity decreases
+      const pulseSpeed = 2 + (1 - fidelity) * 4;
+      const pulse = Math.sin(Date.now() * pulseSpeed * 0.001) * 0.5 + 0.5;
+      material.opacity = fidelity * 0.3 + pulse * (1 - fidelity) * 0.4;
+    }
+  });
   
   const getColor = () => {
     if (isSol) return '#00ff00'; // Bright green for Sol/Earth
@@ -190,18 +207,39 @@ function MemoryNodeMesh({
     if (node.type === 'artificial') return '#ffffff';
     return '#8888ff';
   };
+  
+  // Fidelity-based glow color: green (high) -> yellow -> red (low)
+  const getFidelityGlowColor = () => {
+    if (fidelity >= 0.8) return '#00ff88';
+    if (fidelity >= 0.5) return '#ffaa00';
+    return '#ff4444';
+  };
 
   const color = getColor();
   const size = isSol ? 0.25 : 0.1 + node.capacity * 0.00005;
+  const hasStoredPatterns = fidelity < 1; // fidelity = 1 means no patterns stored
   
   return (
     <group position={node.position}>
+      {/* Fidelity glow ring (only for nodes with stored patterns) */}
+      {hasStoredPatterns && (
+        <mesh ref={glowRef} rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[size + 0.1, size + 0.25, 32]} />
+          <meshBasicMaterial 
+            color={getFidelityGlowColor()} 
+            transparent 
+            opacity={fidelity * 0.5}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      )}
+      
       <mesh onClick={(e) => { e.stopPropagation(); onClick(); }}>
         <sphereGeometry args={[size, isSol ? 16 : 8, isSol ? 16 : 8]} />
         <meshStandardMaterial
           color={color}
-          emissive={color}
-          emissiveIntensity={isSol ? 1.0 : node.coherence * 0.5 + (isHighlighted ? 0.3 : 0)}
+          emissive={hasStoredPatterns ? getFidelityGlowColor() : color}
+          emissiveIntensity={isSol ? 1.0 : hasStoredPatterns ? fidelity * 0.8 : node.coherence * 0.5 + (isHighlighted ? 0.3 : 0)}
         />
       </mesh>
       
@@ -222,6 +260,11 @@ function MemoryNodeMesh({
               : 'bg-background/80 text-foreground'
           }`}>
             {isSol ? '🌍 Sol (Earth)' : node.name}
+            {hasStoredPatterns && !isSol && (
+              <span className={`ml-1 ${fidelity >= 0.8 ? 'text-green-400' : fidelity >= 0.5 ? 'text-yellow-400' : 'text-red-400'}`}>
+                ({(fidelity * 100).toFixed(0)}%)
+              </span>
+            )}
           </div>
         </Html>
       )}
@@ -237,7 +280,9 @@ export function GalaxyVisualization({
   highlightedPattern,
   onSelectNode,
   showLabels = false,
-  showLightTimeRings = true
+  showLightTimeRings = true,
+  holographicRecords = [],
+  simulationTime = 0
 }: GalaxyVisualizationProps) {
   // Find nodes that are part of the highlighted pattern
   const highlightedNodeIds = useMemo(() => {
@@ -245,6 +290,33 @@ export function GalaxyVisualization({
     const pattern = patterns.find(p => p.id === highlightedPattern);
     return new Set(pattern?.storedAt || []);
   }, [patterns, highlightedPattern]);
+
+  // Calculate fidelity per node based on stored patterns
+  const nodeFidelities = useMemo(() => {
+    const fidelities: Record<string, number> = {};
+    
+    if (holographicRecords.length === 0 || pulsars.length === 0) {
+      return fidelities;
+    }
+    
+    // Group records by node (using storedAt from patterns)
+    for (const pattern of patterns) {
+      if (!pattern.holographicRecord) continue;
+      
+      const reconstruction = reconstructFromRecord(pattern.holographicRecord, pulsars, simulationTime);
+      
+      for (const nodeId of pattern.storedAt) {
+        if (fidelities[nodeId] === undefined) {
+          fidelities[nodeId] = reconstruction.fidelity;
+        } else {
+          // Average if multiple patterns on same node
+          fidelities[nodeId] = (fidelities[nodeId] + reconstruction.fidelity) / 2;
+        }
+      }
+    }
+    
+    return fidelities;
+  }, [patterns, holographicRecords, pulsars, simulationTime]);
 
   return (
     <>
@@ -276,6 +348,7 @@ export function GalaxyVisualization({
           isSelected={node.id === selectedNode}
           isHighlighted={highlightedNodeIds.has(node.id)}
           showLabel={showLabels}
+          fidelity={nodeFidelities[node.id] ?? 1}
           onClick={() => onSelectNode(node.id)}
         />
       ))}
