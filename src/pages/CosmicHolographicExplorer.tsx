@@ -26,7 +26,8 @@ const CosmicHolographicExplorer = () => {
     selectedNode, selectedNodeData, activeQuery, queryResults,
     mode, time, isRunning, selectedPreset, presets, simulationTime,
     holographicRecords,
-    loadPreset, store, query, selectNode, setMode, toggleRunning
+    loadPreset, store, query, selectNode, setMode, toggleRunning,
+    refreshEncoding, refreshAllCritical
   } = useCosmicHolographic();
 
   const [isFirstRun, markAsSeen] = useFirstRun('cosmic-holographic-explorer');
@@ -203,6 +204,8 @@ const CosmicHolographicExplorer = () => {
               pulsars={pulsars}
               simulationTime={simulationTime}
               isRunning={isRunning}
+              onRefreshEncoding={refreshEncoding}
+              onRefreshAllCritical={refreshAllCritical}
             />
 
             <RegionStatsPanel regions={regions} />

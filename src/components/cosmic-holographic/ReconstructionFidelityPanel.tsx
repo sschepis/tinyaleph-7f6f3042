@@ -1,16 +1,20 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Activity, Clock, Waves, Zap, AlertTriangle, TrendingDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Activity, Clock, Waves, Zap, AlertTriangle, TrendingDown, RefreshCw, Volume2, VolumeX } from 'lucide-react';
 import { HolographicRecord, PulsarReference, ReconstructedPattern } from '@/lib/cosmic-holographic/types';
 import { reconstructFromRecord } from '@/lib/cosmic-holographic/engine';
+import { toast } from 'sonner';
 
 interface ReconstructionFidelityPanelProps {
   holographicRecords: HolographicRecord[];
   pulsars: PulsarReference[];
   simulationTime: number;
   isRunning: boolean;
+  onRefreshEncoding?: (recordId: string) => Promise<HolographicRecord | null>;
+  onRefreshAllCritical?: (threshold?: number) => Promise<void>;
 }
 
 interface RecordFidelity {
@@ -38,8 +42,7 @@ function estimateTimeToThreshold(
   if (driftRate <= 0 || currentFidelity <= threshold) return null;
   
   // Simple linear model: fidelity decreases proportionally to phase error
-  // More accurate would need the full fidelity function, but this gives rough estimate
-  const fidelityLossRate = driftRate * 0.1; // Approximate fidelity drop per phase drift
+  const fidelityLossRate = driftRate * 0.1;
   if (fidelityLossRate <= 0) return null;
   
   const fidelityToLose = currentFidelity - threshold;
@@ -48,12 +51,67 @@ function estimateTimeToThreshold(
   return estimatedTime > 0 ? estimatedTime : null;
 }
 
+// Alert tone generator using Web Audio API
+function playAlertTone(type: 'warning' | 'critical' | 'loss') {
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    // Different tones for different alert levels
+    switch (type) {
+      case 'warning':
+        oscillator.frequency.value = 440; // A4
+        oscillator.type = 'sine';
+        gainNode.gain.value = 0.1;
+        break;
+      case 'critical':
+        oscillator.frequency.value = 880; // A5
+        oscillator.type = 'triangle';
+        gainNode.gain.value = 0.15;
+        break;
+      case 'loss':
+        oscillator.frequency.value = 220; // A3
+        oscillator.type = 'sawtooth';
+        gainNode.gain.value = 0.2;
+        break;
+    }
+    
+    // Envelope
+    const now = audioContext.currentTime;
+    gainNode.gain.setValueAtTime(0, now);
+    gainNode.gain.linearRampToValueAtTime(gainNode.gain.value, now + 0.05);
+    gainNode.gain.linearRampToValueAtTime(0, now + 0.3);
+    
+    oscillator.start(now);
+    oscillator.stop(now + 0.3);
+    
+    // Cleanup
+    setTimeout(() => audioContext.close(), 500);
+  } catch (e) {
+    console.warn('Audio alert failed:', e);
+  }
+}
+
 export function ReconstructionFidelityPanel({
   holographicRecords,
   pulsars,
   simulationTime,
-  isRunning
+  isRunning,
+  onRefreshEncoding,
+  onRefreshAllCritical
 }: ReconstructionFidelityPanelProps) {
+  const [audioEnabled, setAudioEnabled] = useState(false);
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [refreshingAll, setRefreshingAll] = useState(false);
+  
+  // Track previous alert states to avoid repeat alerts
+  const prevAlertStatesRef = useRef<Map<string, 'ok' | 'warning' | 'critical' | 'loss'>>(new Map());
+  const flashRef = useRef<HTMLDivElement>(null);
+  
   // Calculate real-time fidelity for all records with forecasting
   const fidelityData = useMemo(() => {
     if (holographicRecords.length === 0 || pulsars.length === 0) return [];
@@ -65,7 +123,6 @@ export function ReconstructionFidelityPanel({
         ? reconstruction.phaseError / timeSinceStorage 
         : 0;
       
-      // Forecast when thresholds will be crossed
       const currentFidelity = reconstruction.fidelity;
       const timeToWarning = estimateTimeToThreshold(currentFidelity, phaseDriftRate, THRESHOLD_WARNING);
       const timeToCritical = estimateTimeToThreshold(currentFidelity, phaseDriftRate, THRESHOLD_CRITICAL);
@@ -83,7 +140,61 @@ export function ReconstructionFidelityPanel({
     }).sort((a, b) => b.timeSinceStorage - a.timeSinceStorage);
   }, [holographicRecords, pulsars, simulationTime]);
 
-  // Calculate aggregate metrics with forecasting
+  // Alert system for threshold crossings
+  useEffect(() => {
+    if (!isRunning || fidelityData.length === 0) return;
+    
+    for (const data of fidelityData) {
+      const { record, reconstruction } = data;
+      const fidelity = reconstruction.fidelity;
+      const prevState = prevAlertStatesRef.current.get(record.id) || 'ok';
+      
+      let newState: 'ok' | 'warning' | 'critical' | 'loss' = 'ok';
+      if (fidelity < THRESHOLD_LOSS) newState = 'loss';
+      else if (fidelity < THRESHOLD_CRITICAL) newState = 'critical';
+      else if (fidelity < THRESHOLD_WARNING) newState = 'warning';
+      
+      // Only alert on threshold crossing (state transition)
+      if (newState !== prevState && newState !== 'ok') {
+        // Visual flash
+        if (flashRef.current) {
+          flashRef.current.classList.remove('animate-pulse');
+          void flashRef.current.offsetWidth; // Trigger reflow
+          flashRef.current.classList.add('animate-pulse');
+        }
+        
+        // Toast notification
+        const hashSlice = record.contentHash.slice(0, 8);
+        switch (newState) {
+          case 'warning':
+            toast.warning(`Pattern #${hashSlice} below 80% fidelity`, {
+              description: 'Consider refreshing encoding',
+              duration: 3000
+            });
+            if (audioEnabled) playAlertTone('warning');
+            break;
+          case 'critical':
+            toast.error(`Pattern #${hashSlice} critical - below 50%`, {
+              description: 'Refresh encoding to prevent data loss',
+              duration: 5000
+            });
+            if (audioEnabled) playAlertTone('critical');
+            break;
+          case 'loss':
+            toast.error(`ALERT: Pattern #${hashSlice} near data loss!`, {
+              description: 'Fidelity below 20% - immediate action required',
+              duration: 8000
+            });
+            if (audioEnabled) playAlertTone('loss');
+            break;
+        }
+      }
+      
+      prevAlertStatesRef.current.set(record.id, newState);
+    }
+  }, [fidelityData, isRunning, audioEnabled]);
+
+  // Aggregate metrics
   const aggregateMetrics = useMemo(() => {
     if (fidelityData.length === 0) {
       return {
@@ -93,6 +204,7 @@ export function ReconstructionFidelityPanel({
         minFidelity: 0,
         criticalCount: 0,
         warningCount: 0,
+        lossCount: 0,
         nearestCritical: null as number | null,
         nearestLoss: null as number | null
       };
@@ -102,7 +214,6 @@ export function ReconstructionFidelityPanel({
     const phaseErrors = fidelityData.map(d => d.reconstruction.phaseError);
     const driftRates = fidelityData.map(d => d.phaseDriftRate);
     
-    // Find nearest time to critical/loss across all records
     const criticalTimes = fidelityData
       .map(d => d.timeToCritical)
       .filter((t): t is number => t !== null);
@@ -115,8 +226,9 @@ export function ReconstructionFidelityPanel({
       avgPhaseError: phaseErrors.reduce((s, v) => s + v, 0) / phaseErrors.length,
       avgDriftRate: driftRates.reduce((s, v) => s + v, 0) / driftRates.length,
       minFidelity: Math.min(...fidelities),
-      criticalCount: fidelities.filter(f => f < THRESHOLD_CRITICAL).length,
+      criticalCount: fidelities.filter(f => f < THRESHOLD_CRITICAL && f >= THRESHOLD_LOSS).length,
       warningCount: fidelities.filter(f => f < THRESHOLD_WARNING && f >= THRESHOLD_CRITICAL).length,
+      lossCount: fidelities.filter(f => f < THRESHOLD_LOSS).length,
       nearestCritical: criticalTimes.length > 0 ? Math.min(...criticalTimes) : null,
       nearestLoss: lossTimes.length > 0 ? Math.min(...lossTimes) : null
     };
@@ -125,7 +237,15 @@ export function ReconstructionFidelityPanel({
   const getFidelityColor = (fidelity: number) => {
     if (fidelity >= THRESHOLD_WARNING) return 'text-green-500';
     if (fidelity >= THRESHOLD_CRITICAL) return 'text-yellow-500';
+    if (fidelity >= THRESHOLD_LOSS) return 'text-orange-500';
     return 'text-red-500';
+  };
+  
+  const getFidelityBgClass = (fidelity: number) => {
+    if (fidelity >= THRESHOLD_WARNING) return '';
+    if (fidelity >= THRESHOLD_CRITICAL) return 'bg-yellow-500/10 border-yellow-500/30';
+    if (fidelity >= THRESHOLD_LOSS) return 'bg-orange-500/10 border-orange-500/30 animate-pulse';
+    return 'bg-red-500/20 border-red-500/50 animate-pulse';
   };
 
   const formatTimeEstimate = (time: number | null) => {
@@ -133,6 +253,20 @@ export function ReconstructionFidelityPanel({
     if (time < 10) return `${time.toFixed(1)}t`;
     if (time < 100) return `${time.toFixed(0)}t`;
     return `${(time / 100).toFixed(1)}×10²t`;
+  };
+
+  const handleRefresh = async (recordId: string) => {
+    if (!onRefreshEncoding) return;
+    setRefreshingId(recordId);
+    await onRefreshEncoding(recordId);
+    setRefreshingId(null);
+  };
+
+  const handleRefreshAllCritical = async () => {
+    if (!onRefreshAllCritical) return;
+    setRefreshingAll(true);
+    await onRefreshAllCritical(THRESHOLD_CRITICAL);
+    setRefreshingAll(false);
   };
 
   if (holographicRecords.length === 0) {
@@ -153,17 +287,39 @@ export function ReconstructionFidelityPanel({
   }
 
   return (
-    <Card>
+    <Card className="relative overflow-hidden">
+      {/* Visual alert flash overlay */}
+      <div 
+        ref={flashRef}
+        className="absolute inset-0 pointer-events-none bg-red-500/0 transition-colors"
+        style={{ animationDuration: '0.5s' }}
+      />
+      
       <CardHeader className="py-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm flex items-center gap-2">
             <Activity className="w-4 h-4" /> Reconstruction Fidelity
           </CardTitle>
-          {isRunning && (
-            <Badge variant="outline" className="text-[10px] animate-pulse">
-              LIVE
-            </Badge>
-          )}
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => setAudioEnabled(!audioEnabled)}
+              title={audioEnabled ? 'Mute alerts' : 'Enable audio alerts'}
+            >
+              {audioEnabled ? (
+                <Volume2 className="w-3 h-3" />
+              ) : (
+                <VolumeX className="w-3 h-3 text-muted-foreground" />
+              )}
+            </Button>
+            {isRunning && (
+              <Badge variant="outline" className="text-[10px] animate-pulse">
+                LIVE
+              </Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3 pt-0">
@@ -230,31 +386,64 @@ export function ReconstructionFidelityPanel({
               </Badge>
             )}
             {aggregateMetrics.criticalCount > 0 && (
+              <Badge variant="outline" className="text-[10px] text-orange-500 border-orange-500/50">
+                {aggregateMetrics.criticalCount} crit
+              </Badge>
+            )}
+            {aggregateMetrics.lossCount > 0 && (
               <Badge variant="destructive" className="text-[10px]">
                 <AlertTriangle className="w-2.5 h-2.5 mr-1" />
-                {aggregateMetrics.criticalCount}
+                {aggregateMetrics.lossCount}
               </Badge>
             )}
           </div>
         </div>
 
+        {/* Refresh All Critical Button */}
+        {(aggregateMetrics.criticalCount > 0 || aggregateMetrics.lossCount > 0) && onRefreshAllCritical && (
+          <Button
+            size="sm"
+            variant="destructive"
+            className="w-full text-xs"
+            onClick={handleRefreshAllCritical}
+            disabled={refreshingAll}
+          >
+            <RefreshCw className={`w-3 h-3 mr-1 ${refreshingAll ? 'animate-spin' : ''}`} />
+            {refreshingAll ? 'Refreshing...' : `Refresh ${aggregateMetrics.criticalCount + aggregateMetrics.lossCount} Critical Pattern(s)`}
+          </Button>
+        )}
+
         {/* Individual Records */}
-        <div className="max-h-[150px] overflow-y-auto space-y-2">
-          {fidelityData.slice(0, 4).map(({ record, reconstruction, timeSinceStorage, timeToCritical, timeToLoss }) => (
+        <div className="max-h-[180px] overflow-y-auto space-y-2">
+          {fidelityData.slice(0, 6).map(({ record, reconstruction, timeSinceStorage, timeToCritical }) => (
             <div 
               key={record.id} 
-              className="bg-secondary/20 p-2 rounded border border-border/50"
+              className={`bg-secondary/20 p-2 rounded border border-border/50 transition-colors ${getFidelityBgClass(reconstruction.fidelity)}`}
             >
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] text-muted-foreground font-mono">
                   #{record.contentHash.slice(0, 8)}
                 </span>
-                <Badge 
-                  variant="outline" 
-                  className={`text-[10px] ${getFidelityColor(reconstruction.fidelity)}`}
-                >
-                  {(reconstruction.fidelity * 100).toFixed(0)}%
-                </Badge>
+                <div className="flex items-center gap-1">
+                  <Badge 
+                    variant="outline" 
+                    className={`text-[10px] ${getFidelityColor(reconstruction.fidelity)}`}
+                  >
+                    {(reconstruction.fidelity * 100).toFixed(0)}%
+                  </Badge>
+                  {onRefreshEncoding && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5"
+                      onClick={() => handleRefresh(record.id)}
+                      disabled={refreshingId === record.id}
+                      title="Refresh encoding"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${refreshingId === record.id ? 'animate-spin' : ''}`} />
+                    </Button>
+                  )}
+                </div>
               </div>
               
               <Progress 
@@ -275,9 +464,9 @@ export function ReconstructionFidelityPanel({
           ))}
         </div>
 
-        {fidelityData.length > 4 && (
+        {fidelityData.length > 6 && (
           <p className="text-[10px] text-muted-foreground text-center">
-            +{fidelityData.length - 4} more records
+            +{fidelityData.length - 6} more records
           </p>
         )}
       </CardContent>
@@ -292,11 +481,9 @@ export function calculateNodeFidelity(
   pulsars: PulsarReference[],
   simulationTime: number
 ): number {
-  // Find records stored on this node
   const nodeRecords = holographicRecords.filter(r => r.pulsarIds.includes(nodeId));
   if (nodeRecords.length === 0 || pulsars.length === 0) return 1;
   
-  // Calculate average fidelity of patterns on this node
   const fidelities = nodeRecords.map(record => {
     const reconstruction = reconstructFromRecord(record, pulsars, simulationTime);
     return reconstruction.fidelity;

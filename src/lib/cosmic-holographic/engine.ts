@@ -232,6 +232,48 @@ export function verifyReconstruction(
   };
 }
 
+/**
+ * Refresh a holographic record by re-encoding at current pulsar phases
+ * This resets the phase snapshot to current state, restoring fidelity
+ */
+export function refreshHolographicRecord(
+  oldRecord: HolographicRecord,
+  pulsars: PulsarReference[],
+  currentSimulationTime: number
+): HolographicRecord {
+  // Create map of current pulsars
+  const pulsarMap = new Map(pulsars.map(p => [p.id, p]));
+  
+  // Capture current phase of each pulsar used in the record
+  const newPhaseSnapshot: Record<string, number> = {};
+  for (const pulsarId of oldRecord.pulsarIds) {
+    const pulsar = pulsarMap.get(pulsarId);
+    if (pulsar) {
+      newPhaseSnapshot[pulsarId] = pulsar.phase;
+    } else {
+      // If pulsar no longer exists, keep old phase
+      newPhaseSnapshot[pulsarId] = oldRecord.phaseSnapshot[pulsarId] || 0;
+    }
+  }
+  
+  // Calculate new coherence based on current pulsar stability
+  const selectedPulsars = oldRecord.pulsarIds
+    .map(id => pulsarMap.get(id))
+    .filter((p): p is PulsarReference => p !== undefined);
+  
+  const newCoherence = selectedPulsars.length > 0
+    ? selectedPulsars.reduce((s, p) => s + (1 - p.stability * 1e12), 0) / selectedPulsars.length
+    : oldRecord.coherenceAtStorage;
+  
+  return {
+    ...oldRecord,
+    phaseSnapshot: newPhaseSnapshot,
+    simulationTime: currentSimulationTime,
+    timestamp: Date.now(),
+    coherenceAtStorage: newCoherence
+  };
+}
+
 // ============================================================================
 // LEGACY SUPPORT: Pattern-based storage (wraps holographic records)
 // ============================================================================
