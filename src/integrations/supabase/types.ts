@@ -14,7 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      holographic_records: {
+        Row: {
+          amplitude_modulation: number[]
+          coherence_at_storage: number
+          content_hash: string
+          content_length: number
+          created_at: string
+          encoding_basis: string
+          id: string
+          phase_snapshot: Json
+          preset_name: string | null
+          pulsar_ids: string[]
+          redundancy: number
+          stored_at: number
+        }
+        Insert: {
+          amplitude_modulation: number[]
+          coherence_at_storage: number
+          content_hash: string
+          content_length: number
+          created_at?: string
+          encoding_basis: string
+          id?: string
+          phase_snapshot: Json
+          preset_name?: string | null
+          pulsar_ids: string[]
+          redundancy?: number
+          stored_at: number
+        }
+        Update: {
+          amplitude_modulation?: number[]
+          coherence_at_storage?: number
+          content_hash?: string
+          content_length?: number
+          created_at?: string
+          encoding_basis?: string
+          id?: string
+          phase_snapshot?: Json
+          preset_name?: string | null
+          pulsar_ids?: string[]
+          redundancy?: number
+          stored_at?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

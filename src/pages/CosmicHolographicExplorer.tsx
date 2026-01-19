@@ -7,8 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Play, Pause, Search, Radio, Eye, EyeOff } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Play, Pause, Search, Radio } from 'lucide-react';
 import { Canvas } from '@react-three/fiber';
 import { useCosmicHolographic } from '@/hooks/useCosmicHolographic';
 import { AppHelpDialog, HelpButton } from '@/components/app-help';
@@ -19,12 +18,14 @@ import { RegionStatsPanel } from '@/components/cosmic-holographic/RegionStatsPan
 import { PatternListPanel } from '@/components/cosmic-holographic/PatternListPanel';
 import { StoreMemoryPanel } from '@/components/cosmic-holographic/StoreMemoryPanel';
 import { PulsarTimingPanel } from '@/components/cosmic-holographic/PulsarTimingPanel';
+import { ReconstructionFidelityPanel } from '@/components/cosmic-holographic/ReconstructionFidelityPanel';
 
 const CosmicHolographicExplorer = () => {
   const {
     nodes, patterns, pulsars, syncState, regions, metrics,
     selectedNode, selectedNodeData, activeQuery, queryResults,
-    mode, time, isRunning, selectedPreset, presets,
+    mode, time, isRunning, selectedPreset, presets, simulationTime,
+    holographicRecords,
     loadPreset, store, query, selectNode, setMode, toggleRunning
   } = useCosmicHolographic();
 
@@ -194,6 +195,13 @@ const CosmicHolographicExplorer = () => {
                 </div>
               </CardContent>
             </Card>
+
+            <ReconstructionFidelityPanel
+              holographicRecords={holographicRecords}
+              pulsars={pulsars}
+              simulationTime={simulationTime}
+              isRunning={isRunning}
+            />
 
             <RegionStatsPanel regions={regions} />
 

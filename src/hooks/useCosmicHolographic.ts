@@ -20,8 +20,14 @@ import {
   calculateRegions,
   calculateMetrics,
   COSMIC_PRESETS,
-  initializeFromPreset
+  initializeFromPreset,
+  reconstructFromRecord
 } from '@/lib/cosmic-holographic/engine';
+import {
+  saveHolographicRecord,
+  loadHolographicRecords
+} from '@/lib/cosmic-holographic/persistence';
+import { toast } from 'sonner';
 
 const TICK_RATE = 50; // ms
 const DT = 0.1;
@@ -104,8 +110,8 @@ export function useCosmicHolographic() {
     setMetrics(calculateMetrics(nodes, patterns, pulsars, syncState));
   }, [nodes, patterns, pulsars, syncState]);
   
-  // Load preset
-  const loadPreset = useCallback((index: number) => {
+  // Load preset and persisted records
+  const loadPreset = useCallback(async (index: number) => {
     const preset = COSMIC_PRESETS[index];
     if (!preset) return;
     
@@ -119,10 +125,33 @@ export function useCosmicHolographic() {
     setQueryResults([]);
     setSelectedNode(null);
     setSimulationTime(0);
+    
+    // Load persisted records for this preset
+    const { records, error } = await loadHolographicRecords(preset.name);
+    if (error) {
+      console.warn('Failed to load persisted records:', error);
+    } else if (records.length > 0) {
+      setHolographicRecords(records);
+      // Reconstruct patterns from records
+      const reconstructedPatterns: MemoryPattern[] = records.map((record, i) => ({
+        id: `restored-${record.id}`,
+        content: `[Phase-encoded: ${record.contentHash}]`,
+        encoding: record.amplitudeModulation,
+        interferencePattern: [],
+        storedAt: record.pulsarIds,
+        timestamp: record.timestamp,
+        coherenceLevel: record.coherenceAtStorage,
+        accessCount: 0,
+        holographicRecord: record
+      }));
+      setPatterns(reconstructedPatterns);
+      toast.success(`Loaded ${records.length} persisted pattern(s)`);
+    }
   }, []);
   
-  // Store content using holographic encoding
-  const store = useCallback((content: string, redundancy: number = 3) => {
+  // Store content using holographic encoding with persistence
+  const store = useCallback(async (content: string, redundancy: number = 3) => {
+    const preset = COSMIC_PRESETS[selectedPreset];
     const params: StoreParams = {
       content,
       redundancy,
@@ -140,8 +169,17 @@ export function useCosmicHolographic() {
     setPatterns(prev => [...prev, pattern]);
     setHolographicRecords(prev => [...prev, record]);
     
+    // Persist to database
+    const { success, error } = await saveHolographicRecord(record, preset?.name);
+    if (success) {
+      toast.success('Pattern stored & persisted');
+    } else {
+      console.warn('Failed to persist record:', error);
+      toast.warning('Pattern stored locally (persistence failed)');
+    }
+    
     return pattern;
-  }, [nodes, pulsars, simulationTime]);
+  }, [nodes, pulsars, simulationTime, selectedPreset]);
   
   // Query content using holographic reconstruction
   const query = useCallback((content: string) => {
