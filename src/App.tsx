@@ -49,6 +49,8 @@ import QuantumErrorCorrectionLab from "./pages/QuantumErrorCorrectionLab";
 import DecoherenceSimulator from "./pages/DecoherenceSimulator";
 import QuaternionNonlocalApp from "./pages/QuaternionNonlocalApp";
 import PulsarTransceiver from "./pages/PulsarTransceiver";
+import VacuumComputationLab from "./pages/VacuumComputationLab";
+import CosmicHolographicExplorer from "./pages/CosmicHolographicExplorer";
 import GettingStarted from "./pages/docs/GettingStarted";
 import UserGuide from "./pages/docs/UserGuide";
 import AppIdeas from "./pages/docs/AppIdeas";
@@ -116,6 +118,8 @@ const App = () => (
             <Route path="/decoherence" element={<DecoherenceSimulator />} />
             <Route path="/quaternion-nonlocal" element={<QuaternionNonlocalApp />} />
             <Route path="/pulsar-transceiver" element={<PulsarTransceiver />} />
+            <Route path="/vacuum-computation" element={<VacuumComputationLab />} />
+            <Route path="/cosmic-holographic" element={<CosmicHolographicExplorer />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
