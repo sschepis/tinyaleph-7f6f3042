@@ -84,14 +84,17 @@ const QuaternionNonlocalApp = () => {
       setUptime(0);
       setIsPoweredOn(false);
     } else {
-      // Start: Power on, initialize entanglement, evolve, then separate
+      // Start sequence: Entangle → Evolve → Separate
       setIsPoweredOn(true);
       initEntanglement();
-      startEvolution();
-      // Separate nodes after entanglement completes (2.5s delay to account for init time)
+      // Wait for entanglement to complete (2s), then evolve
       setTimeout(() => {
-        separateNodes();
-      }, 2500);
+        startEvolution();
+        // Then separate nodes after a brief moment
+        setTimeout(() => {
+          separateNodes();
+        }, 500);
+      }, 2100);
     }
   };
 
