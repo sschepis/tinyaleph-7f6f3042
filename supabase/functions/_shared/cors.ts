@@ -27,8 +27,10 @@ function isOriginAllowed(origin: string): boolean {
   // Localhost for development
   if (origin.includes('localhost') || origin.includes('127.0.0.1')) return true;
   
-  // Lovable preview domains
-  if (origin.includes('.lovable.app') || origin.includes('.lovableproject.com')) return true;
+  // Lovable preview domains (including id-preview-- subdomains)
+  if (origin.includes('.lovable.app')) return true;
+  if (origin.includes('.lovableproject.com')) return true;
+  if (origin.includes('lovableproject.com')) return true;
   
   return false;
 }
