@@ -50,41 +50,58 @@ export function ChatInterface({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className={`${message.role === 'user' ? 'text-right' : 'text-left'}`}
+            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
-            <div
-              className={`
-                inline-block max-w-[85%] px-4 py-2 rounded-lg text-sm
-                ${message.role === 'user' 
-                  ? 'bg-blue-500/80 text-white' 
-                  : message.role === 'system'
-                    ? 'bg-gray-600/80 text-white'
-                    : 'bg-gray-700/80 text-white'}
-                ${isProcessing && message.role === 'assistant' && message === messages[messages.length - 1]
-                  ? 'animate-pulse'
-                  : ''}
-              `}
-            >
-              {message.role === 'assistant' ? (
-                <AssistantMessage content={message.content} showCopyButton={true} />
-              ) : (
-                <span>{message.content}</span>
-              )}
-              
-              {/* Thinking indicator */}
-              {isProcessing && message.role === 'assistant' && message === messages[messages.length - 1] && (
-                <span className="inline-flex ml-2">
-                  {[0, 1, 2].map((i) => (
-                    <motion.span
-                      key={i}
-                      className="w-1.5 h-1.5 bg-white rounded-full mx-0.5"
-                      animate={{ scale: [0.8, 1.2, 0.8], opacity: [0.7, 1, 0.7] }}
-                      transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.3 }}
-                    />
-                  ))}
-                </span>
-              )}
-            </div>
+            {message.role === 'user' ? (
+              <div className="max-w-[80%] px-4 py-3 rounded-2xl rounded-br-md bg-primary/80 text-primary-foreground text-sm">
+                {message.content}
+              </div>
+            ) : message.role === 'system' ? (
+              <div className="max-w-[90%] px-4 py-2 rounded-lg bg-muted/50 border border-border/50 text-muted-foreground text-xs italic">
+                {message.content}
+              </div>
+            ) : (
+              <div className={`
+                max-w-[90%] rounded-2xl rounded-bl-md overflow-hidden
+                bg-card/80 border border-border/30
+                ${isProcessing && message === messages[messages.length - 1] ? 'animate-pulse' : ''}
+              `}>
+                {/* Perspective header */}
+                {message.perspective && (
+                  <div className="px-4 py-2 bg-accent/20 border-b border-border/30 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                    <span className="text-xs font-medium text-accent capitalize">
+                      {message.perspective} Perspective
+                    </span>
+                  </div>
+                )}
+                
+                {/* Message content */}
+                <div className="px-4 py-3 text-sm text-foreground/90 prose prose-invert prose-sm max-w-none
+                  prose-headings:text-accent prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-2
+                  prose-p:my-2 prose-p:leading-relaxed
+                  prose-ul:my-2 prose-ul:pl-4 prose-li:my-0.5
+                  prose-strong:text-accent prose-strong:font-semibold
+                  prose-em:text-muted-foreground">
+                  <AssistantMessage content={message.content} showCopyButton={true} />
+                </div>
+                
+                {/* Thinking indicator */}
+                {isProcessing && message === messages[messages.length - 1] && (
+                  <div className="px-4 py-2 border-t border-border/30 flex items-center gap-1">
+                    {[0, 1, 2].map((i) => (
+                      <motion.span
+                        key={i}
+                        className="w-1.5 h-1.5 bg-accent rounded-full"
+                        animate={{ scale: [0.8, 1.2, 0.8], opacity: [0.5, 1, 0.5] }}
+                        transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
+                      />
+                    ))}
+                    <span className="text-xs text-muted-foreground ml-2">Processing...</span>
+                  </div>
+                )}
+              </div>
+            )}
           </motion.div>
         ))}
       </div>
