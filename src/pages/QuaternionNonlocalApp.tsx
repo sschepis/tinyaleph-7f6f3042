@@ -143,20 +143,6 @@ const QuaternionNonlocalApp = () => {
               </div>
               
               <div className="flex items-center gap-2">
-                {/* Evolution toggle */}
-                <button
-                  onClick={handleEvolutionToggle}
-                  disabled={!isPoweredOn}
-                  className={`px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
-                    isEvolving 
-                      ? 'bg-red-600 hover:bg-red-700 text-white' 
-                      : 'bg-green-600 hover:bg-green-700 text-white'
-                  }`}
-                >
-                  {isEvolving ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-                  {isEvolving ? 'Pause' : 'Evolve'}
-                </button>
-                
                 {/* Power toggle */}
                 <button
                   onClick={handlePowerToggle}
