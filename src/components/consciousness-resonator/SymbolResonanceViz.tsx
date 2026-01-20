@@ -62,85 +62,94 @@ export function SymbolResonanceViz({
         </div>
       </div>
       
-      {/* Archetype Constellation */}
-      <div className="relative h-48 bg-gradient-to-b from-transparent to-secondary/20 rounded-lg mb-4 overflow-hidden">
+      {/* Archetype Grid */}
+      <div className="relative bg-secondary/20 rounded-lg mb-4 p-4 min-h-[180px]">
         {/* Background glow */}
         <motion.div
-          className={`absolute inset-0 bg-gradient-radial ${CATEGORY_COLORS[dominantCategory]} opacity-30`}
+          className={`absolute inset-0 rounded-lg bg-gradient-to-br ${CATEGORY_COLORS[dominantCategory]} opacity-20`}
           animate={{ 
-            scale: [1, 1.1, 1],
-            opacity: [0.2, 0.4, 0.2]
+            opacity: [0.15, 0.25, 0.15]
           }}
           transition={{ duration: 3, repeat: Infinity }}
         />
         
-        {/* Archetype nodes in orbital positions */}
-        <AnimatePresence mode="popLayout">
-          {archetypes.map((arch, index) => {
-            const angle = (index / Math.max(archetypes.length, 1)) * Math.PI * 2 - Math.PI / 2;
-            const radius = 70 - (arch.activation * 20);
-            const x = 50 + Math.cos(angle) * radius;
-            const y = 50 + Math.sin(angle) * radius;
-            
-            return (
-              <motion.div
-                key={arch.id}
-                className="absolute flex flex-col items-center"
-                style={{
-                  left: `${x}%`,
-                  top: `${y}%`,
-                  transform: 'translate(-50%, -50%)'
-                }}
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ 
-                  scale: 0.8 + arch.activation * 0.4,
-                  opacity: 0.5 + arch.activation * 0.5
-                }}
-                exit={{ scale: 0, opacity: 0 }}
-                transition={{ type: 'spring', damping: 15 }}
-              >
-                {/* Glow ring */}
+        {/* Archetype grid */}
+        {archetypes.length > 0 ? (
+          <div className="relative z-10 grid grid-cols-3 gap-3">
+            <AnimatePresence mode="popLayout">
+              {archetypes.slice(0, 6).map((arch, index) => (
                 <motion.div
-                  className="absolute rounded-full"
-                  style={{
-                    width: 40 + arch.activation * 20,
-                    height: 40 + arch.activation * 20,
-                    background: `radial-gradient(circle, ${
-                      arch.category === 'action' ? 'rgba(239,68,68,0.4)' :
-                      arch.category === 'wisdom' ? 'rgba(59,130,246,0.4)' :
-                      arch.category === 'emotion' ? 'rgba(236,72,153,0.4)' :
-                      arch.category === 'transformation' ? 'rgba(168,85,247,0.4)' :
-                      arch.category === 'creation' ? 'rgba(34,197,94,0.4)' :
-                      arch.category === 'spirit' ? 'rgba(234,179,8,0.4)' :
-                      'rgba(100,116,139,0.4)'
-                    } 0%, transparent 70%)`
+                  key={arch.id}
+                  className={`
+                    flex flex-col items-center justify-center p-3 rounded-lg
+                    bg-card/60 border ${CATEGORY_BORDER_COLORS[arch.category]}
+                    backdrop-blur-sm
+                  `}
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ 
+                    scale: 1,
+                    opacity: 1
                   }}
-                  animate={{
-                    scale: [1, 1.2, 1],
-                    opacity: [0.6, 0.9, 0.6]
-                  }}
-                  transition={{ 
-                    duration: 2 + index * 0.3,
-                    repeat: Infinity
-                  }}
-                />
-                
-                {/* Symbol */}
-                <span className="text-2xl relative z-10">{arch.symbol}</span>
-                <span className="text-[10px] text-muted-foreground mt-1 whitespace-nowrap">
-                  {arch.name.replace('The ', '')}
-                </span>
-                <span className="text-[9px] text-primary/60 font-mono">
-                  {(arch.activation * 100).toFixed(0)}%
-                </span>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
-        
-        {/* Empty state */}
-        {archetypes.length === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">
+                  exit={{ scale: 0, opacity: 0 }}
+                  transition={{ type: 'spring', damping: 20, delay: index * 0.05 }}
+                >
+                  {/* Symbol with glow */}
+                  <motion.div
+                    className="relative"
+                    animate={{
+                      scale: [1, 1.05, 1],
+                    }}
+                    transition={{ 
+                      duration: 2 + index * 0.2,
+                      repeat: Infinity
+                    }}
+                  >
+                    <span className="text-2xl">{arch.symbol}</span>
+                    {/* Glow effect */}
+                    <motion.div
+                      className="absolute inset-0 blur-md opacity-50"
+                      style={{
+                        background: arch.category === 'action' ? 'rgba(239,68,68,0.5)' :
+                          arch.category === 'wisdom' ? 'rgba(59,130,246,0.5)' :
+                          arch.category === 'emotion' ? 'rgba(236,72,153,0.5)' :
+                          arch.category === 'transformation' ? 'rgba(168,85,247,0.5)' :
+                          arch.category === 'creation' ? 'rgba(34,197,94,0.5)' :
+                          arch.category === 'spirit' ? 'rgba(234,179,8,0.5)' :
+                          'rgba(100,116,139,0.5)'
+                      }}
+                      animate={{
+                        opacity: [0.3, 0.6, 0.3]
+                      }}
+                      transition={{ 
+                        duration: 1.5,
+                        repeat: Infinity
+                      }}
+                    />
+                  </motion.div>
+                  
+                  {/* Name */}
+                  <span className="text-xs text-foreground/80 mt-1.5 text-center leading-tight">
+                    {arch.name.replace('The ', '')}
+                  </span>
+                  
+                  {/* Activation bar */}
+                  <div className="w-full mt-2 h-1 bg-secondary rounded-full overflow-hidden">
+                    <motion.div
+                      className={`h-full rounded-full bg-gradient-to-r ${CATEGORY_COLORS[arch.category].replace('/40', '/80')}`}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${arch.activation * 100}%` }}
+                      transition={{ duration: 0.4 }}
+                    />
+                  </div>
+                  <span className="text-[9px] text-muted-foreground mt-1 font-mono">
+                    {(arch.activation * 100).toFixed(0)}%
+                  </span>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        ) : (
+          <div className="relative z-10 flex items-center justify-center h-32 text-muted-foreground text-sm">
             Awaiting symbolic resonance...
           </div>
         )}
