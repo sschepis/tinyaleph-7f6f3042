@@ -82,8 +82,17 @@ const QuaternionNonlocalApp = () => {
     if (isPoweredOn) {
       pauseEvolution();
       setUptime(0);
+      setIsPoweredOn(false);
+    } else {
+      // Start: Power on, initialize entanglement, evolve, then separate
+      setIsPoweredOn(true);
+      initEntanglement();
+      startEvolution();
+      // Separate nodes after entanglement completes (2.5s delay to account for init time)
+      setTimeout(() => {
+        separateNodes();
+      }, 2500);
     }
-    setIsPoweredOn(!isPoweredOn);
   };
 
   const handleEvolutionToggle = () => {
@@ -92,6 +101,13 @@ const QuaternionNonlocalApp = () => {
     } else {
       startEvolution();
     }
+  };
+  
+  const handleReset = () => {
+    pauseEvolution();
+    setUptime(0);
+    setIsPoweredOn(false);
+    reset();
   };
 
   const isSeparated = entanglementState === 'separated';
@@ -154,6 +170,14 @@ const QuaternionNonlocalApp = () => {
                   {isPoweredOn ? 'Stop' : 'Start'}
                 </button>
                 
+                {/* Reset button */}
+                <button
+                  onClick={handleReset}
+                  className="px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1.5 transition-colors bg-muted hover:bg-muted/80 text-foreground border border-border"
+                >
+                  Reset
+                </button>
+                
                 <HelpButton onClick={() => setShowHelp(true)} />
               </div>
             </div>
@@ -192,40 +216,15 @@ const QuaternionNonlocalApp = () => {
             </div>
           </header>
 
-          {/* Control Panel */}
+          {/* Status Panel */}
           <div className="bg-card border border-border rounded-lg p-3 flex flex-wrap items-center gap-3">
-            <button
-              onClick={initEntanglement}
-              disabled={!isPoweredOn || entanglementState !== 'disconnected'}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Link2 className="w-4 h-4" />
-              Initialize Entanglement
-            </button>
-            
-            <button
-              onClick={separateNodes}
-              disabled={!isPoweredOn || entanglementState !== 'entangled'}
-              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Unlink className="w-4 h-4" />
-              Separate Nodes
-            </button>
-            
-            <button
-              onClick={reset}
-              className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground border border-border rounded text-xs font-medium"
-            >
-              Reset
-            </button>
-            
-            <div className="ml-auto text-xs text-muted-foreground">
+            <div className="text-xs text-muted-foreground">
               {entanglementState === 'disconnected' && 
-                "Initialize entanglement to begin non-local communication."}
+                "Press Start to initialize entanglement and begin non-local communication."}
               {entanglementState === 'initializing' && 
                 "Creating shared quaternionic state..."}
               {entanglementState === 'entangled' && 
-                "Nodes entangled! Separate them for non-local communication test."}
+                "Nodes entangled! Separating for non-local communication test..."}
               {entanglementState === 'separated' && (
                 <span className="text-amber-400">
                   ⚡ Nodes separated but quaternionically entangled! Messages transmit non-locally.
