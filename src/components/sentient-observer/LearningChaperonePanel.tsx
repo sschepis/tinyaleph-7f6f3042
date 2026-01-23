@@ -167,23 +167,56 @@ export const LearningChaperonePanel: React.FC<LearningChaperonePanelProps> = ({
           </div>
         )}
 
-        {/* Active Goal */}
-        {activeGoal && (
-          <motion.div
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-2 border border-primary/30 rounded bg-primary/5"
-          >
-            <div className="flex items-center gap-1.5 mb-1">
-              <Loader2 className="h-3 w-3 text-primary animate-spin" />
-              <span className="text-[10px] font-medium">Currently Learning</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className={goalTypeColor(activeGoal.type)}>{goalTypeIcon(activeGoal.type)}</span>
-              <span className="text-[9px] text-muted-foreground truncate">{activeGoal.description}</span>
-            </div>
-          </motion.div>
-        )}
+        {/* Active Goal - Enhanced Processing Indicator */}
+        <AnimatePresence>
+          {activeGoal && (
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -5, scale: 0.98 }}
+              className="relative p-2.5 border border-primary/40 rounded-lg bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 overflow-hidden"
+            >
+              {/* Animated background shimmer */}
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/20 to-transparent"
+                animate={{ x: ['-100%', '100%'] }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+              />
+              
+              {/* Progress bar at top */}
+              <motion.div
+                className="absolute top-0 left-0 h-0.5 bg-primary"
+                animate={{ width: ['0%', '100%'] }}
+                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+              />
+              
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="relative">
+                    <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                    <motion.div
+                      className="absolute inset-0 rounded-full bg-primary/30"
+                      animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    />
+                  </div>
+                  <span className="text-[11px] font-semibold text-primary">Processing Goal</span>
+                  <motion.span 
+                    className="text-[10px] text-primary/70 font-mono"
+                    animate={{ opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 1, repeat: Infinity }}
+                  >
+                    ...
+                  </motion.span>
+                </div>
+                <div className="flex items-center gap-2 pl-6">
+                  <span className={`${goalTypeColor(activeGoal.type)} flex-shrink-0`}>{goalTypeIcon(activeGoal.type)}</span>
+                  <span className="text-[10px] text-muted-foreground truncate">{activeGoal.description}</span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Manual Learning Request */}
         <div className="flex gap-1.5">
