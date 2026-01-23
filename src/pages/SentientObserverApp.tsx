@@ -278,10 +278,6 @@ const SentientObserverApp: React.FC = () => {
                   recentlyExploredIndices={recentlyExploredIndices}
                   size={160}
                 />
-                <div className="flex justify-between mt-2 text-[10px] text-muted-foreground">
-                  <span>{Math.round(explorationProgress * oscillators.length)}/{oscillators.length} explored</span>
-                  <span>{oscillatorActivationCounts.reduce((a, b) => a + b, 0)} hits</span>
-                </div>
               </CardContent>
             </Card>
 
