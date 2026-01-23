@@ -307,9 +307,12 @@ export class LearningEngine {
   }
 
   /**
-   * Execute a learning goal via the chaperone API
+   * Execute a learning goal via the chaperone API with retry logic
    */
-  private async executeGoal(goal: LearningGoal): Promise<any> {
+  private async executeGoal(goal: LearningGoal, retryCount = 0): Promise<any> {
+    const MAX_RETRIES = 3;
+    const BASE_DELAY = 1000; // 1 second base delay
+    
     // Prepare context with known symbols
     const allMeanings = this.mapper.getAllMeanings();
     const knownSymbols = allMeanings
@@ -317,23 +320,53 @@ export class LearningEngine {
       .slice(0, 20)
       .map(m => ({ prime: m.prime, meaning: m.meaning }));
 
-    const response = await supabase.functions.invoke('symbol-chaperone', {
-      body: {
-        type: goal.type,
-        context: {
-          knownSymbols,
-          targetPrime: goal.targetPrime,
-          concepts: goal.concepts,
-          question: goal.description
+    try {
+      const response = await supabase.functions.invoke('symbol-chaperone', {
+        body: {
+          type: goal.type,
+          context: {
+            knownSymbols,
+            targetPrime: goal.targetPrime,
+            concepts: goal.concepts,
+            question: goal.description
+          }
         }
+      });
+
+      if (response.error) {
+        // Check if this is a retryable error (5xx, network issues)
+        const isRetryable = response.error.message?.includes('5') || 
+                           response.error.message?.includes('network') ||
+                           response.error.message?.includes('timeout') ||
+                           response.error.message?.includes('Failed to send');
+        
+        if (isRetryable && retryCount < MAX_RETRIES) {
+          const delay = BASE_DELAY * Math.pow(2, retryCount); // Exponential backoff
+          console.log(`[LearningEngine] Retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+          this.state.lastLearningAction = `Retrying: ${goal.description} (attempt ${retryCount + 2})`;
+          this.notifyUpdate();
+          
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return this.executeGoal(goal, retryCount + 1);
+        }
+        
+        throw new Error(response.error.message);
       }
-    });
 
-    if (response.error) {
-      throw new Error(response.error.message);
+      return response.data?.result;
+    } catch (error) {
+      // Network errors - retry if possible
+      if (retryCount < MAX_RETRIES) {
+        const delay = BASE_DELAY * Math.pow(2, retryCount);
+        console.log(`[LearningEngine] Network error, retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+        this.state.lastLearningAction = `Network error, retrying... (attempt ${retryCount + 2})`;
+        this.notifyUpdate();
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.executeGoal(goal, retryCount + 1);
+      }
+      throw error;
     }
-
-    return response.data?.result;
   }
 
   /**

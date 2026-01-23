@@ -420,11 +420,11 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20"
+                className="p-2 bg-accent/30 rounded-lg border border-accent/40"
               >
                 <div className="flex items-center gap-1 mb-1">
-                  <Brain className="h-3 w-3 text-purple-400" />
-                  <span className="text-[10px] text-purple-300">Related memories:</span>
+                  <Brain className="h-3 w-3 text-accent-foreground" />
+                  <span className="text-[10px] text-accent-foreground/80">Related memories:</span>
                 </div>
                 <div className="space-y-1">
                   {matchingMemories.map((mem, idx) => (
@@ -435,7 +435,7 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
                       transition={{ delay: idx * 0.05 }}
                       className="text-[10px] text-muted-foreground flex items-center gap-1"
                     >
-                      <span className="text-purple-400">•</span>
+                      <span className="text-accent-foreground">•</span>
                       <span className="truncate flex-1">{mem.content.slice(0, 50)}...</span>
                       <Badge variant="outline" className="text-[8px] h-4 px-1">
                         {(mem.similarity * 100).toFixed(0)}%
