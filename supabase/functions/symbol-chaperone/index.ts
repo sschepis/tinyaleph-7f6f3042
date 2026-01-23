@@ -271,17 +271,42 @@ Your task is to generate concrete examples of how these symbols might be used or
     
     // Extract result from content (JSON format)
     const content = data.choices?.[0]?.message?.content || "{}";
-    let result = {};
+    let result: Record<string, unknown> = {};
     
     try {
       // Try to parse JSON directly from content
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        result = JSON.parse(jsonMatch[0]);
+        // Clean up common JSON issues from LLM output
+        let jsonStr = jsonMatch[0];
+        
+        // Remove trailing commas before ] or }
+        jsonStr = jsonStr.replace(/,\s*([\]}])/g, '$1');
+        
+        // Try parsing
+        result = JSON.parse(jsonStr);
       }
     } catch (parseError) {
       console.error("JSON parse error:", parseError);
-      result = { error: "Failed to parse response" };
+      
+      // Attempt a more aggressive cleanup
+      try {
+        let cleanedContent = content
+          .replace(/```json\s*/g, '')
+          .replace(/```\s*/g, '')
+          .replace(/,\s*([\]}])/g, '$1')  // Remove trailing commas
+          .replace(/[\x00-\x1F\x7F]/g, ' '); // Remove control characters
+        
+        const retryMatch = cleanedContent.match(/\{[\s\S]*\}/);
+        if (retryMatch) {
+          result = JSON.parse(retryMatch[0]);
+        } else {
+          result = { error: "Failed to parse response", rawContent: content.slice(0, 200) };
+        }
+      } catch (retryError) {
+        console.error("Retry parse also failed:", retryError);
+        result = { error: "Failed to parse response", rawContent: content.slice(0, 200) };
+      }
     }
 
     return new Response(
