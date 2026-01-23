@@ -8,6 +8,9 @@ const ALLOWED_ORIGINS = [
   'https://lovable.dev',
   'https://www.lovable.dev',
   'https://tinyaleph.lovable.app',
+  'https://www.tinyaleph.lovable.app',
+  'https://tinyaleph.com',
+  'https://www.tinyaleph.com',
   'https://tinyaleph.dev',
   'https://www.tinyaleph.dev',
 ];
@@ -41,14 +44,21 @@ function isOriginAllowed(origin: string): boolean {
  */
 export function getCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') || '';
+
+  // If the browser provides an Origin, we should only ever echo it back when allowed.
+  // Falling back to a different origin causes hard-to-debug CORS failures.
+  const allowedOrigin = origin && isOriginAllowed(origin) ? origin : (origin ? '' : ALLOWED_ORIGINS[0]);
   
-  const allowedOrigin = isOriginAllowed(origin) ? origin : ALLOWED_ORIGINS[0];
-  
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
+  const headers: Record<string, string> = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   };
+
+  if (allowedOrigin) {
+    headers['Access-Control-Allow-Origin'] = allowedOrigin;
+  }
+
+  return headers;
 }
 
 /**
@@ -56,6 +66,10 @@ export function getCorsHeaders(req: Request): Record<string, string> {
  */
 export function handleCorsPreflightIfNeeded(req: Request): Response | null {
   if (req.method === 'OPTIONS') {
+    const origin = req.headers.get('origin') || '';
+    if (origin && !isOriginAllowed(origin)) {
+      return new Response('CORS origin not allowed', { status: 403 });
+    }
     return new Response(null, { headers: getCorsHeaders(req) });
   }
   return null;
