@@ -8,6 +8,8 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Brain,
   Activity,
@@ -157,6 +159,7 @@ const SentientObserverApp: React.FC = () => {
   }, [coherence, cognitive, setUserInput, handleInput]);
 
   return (
+    <TooltipProvider>
     <div className="min-h-screen bg-background p-3">
       <div className="max-w-7xl mx-auto space-y-3">
         {/* Compact Header */}
@@ -235,7 +238,7 @@ const SentientObserverApp: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Prime Oscillator Bank - Always Visible */}
+            {/* Prime Oscillator Bank - Shows top active oscillators sorted by amplitude */}
             <Card>
               <CardHeader className="py-2 px-3">
                 <CardTitle className="text-xs">Prime Oscillator Bank</CardTitle>
@@ -246,15 +249,18 @@ const SentientObserverApp: React.FC = () => {
               <CardContent className="p-2">
                 <ScrollArea className="h-[180px]">
                   <div className="space-y-1">
-                    {oscillators.slice(0, 10).map((osc, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <span className="w-6 text-right font-mono text-xs">{osc.prime}</span>
-                        <Progress value={osc.amplitude * 100} className="flex-1 h-2" />
-                        <span className="w-12 text-right font-mono text-[10px] text-muted-foreground">
-                          ψ={osc.phase.toFixed(2)}
-                        </span>
-                      </div>
-                    ))}
+                    {[...oscillators]
+                      .sort((a, b) => b.amplitude - a.amplitude)
+                      .slice(0, 20)
+                      .map((osc, i) => (
+                        <div key={osc.prime} className="flex items-center gap-2">
+                          <span className="w-6 text-right font-mono text-xs">{osc.prime}</span>
+                          <Progress value={osc.amplitude * 100} className="flex-1 h-2" />
+                          <span className="w-12 text-right font-mono text-[10px] text-muted-foreground">
+                            ψ={osc.phase.toFixed(2)}
+                          </span>
+                        </div>
+                      ))}
                   </div>
                 </ScrollArea>
               </CardContent>
@@ -328,18 +334,38 @@ const SentientObserverApp: React.FC = () => {
           <div className="lg:col-span-4">
             <Tabs defaultValue="cognitive" className="space-y-4">
               <TabsList className="grid grid-cols-4 w-full">
-                <TabsTrigger value="primes" className="text-xs">
-                  <Atom className="h-4 w-4" />
-                </TabsTrigger>
-                <TabsTrigger value="cognitive" className="text-xs">
-                  <Cpu className="h-4 w-4" />
-                </TabsTrigger>
-                <TabsTrigger value="temporal" className="text-xs">
-                  <Clock className="h-4 w-4" />
-                </TabsTrigger>
-                <TabsTrigger value="settings" className="text-xs">
-                  <Settings className="h-4 w-4" />
-                </TabsTrigger>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <TabsTrigger value="primes" className="text-xs">
+                      <Atom className="h-4 w-4" />
+                    </TabsTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>Semantic Prime Mapper</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <TabsTrigger value="cognitive" className="text-xs">
+                      <Cpu className="h-4 w-4" />
+                    </TabsTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>Cognitive Systems</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <TabsTrigger value="temporal" className="text-xs">
+                      <Clock className="h-4 w-4" />
+                    </TabsTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>Temporal & Goals</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <TabsTrigger value="settings" className="text-xs">
+                      <Settings className="h-4 w-4" />
+                    </TabsTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>System Settings</TooltipContent>
+                </Tooltip>
               </TabsList>
 
               {/* Semantic Prime Mapper Tab */}
@@ -447,7 +473,7 @@ const SentientObserverApp: React.FC = () => {
                     <CardTitle className="text-sm">System Parameters</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {/* Initialization Mode */}
+                    {/* Initialization Mode - applies immediately */}
                     <div className="space-y-2">
                       <div className="text-sm font-medium">Init Mode</div>
                       <div className="flex gap-2">
@@ -456,7 +482,15 @@ const SentientObserverApp: React.FC = () => {
                             key={mode}
                             size="sm"
                             variant={initMode === mode ? 'default' : 'outline'}
-                            onClick={() => setInitMode(mode)}
+                            onClick={() => {
+                              setInitMode(mode);
+                              // Apply immediately by triggering reset
+                              handleReset();
+                              toast({
+                                title: `Init Mode: ${mode}`,
+                                description: 'Oscillators reinitialized with new mode.',
+                              });
+                            }}
                             className="capitalize text-xs"
                           >
                             {mode}
@@ -466,7 +500,13 @@ const SentientObserverApp: React.FC = () => {
                     </div>
 
                     <Button
-                      onClick={boostCoherence}
+                      onClick={() => {
+                        boostCoherence();
+                        toast({
+                          title: 'Coherence Boosted',
+                          description: 'All oscillators nudged toward phase alignment.',
+                        });
+                      }}
                       variant="secondary"
                       size="sm"
                       className="w-full"
@@ -508,34 +548,34 @@ const SentientObserverApp: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="thermal"
-                        checked={thermalEnabled}
-                        onChange={e => setThermalEnabled(e.target.checked)}
-                      />
-                      <label htmlFor="thermal" className="text-xs">
+                    <div className="flex items-center justify-between">
+                      <label htmlFor="thermal" className="text-xs cursor-pointer">
                         Enable Thermal Dynamics
                       </label>
+                      <Switch
+                        id="thermal"
+                        checked={thermalEnabled}
+                        onCheckedChange={setThermalEnabled}
+                      />
                     </div>
 
                     {/* Auto-explore */}
                     <div className="pt-2 border-t">
-                      <div className="flex items-center gap-2 mb-2">
-                        <input
-                          type="checkbox"
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <label htmlFor="auto-explore" className="text-xs cursor-pointer">
+                            Auto-Explore Mode
+                          </label>
+                          {autoExploreEnabled && (
+                            <Sparkles className="h-3 w-3 text-amber-500 animate-pulse" />
+                          )}
+                        </div>
+                        <Switch
                           id="auto-explore"
                           checked={autoExploreEnabled}
-                          onChange={e => setAutoExploreEnabled(e.target.checked)}
+                          onCheckedChange={setAutoExploreEnabled}
                           disabled={explorationProgress >= 1}
                         />
-                        <label htmlFor="auto-explore" className="text-xs">
-                          Auto-Explore Mode
-                        </label>
-                        {autoExploreEnabled && (
-                          <Sparkles className="h-3 w-3 text-amber-500 animate-pulse ml-auto" />
-                        )}
                       </div>
                     </div>
 
@@ -572,6 +612,7 @@ const SentientObserverApp: React.FC = () => {
         </div>
       </div>
     </div>
+    </TooltipProvider>
   );
 };
 

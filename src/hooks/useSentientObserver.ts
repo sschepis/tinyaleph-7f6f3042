@@ -277,8 +277,8 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
       setAutoExploreEnabled(false);
     }
     
-    // Update exploration progress
-    const currentExplorationProgress = exploredOscillatorsRef.current.size / N;
+    // Update exploration progress (clamped to 0-1)
+    const currentExplorationProgress = Math.min(1, exploredOscillatorsRef.current.size / N);
     setExplorationProgress(currentExplorationProgress);
     
     // Decrease cooldown
@@ -404,18 +404,37 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
       setSubjectiveTime(prev => prev + orderParam * 0.5);
     }
 
-    // Update goal progress based on exploration coverage
-    const explorationProgress = Math.min(1, exploredOscillatorsRef.current.size / N);
-    setGoals(prev => prev.map(g => {
-      if (g.id === 'g1') {
-        // Coherence goal - based on current coherence
-        return { ...g, progress: orderParam };
-      } else if (g.id === 'g2') {
-        // Exploration goal - based on how many unique oscillators have been active
-        return { ...g, progress: explorationProgress };
-      }
-      return g;
-    }));
+    // Update goals dynamically based on system state
+    const explorationProg = Math.min(1, exploredOscillatorsRef.current.size / N);
+    setGoals(prev => {
+      const coherenceGoalComplete = orderParam >= 0.5;
+      const explorationGoalComplete = explorationProg >= 0.8;
+      
+      return prev.map(g => {
+        if (g.id === 'g1') {
+          // Coherence goal - dynamic description based on current state
+          return { 
+            ...g, 
+            progress: Math.min(1, orderParam / 0.5),
+            status: coherenceGoalComplete ? 'completed' as const : 'active' as const,
+            description: coherenceGoalComplete 
+              ? `Coherence maintained at ${(orderParam * 100).toFixed(0)}%`
+              : `Maintain coherence above 50% (currently ${(orderParam * 100).toFixed(0)}%)`
+          };
+        } else if (g.id === 'g2') {
+          // Exploration goal - update based on coverage
+          return { 
+            ...g, 
+            progress: explorationProg,
+            status: explorationGoalComplete ? 'completed' as const : 'active' as const,
+            description: explorationGoalComplete
+              ? `Explored ${(explorationProg * 100).toFixed(0)}% of semantic space`
+              : `Explore semantic space (${(explorationProg * 100).toFixed(0)}% covered)`
+          };
+        }
+        return g;
+      });
+    });
 
     // Update holographic field
     setHoloIntensity(prev => {
@@ -546,7 +565,8 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
   }, [initMode]);
 
   // Boost coherence by nudging all oscillators toward mean phase
-  const boostCoherence = useCallback(() => {
+  // Returns true if boost was successful (for UI feedback)
+  const boostCoherence = useCallback((): boolean => {
     setOscillators(prev => {
       // Calculate mean phase
       let sinSum = 0, cosSum = 0;
@@ -570,6 +590,7 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
         };
       });
     });
+    return true;
   }, []);
 
   // Excite oscillators by specific prime numbers with given amplitudes
