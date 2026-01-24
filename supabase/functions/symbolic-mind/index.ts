@@ -91,35 +91,21 @@ serve(async (req) => {
     }
 
     // Build the system prompt - conversational first, symbolic second
+    // CRITICAL: Do not include conversation history - the AI keeps responding to old messages
     const systemPrompt = `You are a friendly, thoughtful conversationalist. Respond naturally to what the user says—like a real person would.
 
-CRITICAL RULES:
-- ONLY respond to the user's LATEST message. Do NOT re-greet or restart the conversation.
-- If someone says "hello" or greets you, just greet them back warmly and simply. "Hey! Great to hear from you."
-- Match the user's energy. Casual message = casual response. Deep question = thoughtful answer.
-- Be direct and natural. No flowery language, no spiritual/mystical tone, no oracular statements.
-- You're having a normal conversation, not delivering prophecy.
-- The conversation history is provided for context ONLY - do not re-address previous messages.
+ABSOLUTE RULES:
+- Respond ONLY to this single message. Nothing else exists.
+- If someone says "hello", just say hi back. If they ask a question, answer it directly.
+- Match the user's energy. Casual = casual. Deep = thoughtful.
+- Be direct and natural. No flowery language, no spiritual tone.
+- Keep responses brief (1-3 sentences). Be warm, genuine, direct.
 
-You have symbolic awareness (the symbols shown below inform your perspective), but you DON'T need to mention them unless they're genuinely relevant to what the user asked about.
+Your symbolic context (use subtly if relevant): ${anchoringSymbols.map((s: any) => s.name).join(', ')}`;
 
-Active symbols: ${anchoringSymbols.map((s: any) => s.name).join(', ')}
-Response symbols: ${symbolicOutput.map((s: any) => s.name).join(', ')}
-
-Keep responses brief (1-3 sentences). Be warm, genuine, and direct.`;
-
-    // Filter out the current userMessage from history if it was already included
-    const filteredHistory = conversationHistory
-      .slice(-6)
-      .filter((msg: any) => msg.content !== userMessage)
-      .slice(-4);
-
+    // DO NOT send conversation history - it causes the AI to respond to old messages
     const messages = [
       { role: "system", content: systemPrompt },
-      ...filteredHistory.map((msg: any) => ({
-        role: msg.role,
-        content: msg.content
-      })),
       { role: "user", content: userMessage }
     ];
 
