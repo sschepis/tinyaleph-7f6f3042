@@ -9,3 +9,4 @@ export { SemanticPrimeMapperPanel } from './SemanticPrimeMapperPanel';
 export { TriadicFusionGraph } from './TriadicFusionGraph';
 export { LearningChaperonePanel } from './LearningChaperonePanel';
 export { LearnedRelationshipsGraph } from './LearnedRelationshipsGraph';
+export { SomaticResonancePanel } from './SomaticResonancePanel';
