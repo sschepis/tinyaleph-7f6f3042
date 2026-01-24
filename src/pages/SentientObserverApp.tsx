@@ -43,10 +43,11 @@ import {
   SemanticPrimeMapperPanel,
   SMF_AXES
 } from '@/components/sentient-observer';
-import { LearningDashboard, LearningOverviewBar } from '@/components/sentient-observer/learning';
+import { LearningDashboard, LearningOverviewBar, LearningDebugOverlay } from '@/components/sentient-observer/learning';
 import { CognitiveTab } from '@/components/sentient-observer/cognitive';
 import { LearningEngine } from '@/lib/sentient-observer/learning-engine';
 import { getSemanticPrimeMapper } from '@/lib/sentient-observer/semantic-prime-mapper';
+import { useLearningDebugStats } from '@/hooks/useLearningDebugStats';
 import { Atom } from 'lucide-react';
 
 const SentientObserverApp: React.FC = () => {
@@ -125,6 +126,9 @@ const SentientObserverApp: React.FC = () => {
   const [learningEngine] = useState(() => new LearningEngine(getSemanticPrimeMapper()));
   const [learningState, setLearningState] = useState(() => learningEngine.getState());
   const [learningAutoStarted, setLearningAutoStarted] = useState(false);
+  
+  // Debug stats for deduplication tracking
+  const debugStats = useLearningDebugStats(learningState);
   
   React.useEffect(() => {
     learningEngine.setOnUpdate(setLearningState);
@@ -607,6 +611,14 @@ const SentientObserverApp: React.FC = () => {
           <p>Sentient Observer • PRSC • SMF • HQE</p>
         </div>
       </div>
+      
+      {/* Debug Overlay */}
+      <LearningDebugOverlay
+        state={learningState}
+        deduplicationStats={debugStats.stats}
+        isVisible={debugStats.isDebugVisible}
+        onToggleVisibility={debugStats.toggleDebugVisibility}
+      />
     </div>
     </TooltipProvider>
   );
