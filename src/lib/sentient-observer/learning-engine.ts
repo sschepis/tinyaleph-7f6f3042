@@ -6,7 +6,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import type { SemanticPrimeMapper, PrimeMeaning } from './semantic-prime-mapper';
+import type { SemanticPrimeMapper } from './semantic-prime-mapper';
 
 // ============= TYPES =============
 
@@ -192,15 +192,18 @@ export class LearningEngine {
    * Analyze current knowledge and identify learning opportunities
    */
   identifyLearningOpportunities(): void {
-    const field = this.mapper.getField();
     const meanings = this.mapper.getAllMeanings();
     
-    // Find primes without meanings (knowledge gaps)
-    const uncatalogued = this.mapper.getUncataloguedPrimes();
+    // Find primes without meanings (knowledge gaps) that haven't already been learned
+    const uncatalogued = this.mapper.getUncataloguedPrimes()
+      .filter(p => !this.state.learnedSymbols.has(p)); // Skip already learned primes
     
-    // Add goals for first few uncatalogued primes
+    // Add goals for first few uncatalogued primes (not already in queue or learned)
     for (const prime of uncatalogued.slice(0, 3)) {
-      if (!this.state.learningQueue.find(g => g.targetPrime === prime)) {
+      const alreadyQueued = this.state.learningQueue.some(g => g.targetPrime === prime);
+      const alreadyLearned = this.state.learnedSymbols.has(prime);
+      
+      if (!alreadyQueued && !alreadyLearned) {
         this.addLearningGoal({
           type: 'define_symbol',
           description: `Learn meaning for prime ${prime}`,
@@ -210,8 +213,12 @@ export class LearningEngine {
       }
     }
 
-    // Periodically look for relationships
-    if (meanings.length >= 10 && this.state.learnedRelationships.length < meanings.length * 2) {
+    // Periodically look for relationships (only if we don't already have one pending)
+    const hasRelationshipGoal = this.state.learningQueue.some(
+      g => g.type === 'find_relationship' && g.status === 'pending'
+    );
+    
+    if (!hasRelationshipGoal && meanings.length >= 10 && this.state.learnedRelationships.length < meanings.length * 2) {
       const highConfidence = meanings
         .filter(m => m.confidence > 0.7)
         .slice(0, 10)
@@ -227,8 +234,12 @@ export class LearningEngine {
       }
     }
 
-    // Occasionally explore conceptual gaps
-    if (Math.random() < 0.3) {
+    // Occasionally explore conceptual gaps (only if none pending, reduced probability)
+    const hasExpandGoal = this.state.learningQueue.some(
+      g => g.type === 'expand_concept' && g.status === 'pending'
+    );
+    
+    if (!hasExpandGoal && Math.random() < 0.15) {
       this.addLearningGoal({
         type: 'expand_concept',
         description: 'Identify missing archetypal concepts',
@@ -376,6 +387,12 @@ export class LearningEngine {
     switch (type) {
       case 'define_symbol':
         if (result.prime && result.meaning) {
+          // Check if we already have this prime learned (avoid duplicates)
+          if (this.state.learnedSymbols.has(result.prime)) {
+            console.log(`[LearningEngine] Skipping duplicate symbol for prime ${result.prime}`);
+            return;
+          }
+          
           const learned: LearnedSymbol = {
             prime: result.prime,
             meaning: result.meaning,
@@ -388,6 +405,9 @@ export class LearningEngine {
           };
           
           this.state.learnedSymbols.set(result.prime, learned);
+          
+          // CRITICAL: Sync learned symbol back to the SemanticPrimeMapper
+          this.mapper.addLearnedMeaning(result.prime, result.meaning, result.confidence || 0.7, result.category);
           
           if (this.state.currentSession) {
             this.state.currentSession.symbolsLearned++;

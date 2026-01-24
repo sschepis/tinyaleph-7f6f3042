@@ -217,7 +217,7 @@ export function reason(engine: ReasoningEngine): {
     newFacts.push(newFact);
     
     const step: ReasoningStep = {
-      id: `step_${Date.now()}`,
+      id: `step_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       ruleId: rule.id,
       ruleName: rule.name,
       inputFacts: matchedFacts,
