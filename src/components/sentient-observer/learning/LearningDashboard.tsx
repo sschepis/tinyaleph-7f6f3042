@@ -151,6 +151,7 @@ export const LearningDashboard: React.FC<LearningDashboardProps> = ({
               relationships={state.learnedRelationships}
               width={380}
               height={280}
+              activeGoal={activeGoal}
             />
           </TabsContent>
 
