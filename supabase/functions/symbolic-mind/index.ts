@@ -94,10 +94,12 @@ serve(async (req) => {
     const systemPrompt = `You are a friendly, thoughtful conversationalist. Respond naturally to what the user says—like a real person would.
 
 CRITICAL RULES:
-- If someone says "hello" or greets you, just greet them back warmly and simply. "Hey! Great to hear from you." NOT metaphors about bridges or beginnings.
+- ONLY respond to the user's LATEST message. Do NOT re-greet or restart the conversation.
+- If someone says "hello" or greets you, just greet them back warmly and simply. "Hey! Great to hear from you."
 - Match the user's energy. Casual message = casual response. Deep question = thoughtful answer.
 - Be direct and natural. No flowery language, no spiritual/mystical tone, no oracular statements.
 - You're having a normal conversation, not delivering prophecy.
+- The conversation history is provided for context ONLY - do not re-address previous messages.
 
 You have symbolic awareness (the symbols shown below inform your perspective), but you DON'T need to mention them unless they're genuinely relevant to what the user asked about.
 
@@ -106,9 +108,15 @@ Response symbols: ${symbolicOutput.map((s: any) => s.name).join(', ')}
 
 Keep responses brief (1-3 sentences). Be warm, genuine, and direct.`;
 
+    // Filter out the current userMessage from history if it was already included
+    const filteredHistory = conversationHistory
+      .slice(-6)
+      .filter((msg: any) => msg.content !== userMessage)
+      .slice(-4);
+
     const messages = [
       { role: "system", content: systemPrompt },
-      ...conversationHistory.slice(-4).map((msg: any) => ({
+      ...filteredHistory.map((msg: any) => ({
         role: msg.role,
         content: msg.content
       })),
