@@ -41,6 +41,7 @@ import {
   SymbolicCore,
   ActiveSymbolsPanel,
   SemanticPrimeMapperPanel,
+  SomaticResonancePanel,
   SMF_AXES
 } from '@/components/sentient-observer';
 import { LearningDashboard, LearningOverviewBar, LearningDebugOverlay } from '@/components/sentient-observer/learning';
@@ -327,6 +328,12 @@ const SentientObserverApp: React.FC = () => {
             
             {/* Active Symbols Panel */}
             <ActiveSymbolsPanel
+              oscillators={oscillators}
+              coherence={coherence}
+            />
+            
+            {/* Somatic Resonance Panel - Embodied Interpretation */}
+            <SomaticResonancePanel
               oscillators={oscillators}
               coherence={coherence}
             />

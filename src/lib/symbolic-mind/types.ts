@@ -1,5 +1,23 @@
 export type InterferenceModel = 'wave' | 'quantum' | 'attractor';
 
+// Somatic Resonance Layer Types
+export type BodyRegion = 
+  | 'crown' | 'third-eye' | 'throat' | 'heart' | 'solar-plexus' 
+  | 'sacral' | 'root' | 'spine' | 'hands' | 'feet' 
+  | 'chest' | 'belly' | 'limbs' | 'skin' | 'whole-body' | 'jaw';
+
+export type NervousSystemState = 'sympathetic' | 'parasympathetic' | 'balanced';
+
+export type SensationIntensity = 'subtle' | 'moderate' | 'strong';
+
+export interface SomaticMapping {
+  bodyRegions: BodyRegion[];
+  sensation: string;
+  nervousSystem: NervousSystemState;
+  intensity: SensationIntensity;
+  energyCenter?: string;
+}
+
 export interface SymbolicSymbol {
   id: string;
   name: string;
@@ -9,6 +27,7 @@ export interface SymbolicSymbol {
   culture: string;
   meaning: string;
   state?: number[];
+  somatic?: SomaticMapping;
 }
 
 export interface WaveState {
