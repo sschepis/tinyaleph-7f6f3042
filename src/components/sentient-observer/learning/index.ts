@@ -5,6 +5,7 @@
  */
 
 export { LearningDashboard } from './LearningDashboard';
+export { LearningOverviewBar } from './LearningOverviewBar';
 export { LearningStatusBar } from './LearningStatusBar';
 export { CurrentGoalCard } from './CurrentGoalCard';
 export { DiscoveryTimeline } from './DiscoveryTimeline';

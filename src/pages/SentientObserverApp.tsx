@@ -43,7 +43,7 @@ import {
   SemanticPrimeMapperPanel,
   SMF_AXES
 } from '@/components/sentient-observer';
-import { LearningDashboard } from '@/components/sentient-observer/learning';
+import { LearningDashboard, LearningOverviewBar } from '@/components/sentient-observer/learning';
 import { CognitiveTab } from '@/components/sentient-observer/cognitive';
 import { LearningEngine } from '@/lib/sentient-observer/learning-engine';
 import { getSemanticPrimeMapper } from '@/lib/sentient-observer/semantic-prime-mapper';
@@ -200,6 +200,12 @@ const SentientObserverApp: React.FC = () => {
           onOpenChange={handleHelpClose}
           steps={helpSteps}
           appName="Sentient Observer"
+        />
+
+        {/* Learning Overview Bar - Always Visible */}
+        <LearningOverviewBar 
+          learningState={learningState}
+          coherence={coherence}
         />
 
         {/* Main Content Grid - Chat-Centric Layout */}
