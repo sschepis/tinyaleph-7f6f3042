@@ -321,6 +321,14 @@ const SentientObserverApp: React.FC = () => {
               coherence={coherence}
             />
             
+            {/* Semantic Prime Mapper - Always Visible */}
+            <SemanticPrimeMapperPanel
+              oscillatorPrimes={oscillators.map(o => o.prime)}
+              activeOscillatorIndices={oscillators
+                .map((o, i) => (o.amplitude > 0.1 ? i : -1))
+                .filter(i => i >= 0)}
+            />
+            
             {/* Learning Dashboard */}
             <LearningDashboard
               state={learningState}
@@ -333,15 +341,7 @@ const SentientObserverApp: React.FC = () => {
           {/* Right column - Analysis Tabs */}
           <div className="lg:col-span-4">
             <Tabs defaultValue="cognitive" className="space-y-4">
-              <TabsList className="grid grid-cols-4 w-full">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <TabsTrigger value="primes" className="text-xs">
-                      <Atom className="h-4 w-4" />
-                    </TabsTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>Semantic Prime Mapper</TooltipContent>
-                </Tooltip>
+              <TabsList className="grid grid-cols-3 w-full">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <TabsTrigger value="cognitive" className="text-xs">
@@ -367,16 +367,6 @@ const SentientObserverApp: React.FC = () => {
                   <TooltipContent>System Settings</TooltipContent>
                 </Tooltip>
               </TabsList>
-
-              {/* Semantic Prime Mapper Tab */}
-              <TabsContent value="primes" className="space-y-4">
-                <SemanticPrimeMapperPanel
-                  oscillatorPrimes={oscillators.map(o => o.prime)}
-                  activeOscillatorIndices={oscillators
-                    .map((o, i) => (o.amplitude > 0.1 ? i : -1))
-                    .filter(i => i >= 0)}
-                />
-              </TabsContent>
 
               {/* Cognitive Tab */}
               <TabsContent value="cognitive" className="space-y-4">
