@@ -3,15 +3,20 @@
  * 
  * Interactive force-directed graph showing relationships learned by the LLM chaperone.
  * Similar to TriadicFusionGraph but for chaperone-discovered connections.
+ * 
+ * Features real-time animations:
+ * - Pulsing nodes for concepts currently being learned
+ * - Smooth entry transitions for newly discovered symbols
+ * - Edge animations when relationships are formed
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { ZoomIn, ZoomOut, RotateCcw, Expand, Minimize2 } from 'lucide-react';
-import type { LearnedSymbol, LearnedRelationship } from '@/lib/sentient-observer/learning-engine';
+import type { LearnedSymbol, LearnedRelationship, LearningGoal } from '@/lib/sentient-observer/learning-engine';
 
 interface RelationshipNode {
   id: string;
@@ -25,6 +30,8 @@ interface RelationshipNode {
   vy: number;
   radius: number;
   connectionCount: number;
+  isNew?: boolean;
+  entryTime?: number;
 }
 
 interface RelationshipEdge {
@@ -34,6 +41,8 @@ interface RelationshipEdge {
   relationshipType: LearnedRelationship['relationshipType'];
   strength: number;
   explanation: string;
+  isNew?: boolean;
+  entryTime?: number;
 }
 
 interface LearnedRelationshipsGraphProps {
@@ -43,6 +52,7 @@ interface LearnedRelationshipsGraphProps {
   height?: number;
   onNodeSelect?: (prime: number) => void;
   selectedPrime?: number;
+  activeGoal?: LearningGoal | null;
 }
 
 const RELATIONSHIP_COLORS: Record<LearnedRelationship['relationshipType'], string> = {
@@ -74,16 +84,22 @@ const CATEGORY_COLORS: Record<string, string> = {
   process: 'hsl(100, 70%, 45%)'
 };
 
+// Animation timing constants
+const NEW_ITEM_DURATION = 3000; // How long items show "new" animation
+
 export function LearnedRelationshipsGraph({
   symbols,
   relationships,
   width = 400,
   height = 350,
   onNodeSelect,
-  selectedPrime
+  selectedPrime,
+  activeGoal
 }: LearnedRelationshipsGraphProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const animationRef = useRef<number>(0);
+  const prevSymbolsRef = useRef<Set<number>>(new Set());
+  const prevRelationshipsRef = useRef<Set<string>>(new Set());
   
   const [nodes, setNodes] = useState<RelationshipNode[]>([]);
   const [edges, setEdges] = useState<RelationshipEdge[]>([]);
@@ -93,17 +109,38 @@ export function LearnedRelationshipsGraph({
   const [zoom, setZoom] = useState(1);
   const [minStrength, setMinStrength] = useState(0.2);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [pulsePhase, setPulsePhase] = useState(0);
 
   const actualWidth = isExpanded ? Math.min(800, window.innerWidth - 100) : width;
   const actualHeight = isExpanded ? 500 : height;
 
-  // Build graph from learned data
+  // Get the prime being actively learned
+  const activePrime = useMemo(() => {
+    if (!activeGoal || activeGoal.status !== 'in_progress') return null;
+    return activeGoal.targetPrime || null;
+  }, [activeGoal]);
+
+  // Pulse animation loop
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPulsePhase(p => (p + 1) % 100);
+    }, 50);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Build graph from learned data with entry animation tracking
   const buildGraph = useCallback(() => {
     if (symbols.length === 0 && relationships.length === 0) {
       setNodes([]);
       setEdges([]);
+      prevSymbolsRef.current = new Set();
+      prevRelationshipsRef.current = new Set();
       return;
     }
+
+    const now = Date.now();
+    const prevSymbols = prevSymbolsRef.current;
+    const prevRelationships = prevRelationshipsRef.current;
 
     // Get all primes involved in relationships
     const primesInRelationships = new Set<number>();
@@ -129,6 +166,7 @@ export function LearnedRelationshipsGraph({
     const newNodes: RelationshipNode[] = Array.from(allPrimes).map((prime, i) => {
       const symbol = symbolMap.get(prime);
       const connCount = connectionCounts.get(prime) || 0;
+      const isNew = !prevSymbols.has(prime);
       
       // Position in a spiral pattern
       const angle = (i / allPrimes.size) * Math.PI * 3;
@@ -145,21 +183,35 @@ export function LearnedRelationshipsGraph({
         vx: 0,
         vy: 0,
         radius: 8 + Math.min(connCount * 2, 10) + (symbol?.confidence || 0.5) * 4,
-        connectionCount: connCount
+        connectionCount: connCount,
+        isNew,
+        entryTime: isNew ? now : undefined
       };
     });
 
-    // Create edges from relationships
+    // Create edges from relationships with entry tracking
     const newEdges: RelationshipEdge[] = relationships
       .filter(r => r.strength >= minStrength)
-      .map((r, i) => ({
-        id: `rel-${r.primeA}-${r.primeB}-${i}`,
-        source: `p${r.primeA}`,
-        target: `p${r.primeB}`,
-        relationshipType: r.relationshipType,
-        strength: r.strength,
-        explanation: r.explanation
-      }));
+      .map((r, i) => {
+        const edgeKey = `${r.primeA}-${r.primeB}-${r.relationshipType}`;
+        const isNew = !prevRelationships.has(edgeKey);
+        return {
+          id: `rel-${r.primeA}-${r.primeB}-${i}`,
+          source: `p${r.primeA}`,
+          target: `p${r.primeB}`,
+          relationshipType: r.relationshipType,
+          strength: r.strength,
+          explanation: r.explanation,
+          isNew,
+          entryTime: isNew ? now : undefined
+        };
+      });
+
+    // Update refs for next comparison
+    prevSymbolsRef.current = new Set(allPrimes);
+    prevRelationshipsRef.current = new Set(
+      relationships.map(r => `${r.primeA}-${r.primeB}-${r.relationshipType}`)
+    );
 
     setNodes(newNodes);
     setEdges(newEdges);
@@ -410,6 +462,22 @@ export function LearnedRelationshipsGraph({
                 <polygon points="0 0, 10 3.5, 0 7" fill={color} fillOpacity={0.7} />
               </marker>
             ))}
+            
+            {/* Gradient for new edge glow */}
+            <linearGradient id="newEdgeGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0" />
+              <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
+            </linearGradient>
+            
+            {/* Pulsing filter for active nodes */}
+            <filter id="pulseGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
           </defs>
 
           {/* Edges */}
@@ -425,22 +493,47 @@ export function LearnedRelationshipsGraph({
               const color = RELATIONSHIP_COLORS[edge.relationshipType];
               const isDirected = ['transforms_to', 'contains', 'part_of'].includes(edge.relationshipType);
               
+              // Check if edge is new (within animation duration)
+              const isNewEdge = edge.entryTime && (Date.now() - edge.entryTime) < NEW_ITEM_DURATION;
+              const edgeAge = edge.entryTime ? (Date.now() - edge.entryTime) / NEW_ITEM_DURATION : 1;
+              const entryScale = isNewEdge ? Math.min(1, edgeAge * 3) : 1;
+              
+              // Calculate dash offset for flowing animation on new edges
+              const dashOffset = isNewEdge ? (pulsePhase * 3) % 30 : 0;
+              
               return (
                 <g key={edge.id}>
+                  {/* Glow effect for new edges */}
+                  {isNewEdge && (
+                    <path
+                      d={getEdgePath(edge)}
+                      fill="none"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={6}
+                      strokeOpacity={0.3 * (1 - edgeAge)}
+                      strokeLinecap="round"
+                    />
+                  )}
+                  
                   <path
                     d={getEdgePath(edge)}
                     fill="none"
                     stroke={color}
-                    strokeWidth={isHighlighted ? 3 : 1.5 + edge.strength}
-                    strokeOpacity={isHighlighted ? 0.9 : 0.5}
-                    strokeDasharray={edge.relationshipType === 'similar' ? '5,3' : undefined}
+                    strokeWidth={(isHighlighted ? 3 : 1.5 + edge.strength) * entryScale}
+                    strokeOpacity={isHighlighted ? 0.9 : isNewEdge ? 0.8 : 0.5}
+                    strokeDasharray={isNewEdge ? '8,4' : (edge.relationshipType === 'similar' ? '5,3' : undefined)}
+                    strokeDashoffset={dashOffset}
                     markerEnd={isDirected ? `url(#arrow-${edge.relationshipType})` : undefined}
                     onMouseEnter={() => setHoveredEdge(edge.id)}
                     onMouseLeave={() => setHoveredEdge(null)}
                     className="cursor-pointer"
+                    style={{
+                      transition: isNewEdge ? 'none' : 'stroke-width 0.2s, stroke-opacity 0.2s'
+                    }}
                   />
+                  
                   {/* Relationship symbol at midpoint */}
-                  {isHighlighted && (
+                  {(isHighlighted || isNewEdge) && (
                     <text
                       x={(source.x + target.x) / 2}
                       y={(source.y + target.y) / 2 - 8}
@@ -448,6 +541,9 @@ export function LearnedRelationshipsGraph({
                       fontSize={12}
                       fill={color}
                       className="pointer-events-none font-bold"
+                      style={{
+                        opacity: isNewEdge ? 1 - edgeAge * 0.5 : 1
+                      }}
                     >
                       {RELATIONSHIP_SYMBOLS[edge.relationshipType]}
                     </text>
@@ -462,35 +558,84 @@ export function LearnedRelationshipsGraph({
             {nodes.map(node => {
               const isHovered = hoveredNode === node.id;
               const isSelected = selectedPrime === node.prime;
+              const isActive = activePrime === node.prime;
               const nodeColor = getNodeColor(node);
+              
+              // Check if node is new (within animation duration)
+              const isNewNode = node.entryTime && (Date.now() - node.entryTime) < NEW_ITEM_DURATION;
+              const nodeAge = node.entryTime ? (Date.now() - node.entryTime) / NEW_ITEM_DURATION : 1;
+              
+              // Entry animation: scale from 0 to 1
+              const entryScale = isNewNode ? Math.min(1, nodeAge * 4) : 1;
+              
+              // Pulse animation for active nodes
+              const pulseScale = isActive ? 1 + Math.sin(pulsePhase * 0.2) * 0.15 : 1;
+              const pulseOpacity = isActive ? 0.3 + Math.sin(pulsePhase * 0.15) * 0.2 : 0;
               
               return (
                 <g
                   key={node.id}
-                  transform={`translate(${node.x}, ${node.y})`}
+                  transform={`translate(${node.x}, ${node.y}) scale(${entryScale})`}
                   onMouseEnter={() => setHoveredNode(node.id)}
                   onMouseLeave={() => setHoveredNode(null)}
                   onMouseDown={() => handleMouseDown(node.id)}
                   onClick={() => handleNodeClick(node)}
                   className="cursor-pointer"
+                  style={{
+                    transformOrigin: 'center',
+                    transition: isNewNode ? 'none' : 'transform 0.2s ease-out'
+                  }}
                 >
+                  {/* Pulsing rings for active learning node */}
+                  {isActive && (
+                    <>
+                      <circle
+                        r={node.radius + 20 + Math.sin(pulsePhase * 0.1) * 5}
+                        fill="none"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={1}
+                        strokeOpacity={pulseOpacity * 0.5}
+                      />
+                      <circle
+                        r={node.radius + 12 + Math.sin(pulsePhase * 0.15) * 3}
+                        fill="none"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2}
+                        strokeOpacity={pulseOpacity}
+                      />
+                    </>
+                  )}
+                  
+                  {/* Entry glow for new nodes */}
+                  {isNewNode && (
+                    <circle
+                      r={node.radius + 10}
+                      fill="hsl(var(--primary))"
+                      fillOpacity={0.3 * (1 - nodeAge)}
+                      className="animate-pulse"
+                    />
+                  )}
+                  
                   {/* Glow effect */}
                   <circle
-                    r={node.radius + 5}
+                    r={(node.radius + 5) * pulseScale}
                     fill="none"
-                    stroke={nodeColor}
-                    strokeWidth={2}
-                    strokeOpacity={isHovered || isSelected ? 0.5 : 0.15}
+                    stroke={isActive ? 'hsl(var(--primary))' : nodeColor}
+                    strokeWidth={isActive ? 3 : 2}
+                    strokeOpacity={isHovered || isSelected || isActive ? 0.6 : 0.15}
                   />
                   
                   {/* Main circle */}
                   <circle
-                    r={node.radius}
+                    r={node.radius * pulseScale}
                     fill={nodeColor}
                     fillOpacity={0.85}
-                    stroke={isHovered || isSelected ? 'white' : 'transparent'}
-                    strokeWidth={2}
-                    className="transition-all duration-150"
+                    stroke={isActive ? 'hsl(var(--primary))' : (isHovered || isSelected ? 'white' : 'transparent')}
+                    strokeWidth={isActive ? 3 : 2}
+                    filter={isActive ? 'url(#pulseGlow)' : undefined}
+                    style={{
+                      transition: 'all 0.15s ease-out'
+                    }}
                   />
                   
                   {/* Prime number label */}
@@ -504,8 +649,24 @@ export function LearnedRelationshipsGraph({
                     {node.prime}
                   </text>
                   
+                  {/* "Learning..." indicator for active node */}
+                  {isActive && (
+                    <text
+                      textAnchor="middle"
+                      y={-node.radius - 8}
+                      fontSize={8}
+                      fill="hsl(var(--primary))"
+                      className="pointer-events-none select-none font-semibold"
+                      style={{
+                        opacity: 0.7 + Math.sin(pulsePhase * 0.2) * 0.3
+                      }}
+                    >
+                      Learning...
+                    </text>
+                  )}
+                  
                   {/* Meaning label on hover */}
-                  {isHovered && (
+                  {isHovered && !isActive && (
                     <text
                       textAnchor="middle"
                       y={node.radius + 12}
