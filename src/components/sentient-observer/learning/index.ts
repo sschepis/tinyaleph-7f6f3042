@@ -10,3 +10,4 @@ export { LearningStatusBar } from './LearningStatusBar';
 export { CurrentGoalCard } from './CurrentGoalCard';
 export { DiscoveryTimeline } from './DiscoveryTimeline';
 export { KnowledgeGrowthStats } from './KnowledgeGrowthStats';
+export { LearningDebugOverlay } from './LearningDebugOverlay';
