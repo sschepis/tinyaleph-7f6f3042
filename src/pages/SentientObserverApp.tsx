@@ -41,9 +41,9 @@ import {
   SymbolicCore,
   ActiveSymbolsPanel,
   SemanticPrimeMapperPanel,
-  LearningChaperonePanel,
   SMF_AXES
 } from '@/components/sentient-observer';
+import { LearningDashboard } from '@/components/sentient-observer/learning';
 import { CognitiveTab } from '@/components/sentient-observer/cognitive';
 import { LearningEngine } from '@/lib/sentient-observer/learning-engine';
 import { getSemanticPrimeMapper } from '@/lib/sentient-observer/semantic-prime-mapper';
@@ -321,8 +321,8 @@ const SentientObserverApp: React.FC = () => {
               coherence={coherence}
             />
             
-            {/* Learning Chaperone Panel */}
-            <LearningChaperonePanel
+            {/* Learning Dashboard */}
+            <LearningDashboard
               state={learningState}
               onStartLearning={() => learningEngine.startLearningSession(8000)}
               onStopLearning={() => learningEngine.stopLearningSession()}
