@@ -509,6 +509,34 @@ export class SemanticPrimeMapper {
   }
   
   /**
+   * Add a learned meaning from the LearningEngine
+   * This syncs LLM-discovered meanings back into the semantic field
+   */
+  addLearnedMeaning(prime: number, meaning: string, confidence: number = 0.8, category?: string): void {
+    // Don't overwrite existing seeded meanings
+    const existing = this.field.get(prime);
+    if (existing?.isSeeded) {
+      console.log(`[SemanticPrimeMapper] Skipping learned meaning for seeded prime ${prime}`);
+      return;
+    }
+    
+    const newMeaning: PrimeMeaning = {
+      prime,
+      meaning,
+      confidence: Math.max(0.5, Math.min(0.95, confidence)),
+      derivedFrom: existing?.derivedFrom || [],
+      entropy: 0.1, // Low entropy for learned meanings
+      isSeeded: false,
+      isRefined: true, // Already refined by LLM
+      category,
+      resonantWith: existing?.resonantWith || []
+    };
+    
+    this.field.set(prime, newMeaning);
+    this.updateMetrics();
+  }
+  
+  /**
    * Get meaning for a specific prime
    */
   getMeaning(prime: number): PrimeMeaning | undefined {
