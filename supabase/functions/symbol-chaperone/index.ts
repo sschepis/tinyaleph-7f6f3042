@@ -235,36 +235,89 @@ Your task is to generate concrete examples of how these symbols might be used or
     // Use JSON schema in system prompt for more reliable structured output
     const schemaInstructions = `\n\nIMPORTANT: Respond ONLY with valid JSON matching this schema:\n${JSON.stringify(responseSchema, null, 2)}`;
     
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-pro-preview",
-        messages: [
-          { role: "system", content: systemPrompt + schemaInstructions },
-          { role: "user", content: userPrompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 2000
-      }),
-    });
+    // Retry logic for transient errors (503, 502, network issues)
+    const MAX_RETRIES = 3;
+    const RETRY_DELAYS = [1000, 2000, 4000]; // exponential backoff
+    let lastError: Error | null = null;
+    let response: Response | null = null;
 
-    if (!response.ok) {
-      const status = response.status;
-      if (status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" }
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      try {
+        response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: [
+              { role: "system", content: systemPrompt + schemaInstructions },
+              { role: "user", content: userPrompt }
+            ],
+            temperature: 0.7,
+            max_tokens: 2500
+          }),
         });
+
+        // Handle non-retryable errors immediately
+        if (response.status === 429) {
+          return new Response(JSON.stringify({ error: "Rate limit exceeded. Please wait a moment." }), {
+            status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+        if (response.status === 402) {
+          return new Response(JSON.stringify({ error: "Credits exhausted" }), {
+            status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+        if (response.status === 400) {
+          return new Response(JSON.stringify({ error: "Invalid request" }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+
+        // Retry on 502, 503, 504 (transient gateway errors)
+        if (response.status >= 500 && response.status < 600) {
+          lastError = new Error(`AI gateway error: ${response.status}`);
+          console.log(`Attempt ${attempt + 1} failed with ${response.status}, retrying...`);
+          if (attempt < MAX_RETRIES - 1) {
+            await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]));
+            continue;
+          }
+        }
+
+        // Success or other error
+        if (response.ok) {
+          break;
+        } else {
+          lastError = new Error(`AI gateway error: ${response.status}`);
+        }
+      } catch (fetchError) {
+        lastError = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
+        console.log(`Attempt ${attempt + 1} network error:`, lastError.message);
+        if (attempt < MAX_RETRIES - 1) {
+          await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]));
+        }
       }
-      if (status === 402) {
-        return new Response(JSON.stringify({ error: "Credits exhausted" }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
-      }
-      throw new Error(`AI gateway error: ${status}`);
+    }
+
+    if (!response || !response.ok) {
+      // Return a 503 with retry-after hint instead of 500
+      return new Response(
+        JSON.stringify({ 
+          error: "AI service temporarily unavailable. Please try again in a moment.",
+          retryable: true 
+        }),
+        { 
+          status: 503, 
+          headers: { 
+            ...corsHeaders, 
+            "Content-Type": "application/json",
+            "Retry-After": "5"
+          } 
+        }
+      );
     }
 
     const data = await response.json();
