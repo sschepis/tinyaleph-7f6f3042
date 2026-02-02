@@ -42,6 +42,7 @@ import {
   ActiveSymbolsPanel,
   SemanticPrimeMapperPanel,
   SomaticResonancePanel,
+  TriadInterpreterPanel,
   SMF_AXES
 } from '@/components/sentient-observer';
 import { LearningDashboard, LearningOverviewBar, LearningDebugOverlay } from '@/components/sentient-observer/learning';
@@ -334,6 +335,12 @@ const SentientObserverApp: React.FC = () => {
             
             {/* Somatic Resonance Panel - Embodied Interpretation */}
             <SomaticResonancePanel
+              oscillators={oscillators}
+              coherence={coherence}
+            />
+            
+            {/* Triad Interpreter - Narrative when 3+ symbols active */}
+            <TriadInterpreterPanel
               oscillators={oscillators}
               coherence={coherence}
             />
