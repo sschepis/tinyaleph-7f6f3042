@@ -10,3 +10,4 @@ export { TriadicFusionGraph } from './TriadicFusionGraph';
 export { LearningChaperonePanel } from './LearningChaperonePanel';
 export { LearnedRelationshipsGraph } from './LearnedRelationshipsGraph';
 export { SomaticResonancePanel } from './SomaticResonancePanel';
+export { TriadInterpreterPanel } from './TriadInterpreterPanel';
