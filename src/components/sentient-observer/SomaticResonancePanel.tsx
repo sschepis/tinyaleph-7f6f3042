@@ -75,52 +75,78 @@ export const SomaticResonancePanel: React.FC<SomaticResonancePanelProps> = ({
       </CardHeader>
       
       <CardContent className="flex-1 p-2 pt-0">
+        {/* Body Silhouette - Prominent Visualization */}
+        <div className="flex justify-center mb-3">
+          <BodyMapViz 
+            somaticState={somaticState} 
+            size={180}
+            showLabels={true}
+          />
+        </div>
+        
+        {/* Two-column stats below the body map */}
         <div className="grid grid-cols-2 gap-3">
-          {/* Body Map Visualization */}
-          <div className="flex flex-col items-center">
-            <BodyMapViz 
-              somaticState={somaticState} 
-              size={140}
-              showLabels={false}
-            />
+          {/* Active Sensations */}
+          <div>
+            <div className="text-[10px] font-medium text-muted-foreground mb-1">
+              Active Sensations
+            </div>
+            <ScrollArea className="h-[80px]">
+              <div className="space-y-1">
+                {somaticState.activeSensations.length === 0 ? (
+                  <div className="text-[10px] text-muted-foreground italic">
+                    No active sensations
+                  </div>
+                ) : (
+                  somaticState.activeSensations.map(({ sensation, intensity, regions }, i) => (
+                    <div 
+                      key={i} 
+                      className="flex items-center gap-1.5 text-[10px]"
+                      title={`Regions: ${regions.join(', ')}`}
+                    >
+                      <span className="truncate flex-1 capitalize">{sensation}</span>
+                      <Badge 
+                        variant="secondary" 
+                        className={`text-[8px] px-1 py-0 ${
+                          intensity === 'strong' ? 'bg-rose-500/20 text-rose-400' :
+                          intensity === 'moderate' ? 'bg-amber-500/20 text-amber-400' :
+                          'bg-blue-500/20 text-blue-400'
+                        }`}
+                      >
+                        {intensity}
+                      </Badge>
+                    </div>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
           </div>
           
-          {/* Sensation List & Stats */}
+          {/* Dominant Regions & Intensity */}
           <div className="space-y-2">
-            {/* Active Sensations */}
+            {/* Dominant Body Regions */}
             <div>
               <div className="text-[10px] font-medium text-muted-foreground mb-1">
-                Active Sensations
+                Active Regions
               </div>
-              <ScrollArea className="h-[100px]">
-                <div className="space-y-1">
-                  {somaticState.activeSensations.length === 0 ? (
-                    <div className="text-[10px] text-muted-foreground italic">
-                      No active sensations
-                    </div>
-                  ) : (
-                    somaticState.activeSensations.map(({ sensation, intensity, regions }, i) => (
-                      <div 
-                        key={i} 
-                        className="flex items-center gap-1.5 text-[10px]"
-                        title={`Regions: ${regions.join(', ')}`}
-                      >
-                        <span className="truncate flex-1 capitalize">{sensation}</span>
-                        <Badge 
-                          variant="secondary" 
-                          className={`text-[8px] px-1 py-0 ${
-                            intensity === 'strong' ? 'bg-rose-500/20 text-rose-400' :
-                            intensity === 'moderate' ? 'bg-amber-500/20 text-amber-400' :
-                            'bg-blue-500/20 text-blue-400'
-                          }`}
-                        >
-                          {intensity}
-                        </Badge>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </ScrollArea>
+              <div className="flex flex-wrap gap-1">
+                {somaticState.dominantRegions.slice(0, 5).map(({ region, intensity: regionIntensity }) => (
+                  <Badge 
+                    key={region} 
+                    variant="outline" 
+                    className="text-[8px] px-1 py-0 capitalize"
+                    style={{ 
+                      opacity: 0.5 + regionIntensity * 0.5,
+                      borderColor: `hsl(${regionIntensity * 120}, 60%, 50%)`
+                    }}
+                  >
+                    {region.replace('-', ' ')}
+                  </Badge>
+                ))}
+                {somaticState.dominantRegions.length === 0 && (
+                  <span className="text-[10px] text-muted-foreground italic">None</span>
+                )}
+              </div>
             </div>
             
             {/* Overall Intensity */}
@@ -139,7 +165,7 @@ export const SomaticResonancePanel: React.FC<SomaticResonancePanelProps> = ({
                   <Badge 
                     key={center} 
                     variant="outline" 
-                    className="text-[8px] px-1 py-0 capitalize"
+                    className="text-[8px] px-1 py-0 capitalize text-primary"
                   >
                     {center}
                   </Badge>
