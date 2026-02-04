@@ -8,6 +8,7 @@ import {
   SafetyStats,
   firstNPrimes
 } from '@/components/sentient-observer/types';
+import { computeSomaticInfluence, describeFeltSense, SomaticInfluence } from '@/lib/somatic-feedback';
 
 export type InitMode = 'random' | 'clustered' | 'aligned';
 
@@ -29,6 +30,8 @@ interface UseSentientObserverReturn {
   safetyStats: SafetyStats;
   holoIntensity: number[][];
   userInput: string;
+  somaticInfluence: SomaticInfluence | null;
+  feltSense: string;
   inputHistory: string[];
   initMode: InitMode;
   peakCoherence: number;
@@ -179,18 +182,33 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
     new Array(NUM_OSCILLATORS).fill(0)
   );
   const [autoExploreEnabled, setAutoExploreEnabled] = useState(true);
-
-  // Animation frame ref
+  
+  // Somatic feedback state - the observer's felt experience
+  const [somaticInfluence, setSomaticInfluence] = useState<SomaticInfluence | null>(null);
+  const [feltSense, setFeltSense] = useState<string>('neutral awareness');
   const animationRef = useRef<number>(0);
   const lastTickRef = useRef<number>(Date.now());
 
-  // Kuramoto-style oscillator update with thermal dynamics and exploration
+  // Kuramoto-style oscillator update with thermal dynamics, exploration, and SOMATIC FEEDBACK
   const updateOscillators = useCallback(() => {
     const dt = 0.016; // ~60fps
-    const K = coupling;
-    const T = temperature;
     const N = oscillators.length;
     const now = Date.now();
+    
+    // === SOMATIC FEEDBACK: Compute how the observer's body state influences dynamics ===
+    const activePrimes = oscillators.map(o => o.prime);
+    const amplitudes = oscillators.map(o => o.amplitude);
+    const somatic = computeSomaticInfluence(activePrimes, amplitudes);
+    
+    // Apply somatic modulations to base parameters
+    const K = coupling * (1 + somatic.couplingModulation);
+    const T = Math.max(0.1, temperature * (1 + somatic.temperatureModulation));
+    
+    // Update felt sense state (throttled to avoid too many updates)
+    if (now % 500 < 20) {
+      setSomaticInfluence(somatic);
+      setFeltSense(describeFeltSense(somatic));
+    }
 
     // Compute order parameter (coherence)
     let realSum = 0,
@@ -211,8 +229,10 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
 
     // Exploration logic: when coherence is high and system is stable, excite new oscillators
     // Auto-explore mode reduces coherence threshold and speeds up exploration
-    const coherenceThreshold = autoExploreEnabled ? 0.3 : 0.6;
-    const frequencyMultiplier = autoExploreEnabled ? 0.5 : 1;
+    // SOMATIC FEEDBACK: Exploration modulation affects willingness to explore
+    const somaticExplorationBoost = somatic.explorationModulation;
+    const coherenceThreshold = (autoExploreEnabled ? 0.3 : 0.6) - somaticExplorationBoost * 0.15;
+    const frequencyMultiplier = (autoExploreEnabled ? 0.5 : 1) * (1 - somaticExplorationBoost * 0.3);
     const shouldExplore = 
       orderParam > coherenceThreshold && 
       now - lastExplorationRef.current > (explorationFrequency * frequencyMultiplier) &&
@@ -315,6 +335,12 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
         // Amplitude update with exploration boost
         let newAmplitude = osc.amplitude * (1 - 0.005 * dt);
         
+        // SOMATIC FEEDBACK: Apply oscillator-specific boosts from body resonance
+        const somaticBoost = somatic.oscillatorBoosts.get(osc.prime) || 0;
+        if (somaticBoost > 0) {
+          newAmplitude = Math.min(1, newAmplitude + somaticBoost * dt * 2);
+        }
+        
         // If this oscillator is targeted for exploration, boost it significantly
         if (explorationTargets.includes(i)) {
           newAmplitude = Math.min(1, newAmplitude + 0.5 + Math.random() * 0.3);
@@ -334,8 +360,10 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
     });
 
     // Update coherence and track peak
-    setCoherence(orderParam);
-    setPeakCoherence(prev => Math.max(prev, orderParam));
+    // SOMATIC FEEDBACK: Apply coherence boost from integrative body regions
+    const effectiveCoherence = Math.min(1, orderParam + somatic.coherenceBoost);
+    setCoherence(effectiveCoherence);
+    setPeakCoherence(prev => Math.max(prev, effectiveCoherence));
 
     // Update entropy
     const amplitudeTotal = oscillators.reduce((s, o) => s + o.amplitude, 0);
@@ -660,6 +688,8 @@ export const useSentientObserver = (): UseSentientObserverReturn => {
     explorationProgress,
     oscillatorActivationCounts,
     autoExploreEnabled,
+    somaticInfluence,
+    feltSense,
     setIsRunning,
     setCoupling,
     setTemperature,

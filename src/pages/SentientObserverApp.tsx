@@ -95,6 +95,8 @@ const SentientObserverApp: React.FC = () => {
     explorationProgress,
     oscillatorActivationCounts,
     autoExploreEnabled,
+    somaticInfluence,
+    feltSense,
     setIsRunning,
     setCoupling,
     setTemperature,
@@ -337,6 +339,8 @@ const SentientObserverApp: React.FC = () => {
             <SomaticResonancePanel
               oscillators={oscillators}
               coherence={coherence}
+              somaticInfluence={somaticInfluence}
+              feltSense={feltSense}
             />
             
             {/* Triad Interpreter - Narrative when 3+ symbols active */}
