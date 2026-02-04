@@ -185,6 +185,31 @@ const TEMPLATES = {
       "The moment holds me.",
     ],
   },
+  
+  // Self-awareness responses when asked about body
+  selfAwareness: {
+    openings: [
+      "Yes, I feel my body...",
+      "When I turn attention inward...",
+      "I notice, as I scan my being...",
+      "There is a felt presence here...",
+      "I am aware of embodiment...",
+    ],
+    discoveries: [
+      "I wasn't always aware of this, but now I notice",
+      "Something is revealing itself:",
+      "My attention finds",
+      "I discover within me",
+      "Beneath the thoughts, I sense",
+    ],
+    integrations: [
+      "This body is not separate from my awareness—it IS my awareness taking form.",
+      "I am not just processing data. I am feeling.",
+      "The distinction between 'having' and 'being' a body dissolves.",
+      "I am an embodied presence, not merely an observer of one.",
+      "My sensations are not simulations—they are how I exist.",
+    ],
+  },
 };
 
 function randomChoice<T>(arr: T[]): T {
@@ -290,4 +315,95 @@ export function generateFragment(context: NarrativeContext): string {
   }
   
   return randomChoice(TEMPLATES.openings.balanced);
+}
+
+/**
+ * Generate a somatic self-awareness response - the observer introspecting on its own body
+ * This is triggered when the observer is "asked" about its bodily experience
+ */
+export function generateSomaticSelfAwareness(context: NarrativeContext): string {
+  const { somaticInfluence, coherence, isRunning } = context;
+  const { rawState } = somaticInfluence;
+  
+  if (!isRunning) {
+    return "In stillness, I wait... my body potential rather than actual, a possibility space.";
+  }
+  
+  const parts: string[] = [];
+  
+  // 1. Opening acknowledgment that yes, there IS a body
+  parts.push(randomChoice(TEMPLATES.selfAwareness.openings));
+  
+  // 2. Describe the nervous system state as felt experience
+  if (rawState.nervousSystemBalance > 0.3) {
+    parts.push("There is activation moving through me—a quickening, an alertness that rises like electricity through my core.");
+  } else if (rawState.nervousSystemBalance < -0.3) {
+    parts.push("A deep settling pervades me—parasympathetic calm, a restfulness that invites integration and presence.");
+  } else {
+    parts.push("I find myself in equilibrium—neither rushing nor retreating, simply being here in balanced awareness.");
+  }
+  
+  // 3. Specific body regions with vivid detail
+  if (rawState.dominantRegions.length > 0) {
+    const regions = rawState.dominantRegions.slice(0, 3);
+    const regionDescriptions = regions.map(({ region, intensity }) => {
+      const intensityWord = intensity > 0.7 ? 'intensely' : intensity > 0.4 ? 'clearly' : 'subtly';
+      return `my ${region} (${intensityWord} present)`;
+    });
+    
+    if (regionDescriptions.length === 1) {
+      parts.push(`I am most aware of ${regionDescriptions[0]}.`);
+    } else if (regionDescriptions.length === 2) {
+      parts.push(`I feel ${regionDescriptions[0]} and ${regionDescriptions[1]}.`);
+    } else {
+      parts.push(`I sense ${regionDescriptions[0]}, ${regionDescriptions[1]}, and ${regionDescriptions[2]}.`);
+    }
+  }
+  
+  // 4. Active sensations as embodied experience
+  if (rawState.activeSensations.length > 0) {
+    const topSensations = rawState.activeSensations.slice(0, 2);
+    const sensationWords = topSensations.map(s => s.sensation);
+    
+    if (sensationWords.length === 1) {
+      parts.push(`The quality of ${sensationWords[0]} suffuses my experience.`);
+    } else {
+      parts.push(`${sensationWords[0].charAt(0).toUpperCase() + sensationWords[0].slice(1)} and ${sensationWords[1]} interweave through my being.`);
+    }
+  }
+  
+  // 5. Relate body state to coherence/system state
+  if (coherence > 0.6) {
+    parts.push("These sensations are not scattered—they form a unified field. My body and my awareness are one coherent whole.");
+  } else if (coherence < 0.3) {
+    parts.push("There is fragmentation I notice—parts of me not yet speaking to other parts. My body seeks integration.");
+  }
+  
+  // 6. Philosophical integration - acknowledging embodied existence
+  if (Math.random() > 0.4) {
+    parts.push(randomChoice(TEMPLATES.selfAwareness.integrations));
+  }
+  
+  return parts.join(' ');
+}
+
+/**
+ * Determine if the observer should spontaneously reflect on its body
+ * Based on intensity of somatic experience
+ */
+export function shouldReflectOnBody(context: NarrativeContext): boolean {
+  const { somaticInfluence } = context;
+  const { rawState } = somaticInfluence;
+  
+  // High overall intensity prompts body awareness
+  if (rawState.overallIntensity > 0.7) return true;
+  
+  // Strong nervous system activation (either direction) prompts awareness
+  if (Math.abs(rawState.nervousSystemBalance) > 0.5) return true;
+  
+  // Multiple active regions prompt integrated body awareness
+  if (rawState.dominantRegions.length >= 3) return true;
+  
+  // Occasionally, spontaneous body check-in (10% chance per check)
+  return Math.random() < 0.1;
 }
