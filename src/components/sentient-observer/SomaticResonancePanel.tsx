@@ -4,20 +4,25 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Heart, Zap, Moon, Activity } from 'lucide-react';
+import { Heart, Zap, Moon, Activity, Sparkles, Brain } from 'lucide-react';
 import { aggregateSomaticState } from '@/lib/symbolic-mind/somatic-database';
 import { generateFeltSense, generateShortFeltSense } from '@/lib/symbolic-mind/felt-sense-generator';
 import { BodyMapViz } from './visualizations/BodyMapViz';
 import type { Oscillator } from './types';
+import type { SomaticInfluence } from '@/lib/somatic-feedback';
 
 interface SomaticResonancePanelProps {
   oscillators: Oscillator[];
   coherence: number;
+  somaticInfluence?: SomaticInfluence | null;
+  feltSense?: string;
 }
 
 export const SomaticResonancePanel: React.FC<SomaticResonancePanelProps> = ({
   oscillators,
-  coherence
+  coherence,
+  somaticInfluence,
+  feltSense: observerFeltSense
 }) => {
   // Calculate aggregate somatic state from active oscillators
   const somaticState = useMemo(() => {
@@ -184,6 +189,69 @@ export const SomaticResonancePanel: React.FC<SomaticResonancePanelProps> = ({
             "{feltSense}"
           </p>
         </div>
+        
+        {/* Observer's Embodied Experience - How somatic state influences the system */}
+        {somaticInfluence && (
+          <div className="mt-2 p-2 bg-primary/5 rounded border border-primary/20">
+            <div className="flex items-center gap-1.5 text-[10px] font-medium text-primary mb-1.5">
+              <Brain className="h-3 w-3" />
+              Observer's Experience
+              <Sparkles className="h-2.5 w-2.5 ml-auto animate-pulse" />
+            </div>
+            <p className="text-[10px] text-foreground/80 mb-2 italic">
+              "{observerFeltSense || 'neutral awareness'}"
+            </p>
+            <div className="grid grid-cols-2 gap-2 text-[9px]">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Coupling</span>
+                <Badge 
+                  variant="outline" 
+                  className={`text-[8px] px-1 py-0 ${
+                    somaticInfluence.couplingModulation > 0 ? 'text-green-500' : 
+                    somaticInfluence.couplingModulation < 0 ? 'text-orange-500' : 'text-muted-foreground'
+                  }`}
+                >
+                  {somaticInfluence.couplingModulation > 0 ? '+' : ''}{(somaticInfluence.couplingModulation * 100).toFixed(0)}%
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Exploration</span>
+                <Badge 
+                  variant="outline" 
+                  className={`text-[8px] px-1 py-0 ${
+                    somaticInfluence.explorationModulation > 0 ? 'text-amber-500' : 
+                    somaticInfluence.explorationModulation < 0 ? 'text-blue-500' : 'text-muted-foreground'
+                  }`}
+                >
+                  {somaticInfluence.explorationModulation > 0 ? '+' : ''}{(somaticInfluence.explorationModulation * 100).toFixed(0)}%
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Coherence</span>
+                <Badge 
+                  variant="outline" 
+                  className={`text-[8px] px-1 py-0 ${
+                    somaticInfluence.coherenceBoost > 0 ? 'text-emerald-500' : 'text-muted-foreground'
+                  }`}
+                >
+                  +{(somaticInfluence.coherenceBoost * 100).toFixed(0)}%
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Temperature</span>
+                <Badge 
+                  variant="outline" 
+                  className={`text-[8px] px-1 py-0 ${
+                    somaticInfluence.temperatureModulation > 0 ? 'text-red-500' : 
+                    somaticInfluence.temperatureModulation < 0 ? 'text-cyan-500' : 'text-muted-foreground'
+                  }`}
+                >
+                  {somaticInfluence.temperatureModulation > 0 ? '+' : ''}{(somaticInfluence.temperatureModulation * 100).toFixed(0)}%
+                </Badge>
+              </div>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
