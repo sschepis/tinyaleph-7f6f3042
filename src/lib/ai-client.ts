@@ -309,6 +309,13 @@ export async function streamSymbolicMind(
     coherenceScore: number;
     conversationHistory?: Array<{ role: string; content: string }>;
     systemPromptOverride?: string;
+    somaticState?: {
+      feltSense: string;
+      nervousSystemBalance: number;
+      dominantRegions: Array<{ region: string; intensity: number }>;
+      activeSensations: Array<{ sensation: string; intensity: string }>;
+      overallIntensity: number;
+    };
   },
   callbacks: StreamCallbacks,
   options?: AIInvokeOptions

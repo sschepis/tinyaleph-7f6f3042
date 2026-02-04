@@ -34,6 +34,14 @@ interface SymbolicMessage {
   isStreaming?: boolean;
 }
 
+interface SomaticStateForChat {
+  feltSense: string;
+  nervousSystemBalance: number;
+  dominantRegions: Array<{ region: string; intensity: number }>;
+  activeSensations: Array<{ sensation: string; intensity: string }>;
+  overallIntensity: number;
+}
+
 interface SymbolicCoreProps {
   oscillators: Oscillator[];
   coherence: number;
@@ -41,6 +49,7 @@ interface SymbolicCoreProps {
   isRunning: boolean;
   onConversationFact?: (userMessage: string, response: string, coherence: number) => void;
   onSearchMemory?: (query: string) => { content: string; similarity: number }[];
+  somaticState?: SomaticStateForChat | null;
 }
 
 // Extract symbols from oscillator state with temperature-based probabilistic sampling
@@ -167,7 +176,7 @@ function SymbolEvolution({ messages }: { messages: SymbolicMessage[] }) {
   );
 }
 
-export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRunning, onConversationFact, onSearchMemory }: SymbolicCoreProps) {
+export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRunning, onConversationFact, onSearchMemory, somaticState }: SymbolicCoreProps) {
   const [messages, setMessages] = useState<SymbolicMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -222,6 +231,7 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
         anchoringSymbols: inputSymbols,
         coherenceScore,
         conversationHistory: conversationHistory as { role: string; content: string }[],
+        somaticState: somaticState ?? undefined,
       },
       {
         onDelta: (content) => {
@@ -253,7 +263,7 @@ export function SymbolicCore({ oscillators, coherence, onExciteOscillators, isRu
       },
       { showToasts: true }
     );
-  }, [messages, onConversationFact]);
+  }, [messages, onConversationFact, somaticState]);
   
   const handleSend = useCallback(() => {
     if (!inputText.trim()) return;

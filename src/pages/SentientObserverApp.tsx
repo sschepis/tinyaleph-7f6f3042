@@ -328,6 +328,13 @@ const SentientObserverApp: React.FC = () => {
                 const results = cognitive.searchMemory(query);
                 return results.map(r => ({ content: r.fragment.content, similarity: r.similarity }));
               }}
+              somaticState={somaticInfluence ? {
+                feltSense,
+                nervousSystemBalance: somaticInfluence.rawState.nervousSystemBalance,
+                dominantRegions: somaticInfluence.rawState.dominantRegions,
+                activeSensations: somaticInfluence.rawState.activeSensations,
+                overallIntensity: somaticInfluence.rawState.overallIntensity
+              } : null}
             />
             
             {/* Active Symbols Panel */}
