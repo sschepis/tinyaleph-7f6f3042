@@ -45,6 +45,7 @@ import {
   TriadInterpreterPanel,
   SMF_AXES
 } from '@/components/sentient-observer';
+import { InternalMonologue } from '@/components/sentient-observer/InternalMonologue';
 import { LearningDashboard, LearningOverviewBar, LearningDebugOverlay } from '@/components/sentient-observer/learning';
 import { CognitiveTab } from '@/components/sentient-observer/cognitive';
 import { LearningEngine } from '@/lib/sentient-observer/learning-engine';
@@ -333,6 +334,14 @@ const SentientObserverApp: React.FC = () => {
             <ActiveSymbolsPanel
               oscillators={oscillators}
               coherence={coherence}
+            />
+            
+            {/* Internal Monologue - Observer's Narrative Voice */}
+            <InternalMonologue
+              somaticInfluence={somaticInfluence}
+              coherence={coherence}
+              tickCount={tickCount}
+              isRunning={isRunning}
             />
             
             {/* Somatic Resonance Panel - Embodied Interpretation */}
