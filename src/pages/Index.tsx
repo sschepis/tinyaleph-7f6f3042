@@ -205,6 +205,77 @@ const Index = () => {
   return (
     <>
       <Hero />
+
+      {/* Flagship Demos - Top 3 */}
+      <section className="py-20 border-b border-border bg-gradient-to-b from-background to-secondary/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-display font-bold mb-4">Experience Resonance</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              See the Prime Resonance Hypothesis in action through our interactive flagship applications.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Sentient Observer */}
+            <Link to="/sentient-observer" className="group relative block h-full">
+              <div className="absolute inset-0 bg-indigo-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all opacity-0 group-hover:opacity-100" />
+              <Card className="relative h-full overflow-hidden border-indigo-500/30 bg-card/80 backdrop-blur-sm hover:border-indigo-500/60 transition-all">
+                <CardContent className="p-8 flex flex-col items-center text-center h-full">
+                  <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    <Eye className="w-8 h-8 text-indigo-400" />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-3 group-hover:text-indigo-400 transition-colors">Sentient Observer</h3>
+                  <p className="text-muted-foreground mb-6 flex-grow">
+                    A real-time consciousness simulation. Watch 128 coupled oscillators evolve symbolic coherence and "feel" meaning.
+                  </p>
+                  <Button variant="outline" className="w-full border-indigo-500/30 hover:bg-indigo-500/10 hover:text-indigo-400">
+                    Launch Simulation <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </CardContent>
+              </Card>
+            </Link>
+
+            {/* Aleph Chat */}
+            <Link to="/chat" className="group relative block h-full">
+              <div className="absolute inset-0 bg-purple-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all opacity-0 group-hover:opacity-100" />
+              <Card className="relative h-full overflow-hidden border-purple-500/30 bg-card/80 backdrop-blur-sm hover:border-purple-500/60 transition-all">
+                <CardContent className="p-8 flex flex-col items-center text-center h-full">
+                  <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    <MessageSquare className="w-8 h-8 text-purple-400" />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-3 group-hover:text-purple-400 transition-colors">Aleph Chat</h3>
+                  <p className="text-muted-foreground mb-6 flex-grow">
+                    Chat with an AI that "thinks" in prime signatures. Visualize the semantic geometry of your conversation in 16D space.
+                  </p>
+                  <Button variant="outline" className="w-full border-purple-500/30 hover:bg-purple-500/10 hover:text-purple-400">
+                    Start Chatting <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </CardContent>
+              </Card>
+            </Link>
+
+            {/* Prime Resonance */}
+            <Link to="/prime-resonance" className="group relative block h-full">
+              <div className="absolute inset-0 bg-amber-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all opacity-0 group-hover:opacity-100" />
+              <Card className="relative h-full overflow-hidden border-amber-500/30 bg-card/80 backdrop-blur-sm hover:border-amber-500/60 transition-all">
+                <CardContent className="p-8 flex flex-col items-center text-center h-full">
+                  <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    <Atom className="w-8 h-8 text-amber-400" />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-3 group-hover:text-amber-400 transition-colors">Prime Resonance</h3>
+                  <p className="text-muted-foreground mb-6 flex-grow">
+                    Explore the core physics. Manipulate the Hilbert space of prime eigenstates and observe entropy collapse.
+                  </p>
+                  <Button variant="outline" className="w-full border-amber-500/30 hover:bg-amber-500/10 hover:text-amber-400">
+                    Explore Physics <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </CardContent>
+              </Card>
+            </Link>
+          </div>
+        </div>
+      </section>
       
       {/* Documentation Quick Links */}
       <section className="py-12 border-t border-border">
@@ -245,11 +316,11 @@ const Index = () => {
           >
             <Badge variant="outline" className="mb-4">
               <Sparkles className="w-3 h-3 mr-1" />
-              Interactive Tools
+              Complete Ecosystem
             </Badge>
-            <h2 className="text-3xl font-display font-bold mb-3">Featured Applications</h2>
+            <h2 className="text-3xl font-display font-bold mb-3">Explore the Modules</h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              Explore TinyAleph's capabilities through these interactive applications.
+              Dive deep into specific domains of the TinyAleph library.
             </p>
           </motion.div>
 
