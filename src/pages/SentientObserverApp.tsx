@@ -50,6 +50,7 @@ import { LearningDashboard, LearningOverviewBar, LearningDebugOverlay } from '@/
 import { CognitiveTab } from '@/components/sentient-observer/cognitive';
 import { LearningEngine } from '@/lib/sentient-observer/learning-engine';
 import { getSemanticPrimeMapper } from '@/lib/sentient-observer/semantic-prime-mapper';
+import type { AgentState } from '@/lib/sentient-observer/semantic-agent';
 import { useLearningDebugStats } from '@/hooks/useLearningDebugStats';
 import { Atom } from 'lucide-react';
 
@@ -113,6 +114,20 @@ const SentientObserverApp: React.FC = () => {
     setAutoExploreEnabled
   } = useSentientObserver();
 
+  // Bridge agent decisions to actual oscillator parameters
+  const handleAgentAction = useCallback((actionName: string, effects: Partial<AgentState>) => {
+    if (effects.coupling !== undefined) setCoupling(effects.coupling);
+    if (effects.temperature !== undefined) setTemperature(effects.temperature);
+    if (actionName === 'Explore New Territory') {
+      const unexplored = oscillators
+        .filter(o => o.amplitude < 0.15)
+        .slice(0, 3);
+      if (unexplored.length > 0) {
+        exciteByPrimes(unexplored.map(o => o.prime), unexplored.map(() => 0.5));
+      }
+    }
+  }, [oscillators, setCoupling, setTemperature, exciteByPrimes]);
+
   // Initialize cognitive systems
   const cognitive = useCognitiveObserver(
     oscillators,
@@ -120,7 +135,8 @@ const SentientObserverApp: React.FC = () => {
     entropy,
     explorationProgress,
     tickCount,
-    isRunning
+    isRunning,
+    handleAgentAction
   );
 
   // Memory integration state

@@ -127,7 +127,8 @@ export function useCognitiveObserver(
   entropy: number,
   explorationProgress: number,
   tickCount: number,
-  isSimulationRunning: boolean = false
+  isSimulationRunning: boolean = false,
+  onAgentAction?: (actionName: string, effects: Partial<AgentState>) => void
 ): CognitiveObserverReturn {
   // Initialize cognitive systems
   const [memory, setMemory] = useState<HolographicMemory>(() => createHolographicMemory());
@@ -260,6 +261,10 @@ export function useCognitiveObserver(
   // Track memory storage from autonomous agent
   const storeMemoryRef = useRef<(content: string, coh: number) => void>(() => {});
   
+  // Stable ref to onAgentAction to avoid re-creating the interval
+  const onAgentActionRef = useRef(onAgentAction);
+  useEffect(() => { onAgentActionRef.current = onAgentAction; }, [onAgentAction]);
+
   // Autonomous agent execution when simulation is running
   useEffect(() => {
     if (isAgentAutonomous && isSimulationRunning) {
@@ -267,23 +272,29 @@ export function useCognitiveObserver(
         setAgent(prevAgent => {
           const selection = selectAction(prevAgent);
           if (selection) {
+            // Compute the effects the action wants to apply
+            const effects = selection.action.effects(prevAgent.state);
             const updatedAgent = executeAction(prevAgent, selection);
             setLastAgentAction(`${selection.action.name} → ${selection.targetGoal.description.slice(0, 30)}`);
-            
+
+            // Bridge to oscillator simulation: apply agent effects to real parameters
+            onAgentActionRef.current?.(selection.action.name, effects);
+
             // If the action is memory-related and we need to store memories, actually store one
             if (selection.action.name === 'Store Memory' && prevAgent.state.memoryCount < 3) {
-              // Generate a meaningful memory from current state
-              const memoryContent = `Observation at tick ${prevAgent.state.tickCount}: coherence=${prevAgent.state.coherence.toFixed(2)}, entropy=${prevAgent.state.entropy.toFixed(2)}`;
-              storeMemoryRef.current(memoryContent, prevAgent.state.coherence);
+              const coh = prevAgent.state.coherence;
+              const activeCount = prevAgent.state.activeOscillatorCount;
+              const memoryContent = `Coherence ${coh > 0.7 ? 'high' : coh > 0.4 ? 'moderate' : 'low'} at ${(coh * 100).toFixed(0)}%, ${activeCount} oscillators active, entropy ${prevAgent.state.entropy.toFixed(2)}, exploration ${(prevAgent.state.explorationProgress * 100).toFixed(0)}% complete`;
+              storeMemoryRef.current(memoryContent, coh);
             }
-            
+
             // Add observation about action taken
             setReasoning(prev => addObservationFact(
               prev,
               `Autonomous action: ${selection.action.name} for "${selection.targetGoal.description}"`,
               selection.confidence
             ));
-            
+
             return updatedAgent;
           }
           return prevAgent;
@@ -387,8 +398,12 @@ export function useCognitiveObserver(
   const runAgentStep = useCallback(() => {
     const selection = selectAction(agent);
     if (selection) {
+      const effects = selection.action.effects(agent.state);
       setAgent(prev => executeAction(prev, selection));
-      
+
+      // Bridge to oscillator simulation
+      onAgentActionRef.current?.(selection.action.name, effects);
+
       // Add observation about action taken
       setReasoning(prev => addObservationFact(
         prev,

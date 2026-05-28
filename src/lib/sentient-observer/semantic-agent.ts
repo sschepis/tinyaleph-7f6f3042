@@ -3,6 +3,8 @@
  * Goal-directed agency with semantic action selection
  */
 
+import { textToEmbedding, cosineSimilarity } from './semantic-utils';
+
 export interface AgentGoal {
   id: string;
   description: string;
@@ -57,51 +59,6 @@ export interface SemanticAgent {
   state: AgentState;
 }
 
-// First N primes for semantic embedding
-const firstNPrimes = (n: number): number[] => {
-  const primes: number[] = [];
-  let candidate = 2;
-  while (primes.length < n) {
-    let isPrime = true;
-    for (let i = 2; i <= Math.sqrt(candidate); i++) {
-      if (candidate % i === 0) {
-        isPrime = false;
-        break;
-      }
-    }
-    if (isPrime) primes.push(candidate);
-    candidate++;
-  }
-  return primes;
-};
-
-const EMBEDDING_PRIMES = firstNPrimes(16);
-
-// Generate semantic embedding from text
-function textToEmbedding(text: string): number[] {
-  const embedding = new Array(16).fill(0);
-  const normalized = text.toLowerCase();
-  
-  for (let i = 0; i < normalized.length; i++) {
-    const idx = normalized.charCodeAt(i) % 16;
-    embedding[idx] += 1 / (i + 1); // Positional decay
-  }
-  
-  // Normalize
-  const norm = Math.sqrt(embedding.reduce((s, v) => s + v * v, 0)) || 1;
-  return embedding.map(v => v / norm);
-}
-
-// Cosine similarity between embeddings
-function embeddingSimilarity(a: number[], b: number[]): number {
-  let dot = 0, normA = 0, normB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB) + 0.0001);
-}
 
 export function createSemanticAgent(initialState: AgentState): SemanticAgent {
   return {
@@ -184,7 +141,7 @@ export function selectAction(agent: SemanticAgent): ActionSelection | null {
   
   for (const action of validActions) {
     // Score based on semantic alignment with goal
-    const semanticAlignment = embeddingSimilarity(action.embedding, targetGoal.embedding);
+    const semanticAlignment = cosineSimilarity(action.embedding, targetGoal.embedding);
     
     // Simulate action effect
     const projectedState = { ...agent.state, ...action.effects(agent.state) };
@@ -336,7 +293,7 @@ export function createDefaultActions(agent: SemanticAgent): SemanticAgent {
     'Explore New Territory',
     'Excite unexplored oscillators to expand semantic coverage',
     state => state.explorationProgress < 0.9,
-    state => ({ explorationProgress: state.explorationProgress + 0.05 }),
+    state => ({ temperature: Math.min(0.8, state.temperature + 0.1) }),
     0.8
   );
   
@@ -354,7 +311,7 @@ export function createDefaultActions(agent: SemanticAgent): SemanticAgent {
     'Consolidate Memories',
     'Focus on strengthening existing memories by increasing coherence',
     state => state.coherence < 0.8 && state.memoryCount > 0,
-    state => ({ coherence: Math.min(1, state.coherence + 0.1) }),
+    state => ({ coupling: Math.min(0.95, state.coupling + 0.05) }),
     0.6
   );
   

@@ -3,6 +3,9 @@
  * Central export for all cognitive modules
  */
 
+// Shared utilities
+export * from './semantic-utils';
+
 // Holographic Memory
 export * from './holographic-memory';
 export * from './learning-engine';

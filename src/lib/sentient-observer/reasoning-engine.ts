@@ -3,6 +3,8 @@
  * Implements fact storage, inference rules, and reasoning traces
  */
 
+import { textToEmbedding, cosineSimilarity } from './semantic-utils';
+
 export interface Fact {
   id: string;
   name: string;
@@ -40,56 +42,6 @@ export interface ReasoningEngine {
   inferenceDepth: number;
 }
 
-// First N primes for embedding
-const firstNPrimes = (n: number): number[] => {
-  const primes: number[] = [];
-  let candidate = 2;
-  while (primes.length < n) {
-    let isPrime = true;
-    for (let i = 2; i <= Math.sqrt(candidate); i++) {
-      if (candidate % i === 0) {
-        isPrime = false;
-        break;
-      }
-    }
-    if (isPrime) primes.push(candidate);
-    candidate++;
-  }
-  return primes;
-};
-
-const EMBEDDING_PRIMES = firstNPrimes(16);
-
-// Generate semantic embedding from text
-function textToEmbedding(text: string): number[] {
-  const embedding = new Array(16).fill(0);
-  const normalized = text.toLowerCase();
-  
-  // Word-level hashing
-  const words = normalized.split(/\s+/);
-  for (let w = 0; w < words.length; w++) {
-    const word = words[w];
-    for (let i = 0; i < word.length; i++) {
-      const idx = (word.charCodeAt(i) + w) % 16;
-      embedding[idx] += 1 / (w + 1) / (i + 1);
-    }
-  }
-  
-  // Normalize
-  const norm = Math.sqrt(embedding.reduce((s, v) => s + v * v, 0)) || 1;
-  return embedding.map(v => v / norm);
-}
-
-// Cosine similarity
-function similarity(a: number[], b: number[]): number {
-  let dot = 0, normA = 0, normB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB) + 0.0001);
-}
 
 export function createReasoningEngine(): ReasoningEngine {
   return {
@@ -159,7 +111,7 @@ function matchPremises(
     for (const fact of facts) {
       if (matchedFacts.includes(fact)) continue;
       
-      const score = similarity(premiseEmb, fact.embedding);
+      const score = cosineSimilarity(premiseEmb, fact.embedding);
       if (score > bestScore && score >= threshold) {
         bestScore = score;
         bestMatch = fact;
@@ -196,7 +148,7 @@ export function reason(engine: ReasoningEngine): {
     
     // Check if this conclusion already exists with higher confidence
     const conclusionEmb = textToEmbedding(rule.conclusion);
-    const existingFact = facts.find(f => similarity(f.embedding, conclusionEmb) > 0.85);
+    const existingFact = facts.find(f => cosineSimilarity(f.embedding, conclusionEmb) > 0.85);
     
     if (existingFact && existingFact.confidence >= derivedConfidence) {
       continue; // Already have this fact with same or higher confidence
@@ -276,7 +228,7 @@ export function query(
   const results: { fact: Fact; similarity: number }[] = [];
   
   engine.facts.forEach(fact => {
-    const sim = similarity(queryEmb, fact.embedding);
+    const sim = cosineSimilarity(queryEmb, fact.embedding);
     if (sim >= threshold) {
       results.push({ fact, similarity: sim });
     }
